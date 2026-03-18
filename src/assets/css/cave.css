@@ -1,0 +1,102 @@
+#background,
+nav ul li {
+    background-image: var(--bg-hearthroom);
+}
+#background.alchemy,
+nav li.alchemy {
+    background-image: var(--bg-alchemy);
+}
+#background.avatarium,
+#background.moon,
+nav li.moon,
+nav li.avatarium {
+    background-image: var(--bg-avatarium);
+}
+#background.armoury,
+nav li.armoury {
+    background-image: var(--bg-armoury);
+}
+#background.dungeon,
+nav li.dungeon {
+    background-image: var(--bg-dungeon);
+}
+#background.gallery,
+nav li.gallery {
+    background-image: var(--bg-gallery);
+}
+#background.gnomish {
+    background-image: var(--bg-gnomish);
+}
+#background.illusions,
+nav li.illusions {
+    background-image: var(--bg-illusions);
+}
+#background.kitchen,
+nav li.kitchen {
+    background-image: var(--bg-kitchen);
+}
+#background.library,
+nav li.library {
+    background-image: var(--bg-library);
+}
+#background.music-hall,
+nav li.music-hall {
+    background-image: var(--bg-music-hall);
+}
+#background.pendant-estate,
+nav li.pendant-estate {
+    background-image: var(--bg-pendant-estate);
+}
+#background.psionics,
+nav li.psionics {
+    background-image: var(--bg-psionics);
+}
+#background.ranger-s-den,
+nav li.ranger-s-den {
+    background-image: var(--bg-ranger-den);
+}
+#background.rats,
+nav li.rats {
+    background-image: var(--bg-rats);
+}
+#background.reports,
+nav li.reports {
+    background-image: var(--bg-study);
+}
+#background.reports #cntnt {
+    /* background: url(@/assets/images/parchment.jpg) center/cover no-repeat; */
+    background: none;
+    background-color: rgba(255, 255, 255, 0.1);
+}
+#background.smithy,
+nav li.smithy {
+    background-image: var(--bg-smithy);
+}
+#background.spells,
+nav li.spells {
+    background-image: var(--bg-spells);
+}
+#background.stables,
+nav li.stables {
+    background-image: var(--bg-stables);
+}
+#background.study,
+nav li.study {
+    background-image: var(--bg-study);
+}
+#background.temple,
+nav li.temple {
+    background-image: var(--bg-temple);
+}
+#background.training,
+nav li.training {
+    background-image: var(--bg-training);
+}
+#background.vault,
+nav li.vault {
+    background-image: var(--bg-vault);
+}
+#background.hearth-horn,
+nav li.hearth-horn {
+    background-image: var(--bg-hearth-horn);
+}

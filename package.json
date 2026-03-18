@@ -1,0 +1,5 @@
+{
+  "name": "@realmforge/shared",
+  "private": true,
+  "type": "module"
+}
