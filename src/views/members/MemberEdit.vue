@@ -417,13 +417,13 @@
 <script setup>
 import { ref, computed, onMounted, reactive, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
-import { useCharacterStore } from '@/stores/character';
-import { useRealmStore } from '@/stores/realm';
-import { useUserStore } from '@/stores/user';
+import { useCharacterStore } from '@shared/stores/character';
+import { useRealmStore } from '@shared/stores/realm';
+import { useUserStore } from '@shared/stores/user';
 import { features } from '@shared/config/features';
 import VueMultiselect from 'vue-multiselect';
 import 'vue-multiselect/dist/vue-multiselect.min.css';
-import InlineEditor from '@/components/cms/InlineEditor.vue';
+import InlineEditor from '@shared/components/cms/InlineEditor.vue';
 
 const route = useRoute();
 const router = useRouter();
@@ -438,17 +438,17 @@ let racesStore = null;
 let accountStoreForAccess = null;
 if (features.hasClasses) {
   const [classesModule, racesModule, accountModule] = await Promise.all([
-    import('@/stores/classes'),
-    import('@/stores/races'),
-    import('@/stores/account')
+    import(/* @vite-ignore */ '@/stores/classes'),
+    import(/* @vite-ignore */ '@/stores/races'),
+    import('@shared/stores/account')
   ]);
   classesStore = classesModule.useClassesStore();
   racesStore = racesModule.useRacesStore();
   accountStoreForAccess = accountModule.useAccountStore();
 } else if (features.hasRaces) {
   const [racesModule, accountModule] = await Promise.all([
-    import('@/stores/races'),
-    import('@/stores/account')
+    import(/* @vite-ignore */ '@/stores/races'),
+    import('@shared/stores/account')
   ]);
   racesStore = racesModule.useRacesStore();
   accountStoreForAccess = accountModule.useAccountStore();

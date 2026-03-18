@@ -339,9 +339,9 @@ let racesStore = null;
 let accountStore = null;
 if (features.hasClasses) {
     const [classesModule, racesModule, accountModule] = await Promise.all([
-        import('@/stores/classes'),
-        import('@/stores/races'),
-        import('@/stores/account')
+        import(/* @vite-ignore */ '@/stores/classes'),
+        import(/* @vite-ignore */ '@/stores/races'),
+        import('@shared/stores/account')
     ]);
     classesStore = classesModule.useClassesStore();
     racesStore = racesModule.useRacesStore();

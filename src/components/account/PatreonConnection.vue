@@ -475,21 +475,21 @@
 
 <script setup>
 import { ref, computed, onMounted, watch, defineAsyncComponent } from 'vue';
-import { useAccountStore } from '@/stores/account';
-import { useRealmStore } from '@/stores/realm';
-import { useNotifications } from '@/composables/useNotifications';
-import { patreonService } from '@/services/patreonService';
+import { useAccountStore } from '@shared/stores/account';
+import { useRealmStore } from '@shared/stores/realm';
+import { useNotifications } from '@shared/composables/useNotifications';
+import { patreonService } from '@shared/services/patreonService';
 import { features } from '@shared/config/features';
 
 // Conditionally load PayPal component
 const PayPalSubscriptionButton = features.hasPayPal
-  ? defineAsyncComponent(() => import('@/components/payment/PayPalSubscriptionButton.vue'))
+  ? defineAsyncComponent(() => import(/* @vite-ignore */ '@/components/payment/PayPalSubscriptionButton.vue'))
   : null;
 
 // Conditionally load PayPal store
 let paypalStore = null;
 if (features.hasPayPal) {
-  const { usePayPalStore } = await import('@/stores/paypal');
+  const { usePayPalStore } = await import(/* @vite-ignore */ '@/stores/paypal');
   paypalStore = usePayPalStore();
 }
 

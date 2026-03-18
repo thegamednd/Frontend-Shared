@@ -1168,38 +1168,38 @@
 import { ref, computed, onMounted, nextTick, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import axios from 'axios';
-import { useAccountStore } from '@/stores/account';
-import { useUserStore } from '@/stores/user';
-import { useRealmStore } from '@/stores/realm';
-import { useCharacterStore } from '@/stores/character';
-import { useDateStore } from '@/stores/date';
-import { useSubscriptionStore } from '@/stores/subscription';
-import { useSessionStore } from '@/stores/session';
-import { useConfigStore } from '@/stores/config';
-import { patreonService } from '@/services/patreonService';
+import { useAccountStore } from '@shared/stores/account';
+import { useUserStore } from '@shared/stores/user';
+import { useRealmStore } from '@shared/stores/realm';
+import { useCharacterStore } from '@shared/stores/character';
+import { useDateStore } from '@shared/stores/date';
+import { useSubscriptionStore } from '@shared/stores/subscription';
+import { useSessionStore } from '@shared/stores/session';
+import { useConfigStore } from '@shared/stores/config';
+import { patreonService } from '@shared/services/patreonService';
 import { features } from '@shared/config/features';
 
 // Conditionally import PayPal store and component
 let PayPalSubscriptionButton = null;
 let paypalStore = null;
 if (features.hasPayPal) {
-  const { usePayPalStore } = await import('@/stores/paypal');
+  const { usePayPalStore } = await import(/* @vite-ignore */ '@/stores/paypal');
   paypalStore = usePayPalStore();
-  const paypalComponent = await import('@/components/payment/PayPalSubscriptionButton.vue');
+  const paypalComponent = await import(/* @vite-ignore */ '@/components/payment/PayPalSubscriptionButton.vue');
   PayPalSubscriptionButton = paypalComponent.default;
 }
 
 // Conditionally import gaming systems store
 let gamingSystemsStore = null;
 if (features.hasGamingSystems) {
-  const { useGamingSystemsStore } = await import('@/stores/gamingSystems');
+  const { useGamingSystemsStore } = await import(/* @vite-ignore */ '@/stores/gamingSystems');
   gamingSystemsStore = useGamingSystemsStore();
 }
 
 // Conditionally import CharacterSheetDialog component
 let CharacterSheetDialog = null;
 if (features.hasCharacterSheets) {
-  const charSheetComponent = await import('@/components/dialogs/CharacterSheetDialog.vue');
+  const charSheetComponent = await import(/* @vite-ignore */ '@/components/dialogs/CharacterSheetDialog.vue');
   CharacterSheetDialog = charSheetComponent.default;
 }
 
