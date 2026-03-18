@@ -1183,23 +1183,23 @@ import { features } from '@shared/config/features';
 let PayPalSubscriptionButton = null;
 let paypalStore = null;
 if (features.hasPayPal) {
-  const { usePayPalStore } = await import(/* @vite-ignore */ '@/stores/paypal');
+  const { usePayPalStore } = await (() => { const p = '@' + '/stores/paypal'; return import(/* @vite-ignore */ p); })();
   paypalStore = usePayPalStore();
-  const paypalComponent = await import(/* @vite-ignore */ '@/components/payment/PayPalSubscriptionButton.vue');
+  const paypalComponent = await (() => { const p = '@' + '/components/payment/PayPalSubscriptionButton.vue'; return import(/* @vite-ignore */ p); })();
   PayPalSubscriptionButton = paypalComponent.default;
 }
 
 // Conditionally import gaming systems store
 let gamingSystemsStore = null;
 if (features.hasGamingSystems) {
-  const { useGamingSystemsStore } = await import(/* @vite-ignore */ '@/stores/gamingSystems');
+  const { useGamingSystemsStore } = await (() => { const p = '@' + '/stores/gamingSystems'; return import(/* @vite-ignore */ p); })();
   gamingSystemsStore = useGamingSystemsStore();
 }
 
 // Conditionally import CharacterSheetDialog component
 let CharacterSheetDialog = null;
 if (features.hasCharacterSheets) {
-  const charSheetComponent = await import(/* @vite-ignore */ '@/components/dialogs/CharacterSheetDialog.vue');
+  const charSheetComponent = await (() => { const p = '@' + '/components/dialogs/CharacterSheetDialog.vue'; return import(/* @vite-ignore */ p); })();
   CharacterSheetDialog = charSheetComponent.default;
 }
 

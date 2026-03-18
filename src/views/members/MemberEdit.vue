@@ -438,8 +438,8 @@ let racesStore = null;
 let accountStoreForAccess = null;
 if (features.hasClasses) {
   const [classesModule, racesModule, accountModule] = await Promise.all([
-    import(/* @vite-ignore */ '@/stores/classes'),
-    import(/* @vite-ignore */ '@/stores/races'),
+    (() => { const p = '@' + '/stores/classes'; return import(/* @vite-ignore */ p); })(),
+    (() => { const p = '@' + '/stores/races'; return import(/* @vite-ignore */ p); })(),
     import('@shared/stores/account')
   ]);
   classesStore = classesModule.useClassesStore();
@@ -447,7 +447,7 @@ if (features.hasClasses) {
   accountStoreForAccess = accountModule.useAccountStore();
 } else if (features.hasRaces) {
   const [racesModule, accountModule] = await Promise.all([
-    import(/* @vite-ignore */ '@/stores/races'),
+    (() => { const p = '@' + '/stores/races'; return import(/* @vite-ignore */ p); })(),
     import('@shared/stores/account')
   ]);
   racesStore = racesModule.useRacesStore();

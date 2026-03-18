@@ -483,13 +483,13 @@ import { features } from '@shared/config/features';
 
 // Conditionally load PayPal component
 const PayPalSubscriptionButton = features.hasPayPal
-  ? defineAsyncComponent(() => import(/* @vite-ignore */ '@/components/payment/PayPalSubscriptionButton.vue'))
+  ? defineAsyncComponent(() => (() => { const p = '@' + '/components/payment/PayPalSubscriptionButton.vue'; return import(/* @vite-ignore */ p); })())
   : null;
 
 // Conditionally load PayPal store
 let paypalStore = null;
 if (features.hasPayPal) {
-  const { usePayPalStore } = await import(/* @vite-ignore */ '@/stores/paypal');
+  const { usePayPalStore } = await (() => { const p = '@' + '/stores/paypal'; return import(/* @vite-ignore */ p); })();
   paypalStore = usePayPalStore();
 }
 

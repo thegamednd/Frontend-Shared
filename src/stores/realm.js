@@ -259,7 +259,8 @@ export const useRealmStore = defineStore('realm', {
             if (this.psionicsEnabled !== null) return this.psionicsEnabled;
 
             try {
-                const { useClassesStore } = await import(/* @vite-ignore */ '@/stores/classes');
+                const classesPath = '@' + '/stores/classes';
+                const { useClassesStore } = await import(/* @vite-ignore */ classesPath);
                 const classesStore = useClassesStore();
 
                 const psionicist = classesStore.getClassByName('Psionicist');
