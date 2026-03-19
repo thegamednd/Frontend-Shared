@@ -338,14 +338,15 @@ let classesStore = null;
 let racesStore = null;
 let accountStore = null;
 if (features.hasClasses) {
-    const [classesModule, racesModule, accountModule] = await Promise.all([
-        import('@/stores/classes'),
-        import('@/stores/races'),
-        import('@/stores/account')
-    ]);
-    classesStore = classesModule.useClassesStore();
-    racesStore = racesModule.useRacesStore();
-    accountStore = accountModule.useAccountStore();
+    Promise.all([
+        (() => { const p = '@' + '/stores/classes'; return import(/* @vite-ignore */ p); })(),
+        (() => { const p = '@' + '/stores/races'; return import(/* @vite-ignore */ p); })(),
+        import('@shared/stores/account')
+    ]).then(([classesModule, racesModule, accountModule]) => {
+        classesStore = classesModule.useClassesStore();
+        racesStore = racesModule.useRacesStore();
+        accountStore = accountModule.useAccountStore();
+    }).catch(() => {});
 }
 
 const btnSave = ref(null);

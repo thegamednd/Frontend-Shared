@@ -304,13 +304,13 @@ import { ref, computed, onMounted } from 'vue';
 
 import { features } from '@shared/config/features';
 
-import AccountCreate from '@/components/account/Create.vue';
-import ActiveRealm from '@/components/account/ActiveRealm.vue';
-import CreditBalance from '@/components/account/CreditBalance.vue';
+import AccountCreate from '@shared/components/account/Create.vue';
+import ActiveRealm from '@shared/components/account/ActiveRealm.vue';
+import CreditBalance from '@shared/components/account/CreditBalance.vue';
 
-import { useAccountStore } from '@/stores/account';
-import { useRealmStore } from '@/stores/realm';
-import { useUserStore } from '@/stores/user';
+import { useAccountStore } from '@shared/stores/account';
+import { useRealmStore } from '@shared/stores/realm';
+import { useUserStore } from '@shared/stores/user';
 
 const accountStore = useAccountStore();
 const realmStore = useRealmStore();

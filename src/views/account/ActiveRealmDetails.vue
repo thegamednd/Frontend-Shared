@@ -1165,43 +1165,53 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, nextTick, watch } from 'vue';
+import { ref, shallowRef, computed, onMounted, nextTick, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import axios from 'axios';
-import { useAccountStore } from '@/stores/account';
-import { useUserStore } from '@/stores/user';
-import { useRealmStore } from '@/stores/realm';
-import { useCharacterStore } from '@/stores/character';
-import { useDateStore } from '@/stores/date';
-import { useSubscriptionStore } from '@/stores/subscription';
-import { useSessionStore } from '@/stores/session';
-import { useConfigStore } from '@/stores/config';
-import { patreonService } from '@/services/patreonService';
+import { useAccountStore } from '@shared/stores/account';
+import { useUserStore } from '@shared/stores/user';
+import { useRealmStore } from '@shared/stores/realm';
+import { useCharacterStore } from '@shared/stores/character';
+import { useDateStore } from '@shared/stores/date';
+import { useSubscriptionStore } from '@shared/stores/subscription';
+import { useSessionStore } from '@shared/stores/session';
+import { useConfigStore } from '@shared/stores/config';
+import { patreonService } from '@shared/services/patreonService';
 import { features } from '@shared/config/features';
 
 // Conditionally import PayPal store and component
-let PayPalSubscriptionButton = null;
+const PayPalSubscriptionButton = shallowRef(null);
 let paypalStore = null;
-if (features.hasPayPal) {
-  const { usePayPalStore } = await import('@/stores/paypal');
-  paypalStore = usePayPalStore();
-  const paypalComponent = await import('@/components/payment/PayPalSubscriptionButton.vue');
-  PayPalSubscriptionButton = paypalComponent.default;
-}
 
 // Conditionally import gaming systems store
 let gamingSystemsStore = null;
-if (features.hasGamingSystems) {
-  const { useGamingSystemsStore } = await import('@/stores/gamingSystems');
-  gamingSystemsStore = useGamingSystemsStore();
-}
 
 // Conditionally import CharacterSheetDialog component
-let CharacterSheetDialog = null;
-if (features.hasCharacterSheets) {
-  const charSheetComponent = await import('@/components/dialogs/CharacterSheetDialog.vue');
-  CharacterSheetDialog = charSheetComponent.default;
-}
+const CharacterSheetDialog = shallowRef(null);
+
+// Load optional stores/components at mount time (avoids async setup needing Suspense)
+onMounted(async () => {
+  if (features.hasPayPal) {
+    try {
+      const { usePayPalStore } = await (() => { const p = '@' + '/stores/paypal'; return import(/* @vite-ignore */ p); })();
+      paypalStore = usePayPalStore();
+      const paypalComponent = await (() => { const p = '@' + '/components/payment/PayPalSubscriptionButton.vue'; return import(/* @vite-ignore */ p); })();
+      PayPalSubscriptionButton.value = paypalComponent.default;
+    } catch (e) { console.warn('PayPal not available:', e); }
+  }
+  if (features.hasGamingSystems) {
+    try {
+      const { useGamingSystemsStore } = await (() => { const p = '@' + '/stores/gamingSystems'; return import(/* @vite-ignore */ p); })();
+      gamingSystemsStore = useGamingSystemsStore();
+    } catch (e) { console.warn('Gaming systems not available:', e); }
+  }
+  if (features.hasCharacterSheets) {
+    try {
+      const charSheetComponent = await (() => { const p = '@' + '/components/dialogs/CharacterSheetDialog.vue'; return import(/* @vite-ignore */ p); })();
+      CharacterSheetDialog.value = charSheetComponent.default;
+    } catch (e) { console.warn('Character sheet dialog not available:', e); }
+  }
+});
 
 const accountStore = useAccountStore();
 const userStore = useUserStore();

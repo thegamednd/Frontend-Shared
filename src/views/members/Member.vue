@@ -174,8 +174,9 @@ const imagesCdnUrl = import.meta.env.VITE_IMAGES_CDN_URL;
 
 let classesStore = null;
 if (features.hasClasses) {
-    const { useClassesStore } = await import('@/stores/classes');
-    classesStore = useClassesStore();
+    (() => { const p = '@' + '/stores/classes'; return import(/* @vite-ignore */ p); })()
+        .then(({ useClassesStore }) => { classesStore = useClassesStore(); })
+        .catch(() => {});
 }
 
 const member = ref(null);

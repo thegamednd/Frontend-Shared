@@ -481,19 +481,19 @@
 <script setup>
 import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue';
 import { features } from '@shared/config/features';
-import { useUserStore } from '@/stores/user';
-import { useScribeStore } from '@/stores/scribe';
-import { useCharacterStore } from '@/stores/character';
-import { useRealmStore } from '@/stores/realm';
-import { useDateStore } from '@/stores/date';
-import { useAudioRecorder } from '@/composables/useAudioRecorder';
-import { useSessionGuard } from '@/composables/useSessionGuard';
-import { estimateCost, estimateCostFromChunks, formatCost } from '@/utils/scribeCost';
+import { useUserStore } from '@shared/stores/user';
+import { useScribeStore } from '@shared/stores/scribe';
+import { useCharacterStore } from '@shared/stores/character';
+import { useRealmStore } from '@shared/stores/realm';
+import { useDateStore } from '@shared/stores/date';
+import { useAudioRecorder } from '@shared/composables/useAudioRecorder';
+import { useSessionGuard } from '@shared/composables/useSessionGuard';
+import { estimateCost, estimateCostFromChunks, formatCost } from '@shared/utils/scribeCost';
 import VueMultiselect from 'vue-multiselect';
 import 'vue-multiselect/dist/vue-multiselect.css';
-import InlineEditor from '@/components/cms/InlineEditor.vue';
-import ScribeAddFunds from '@/components/scribe/ScribeAddFunds.vue';
-import { downloadSessionAudio } from '@/utils/audioDownloader';
+import InlineEditor from '@shared/components/cms/InlineEditor.vue';
+import ScribeAddFunds from '@shared/components/scribe/ScribeAddFunds.vue';
+import { downloadSessionAudio } from '@shared/utils/audioDownloader';
 
 const userStore = useUserStore();
 const scribeStore = useScribeStore();
@@ -1086,7 +1086,7 @@ function formatMss(totalSeconds) {
 </script>
 
 <style scoped>
-@import '@/assets/css/loadanim.css';
+@import '@shared/assets/css/loadanim.css';
 
 #scribePlatform {
     padding: 1em;
