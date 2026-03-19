@@ -489,8 +489,9 @@ const PayPalSubscriptionButton = features.hasPayPal
 // Conditionally load PayPal store
 let paypalStore = null;
 if (features.hasPayPal) {
-  const { usePayPalStore } = await (() => { const p = '@' + '/stores/paypal'; return import(/* @vite-ignore */ p); })();
-  paypalStore = usePayPalStore();
+  (() => { const p = '@' + '/stores/paypal'; return import(/* @vite-ignore */ p); })()
+    .then(({ usePayPalStore }) => { paypalStore = usePayPalStore(); })
+    .catch(() => {});
 }
 
 const accountStore = useAccountStore();

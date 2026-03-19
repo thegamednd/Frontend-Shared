@@ -437,21 +437,23 @@ let classesStore = null;
 let racesStore = null;
 let accountStoreForAccess = null;
 if (features.hasClasses) {
-  const [classesModule, racesModule, accountModule] = await Promise.all([
+  Promise.all([
     (() => { const p = '@' + '/stores/classes'; return import(/* @vite-ignore */ p); })(),
     (() => { const p = '@' + '/stores/races'; return import(/* @vite-ignore */ p); })(),
     import('@shared/stores/account')
-  ]);
-  classesStore = classesModule.useClassesStore();
-  racesStore = racesModule.useRacesStore();
-  accountStoreForAccess = accountModule.useAccountStore();
+  ]).then(([classesModule, racesModule, accountModule]) => {
+    classesStore = classesModule.useClassesStore();
+    racesStore = racesModule.useRacesStore();
+    accountStoreForAccess = accountModule.useAccountStore();
+  }).catch(() => {});
 } else if (features.hasRaces) {
-  const [racesModule, accountModule] = await Promise.all([
+  Promise.all([
     (() => { const p = '@' + '/stores/races'; return import(/* @vite-ignore */ p); })(),
     import('@shared/stores/account')
-  ]);
-  racesStore = racesModule.useRacesStore();
-  accountStoreForAccess = accountModule.useAccountStore();
+  ]).then(([racesModule, accountModule]) => {
+    racesStore = racesModule.useRacesStore();
+    accountStoreForAccess = accountModule.useAccountStore();
+  }).catch(() => {});
 }
 
 const loading = ref(false);
