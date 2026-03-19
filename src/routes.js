@@ -137,12 +137,6 @@ export const sharedRoutes = [
         meta: { requiresActiveRealm: true }
     },
     {
-        path: '/realm/ai',
-        name: 'RealmAI',
-        component: () => import('@shared/views/ai/RealmAI.vue'),
-        meta: { requiresActiveRealm: true }
-    },
-    {
         path: '/reports',
         name: 'Reports',
         component: () => import('@shared/views/Reports.vue'),
