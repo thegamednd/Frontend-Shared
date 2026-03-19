@@ -49,12 +49,11 @@ export const useScribeStore = defineStore('scribe', {
         async uploadChunk(sessionId, chunkIndex, blob) {
             try {
                 this.uploading = true;
-                const realmId = this._getRealmId();
 
                 // Get pre-signed URL
                 const urlResponse = await apiClient.post(
                     `${SESSIONS_BASE_URL}/sessions/session/${sessionId}/upload-url`,
-                    { chunkIndex, contentType: blob.type || 'audio/webm', realmId }
+                    { chunkIndex, contentType: blob.type || 'audio/webm' }
                 );
 
                 const { uploadUrl } = urlResponse.data;
@@ -101,11 +100,10 @@ export const useScribeStore = defineStore('scribe', {
                 for (let i = 0; i < segments.length; i++) {
                     const segment = segments[i];
                     const contentType = segment.type || file.type;
-                    const realmId = this._getRealmId();
 
                     const urlResponse = await apiClient.post(
                         `${SESSIONS_BASE_URL}/sessions/session/${sessionId}/upload-url`,
-                        { chunkIndex: i, contentType, realmId }
+                        { chunkIndex: i, contentType }
                     );
 
                     const { uploadUrl } = urlResponse.data;
@@ -174,9 +172,7 @@ export const useScribeStore = defineStore('scribe', {
         async endSession(sessionId, body) {
             try {
                 this.processing = true;
-                const realmId = this._getRealmId();
-                const payload = { ...body, realmId };
-                const response = await apiClient.put(`${SESSIONS_BASE_URL}/sessions/session/${sessionId}/end`, payload);
+                const response = await apiClient.put(`${SESSIONS_BASE_URL}/sessions/session/${sessionId}/end`, body);
                 if (this.currentSession) {
                     this.currentSession.status = 'uploaded';
                 }
