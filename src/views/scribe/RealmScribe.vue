@@ -77,10 +77,18 @@
                     <span class="recordingDot"></span>
                     Recording
                 </div>
+                <div class="audioMeter">
+                    <div class="audioMeterFill" :style="{ width: (recorder.audioLevel.value * 100) + '%' }"></div>
+                </div>
                 <div class="timer">{{ formatDuration(recorder.duration.value) }}</div>
                 <div class="chunkStatus">
                     Chunks uploaded: {{ chunksUploaded }}
                     <span v-if="scribeStore.uploading" class="uploadingIndicator">uploading...</span>
+                </div>
+                <div v-if="availableMics.length > 1" class="currentMic">
+                    <span class="material-symbols-outlined">mic</span>
+                    <span class="currentMicLabel">{{ currentMicLabel }}</span>
+                    <button class="btn-small" @click="openSwitchMicDialog">Switch</button>
                 </div>
                 <div class="recordingActions">
                     <button v-if="!recorder.isPaused.value" class="btn-secondary" @click="pauseSession">
@@ -316,7 +324,7 @@
             <!-- Mic Selection Dialog -->
             <dialog ref="micDialogRef" class="mic-modal" @close="onMicDialogClose">
                 <div class="mic-modal-header">
-                    <h4>Select Microphone</h4>
+                    <h4>{{ micDialogMode === 'switch' ? 'Switch Microphone' : 'Select Microphone' }}</h4>
                     <button class="btn-close" @click="micDialogRef?.close()">&times;</button>
                 </div>
                 <div class="mic-modal-body">
@@ -338,7 +346,7 @@
                     <button class="btn-primary" @click="micDialogRef?.close()">Cancel</button>
                     <button class="btn-primary" @click="confirmMicSelection">
                         <span class="material-symbols-outlined">mic</span>
-                        Start Recording
+                        {{ micDialogMode === 'switch' ? 'Switch Mic' : 'Start Recording' }}
                     </button>
                 </div>
             </dialog>
@@ -536,6 +544,13 @@ const saveButtonLabel = ref('Save Draft');
 const micDialogRef = ref(null);
 const availableMics = ref([]);
 const selectedMicId = ref(localStorage.getItem('preferredMicId') || '');
+const micDialogMode = ref('start'); // 'start' | 'switch'
+
+const currentMicLabel = computed(() => {
+    if (!selectedMicId.value || !availableMics.value.length) return '';
+    const mic = availableMics.value.find(m => m.deviceId === selectedMicId.value);
+    return mic?.label || 'Unknown Microphone';
+});
 let sessionPollInterval = null;
 let listPollInterval = null;
 let pendingUpload = null;
@@ -603,8 +618,15 @@ const insufficientFunds = computed(() => {
     return scribeStore.walletBalance < cost;
 });
 
+function handleDeviceChange() {
+    if (recorder.isRecording.value) {
+        refreshMicList();
+    }
+}
+
 onMounted(async () => {
     emits('set-room', 'lorekeeper');
+    navigator.mediaDevices.addEventListener('devicechange', handleDeviceChange);
     await Promise.all([
         scribeStore.listSessions(),
         scribeStore.getWallet().catch(() => {}),
@@ -614,6 +636,7 @@ onMounted(async () => {
 onUnmounted(() => {
     stopSessionPolling();
     stopListPolling();
+    navigator.mediaDevices.removeEventListener('devicechange', handleDeviceChange);
 });
 
 // Poll a single session when user is viewing the processing spinner
@@ -728,6 +751,7 @@ function populateReviewForm() {
 }
 
 async function beginSession() {
+    micDialogMode.value = 'start';
     try {
         // Request temporary permission so enumerateDevices returns labels
         const tempStream = await navigator.mediaDevices.getUserMedia({ audio: true });
@@ -760,7 +784,25 @@ async function beginSession() {
 async function confirmMicSelection() {
     micDialogRef.value?.close();
     localStorage.setItem('preferredMicId', selectedMicId.value);
-    await startRecordingWithMic(selectedMicId.value);
+    if (micDialogMode.value === 'switch') {
+        try {
+            await recorder.switchMicrophone(selectedMicId.value);
+        } catch (err) {
+            console.error('Failed to switch microphone:', err);
+        }
+    } else {
+        await startRecordingWithMic(selectedMicId.value);
+    }
+}
+
+async function openSwitchMicDialog() {
+    micDialogMode.value = 'switch';
+    await refreshMicList();
+    const saved = localStorage.getItem('preferredMicId');
+    if (saved && availableMics.value.some(m => m.deviceId === saved)) {
+        selectedMicId.value = saved;
+    }
+    micDialogRef.value?.showModal();
 }
 
 function onMicDialogClose() {
@@ -1325,6 +1367,24 @@ function formatMss(totalSeconds) {
     border-radius: 50%;
     background: var(--theme-danger);
     animation: pulse 1.5s ease-in-out infinite;
+}
+
+.audioMeter {
+    width: 100%;
+    max-width: 300px;
+    height: 6px;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 3px;
+    overflow: hidden;
+    margin: 0 auto 1em;
+}
+
+.audioMeterFill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--theme-success, #4a8c5c), #f59e0b, var(--theme-danger, #a83232));
+    border-radius: 3px;
+    transition: width 0.1s ease-out;
+    min-width: 2px;
 }
 
 @keyframes pulse {
@@ -1896,5 +1956,23 @@ function formatMss(totalSeconds) {
     flex-direction: column;
     gap: 0.5em;
     margin-top: 0.8em;
+}
+
+/* Switch Mic indicator */
+.currentMic {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5em;
+    margin-bottom: 1em;
+    font-size: 0.9em;
+    color: #aaa;
+}
+
+.currentMicLabel {
+    max-width: 200px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 </style>

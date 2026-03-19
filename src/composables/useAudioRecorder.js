@@ -10,6 +10,7 @@ export function useAudioRecorder() {
     const isSilent = ref(false);
     const duration = ref(0);
     const error = ref(null);
+    const audioLevel = ref(0);
 
     let mediaRecorder = null;
     let stream = null;
@@ -114,6 +115,7 @@ export function useAudioRecorder() {
                     sum += sample * sample;
                 }
                 const rms = Math.sqrt(sum / dataArray.length);
+                audioLevel.value = Math.min(1, rms * 5);
 
                 if (rms < SILENCE_THRESHOLD) {
                     if (!silenceStartTime) silenceStartTime = Date.now();
@@ -124,7 +126,7 @@ export function useAudioRecorder() {
                     silenceStartTime = null;
                     isSilent.value = false;
                 }
-            }, 500);
+            }, 150);
         } catch {
             // AudioContext not available — skip silence detection
         }
@@ -238,6 +240,7 @@ export function useAudioRecorder() {
         isRecording.value = false;
         isPaused.value = false;
         isSilent.value = false;
+        audioLevel.value = 0;
     }
 
     // Cleanup on unmount
@@ -249,6 +252,7 @@ export function useAudioRecorder() {
         isRecording,
         isPaused,
         isSilent,
+        audioLevel,
         duration,
         error,
         startRecording,
