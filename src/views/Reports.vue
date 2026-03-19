@@ -4,17 +4,30 @@
     <div class="reports-header">
       <h2 id="reports-title">Party Reports</h2>
       
-      <!-- Add Report Button (only on wider screens and with proper permissions) -->
-      <button
-        v-if="!isAdding && !isEditing && !isVeryNarrow && canCreateReports"
-        @click="startAddReport"
-        class="btn btn-primary"
-        title="Add a new report"
-        aria-label="Add a new party report"
-      >
-        <i class="material-symbols-outlined" aria-hidden="true">add</i>
-        Add Report
-      </button>
+      <div class="header-actions" v-if="!isAdding && !isEditing && !isVeryNarrow">
+        <!-- Record Session Button -->
+        <router-link
+          v-if="canCreateReports"
+          :to="scribeRoute"
+          class="btn btn-secondary"
+          title="Record a session with the Lorekeeper"
+          aria-label="Record a session"
+        >
+          <i class="material-symbols-outlined" aria-hidden="true">mic</i>
+          Record Session
+        </router-link>
+        <!-- Add Report Button -->
+        <button
+          v-if="canCreateReports"
+          @click="startAddReport"
+          class="btn btn-primary"
+          title="Add a new report"
+          aria-label="Add a new party report"
+        >
+          <i class="material-symbols-outlined" aria-hidden="true">add</i>
+          Add Report
+        </button>
+      </div>
     </div>
 
     <!-- Main Content -->
@@ -178,6 +191,11 @@ const explicitlyClosedReport = ref(false);
 // Computed
 const isMobile = ref(window.innerWidth < 768);
 const isVeryNarrow = ref(window.innerWidth < 450);
+
+// Resolve scribe route
+const scribeRoute = computed(() => {
+  return { name: 'RealmScribe' };
+});
 
 // Check if user can create reports
 const canCreateReports = computed(() => {
@@ -812,14 +830,22 @@ watch(() => route.params, updateFromRoute);
   margin-bottom: 2rem;
 }
 
+.header-actions {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+  position: relative;
+  z-index: 1;
+}
+
 .btn-secondary {
-  background: linear-gradient(135deg, #666 0%, #555 100%);
+  background: linear-gradient(135deg, var(--theme-bg-surface-alt, #333) 0%, var(--theme-bg-surface, #222) 100%);
   color: var(--theme-text-primary);
-  border-color: #777;
+  border-color: var(--theme-border-accent, #777);
 }
 
 .btn-secondary:hover {
-  background: linear-gradient(135deg, #777 0%, #666 100%);
+  background: linear-gradient(135deg, var(--theme-bg-surface-hover, #444) 0%, var(--theme-bg-surface-alt, #333) 100%);
   transform: translateY(-2px);
   box-shadow: 0 4px 12px rgba(255, 255, 255, 0.1);
 }

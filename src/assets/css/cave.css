@@ -59,6 +59,9 @@ nav li.ranger-s-den {
 nav li.rats {
     background-image: var(--bg-rats);
 }
+#background.lorekeeper {
+    background-image: var(--bg-study);
+}
 #background.reports,
 nav li.reports {
     background-image: var(--bg-study);

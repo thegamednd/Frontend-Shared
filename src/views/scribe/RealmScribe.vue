@@ -487,6 +487,8 @@ import { useCharacterStore } from '@shared/stores/character';
 import { useRealmStore } from '@shared/stores/realm';
 import { useDateStore } from '@shared/stores/date';
 import { useAudioRecorder } from '@shared/composables/useAudioRecorder';
+
+const emits = defineEmits(['set-room']);
 import { useSessionGuard } from '@shared/composables/useSessionGuard';
 import { estimateCost, estimateCostFromChunks, formatCost } from '@shared/utils/scribeCost';
 import VueMultiselect from 'vue-multiselect';
@@ -602,6 +604,7 @@ const insufficientFunds = computed(() => {
 });
 
 onMounted(async () => {
+    emits('set-room', 'lorekeeper');
     await Promise.all([
         scribeStore.listSessions(),
         scribeStore.getWallet().catch(() => {}),
