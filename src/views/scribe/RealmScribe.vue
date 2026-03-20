@@ -251,8 +251,7 @@
                     </div>
                     <div class="reportEditor">
                         <InlineEditor
-                            :content="reportData.report"
-                            @update-content="reportData.report = $event"
+                            v-model="reportData.report"
                         />
                     </div>
                 </div>
@@ -265,7 +264,7 @@
                         <span class="material-symbols-outlined">save</span>
                         {{ saveButtonLabel }}
                     </button>
-                    <button class="btn-secondary" @click="regenerateReport" :disabled="isRegenerating">
+                    <button class="btn-primary" @click="regenerateReport" :disabled="isRegenerating">
                         <span class="material-symbols-outlined">refresh</span>
                         {{ isRegenerating ? 'Regenerating...' : 'Regenerate Report' }}
                     </button>
