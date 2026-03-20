@@ -481,6 +481,17 @@ export const useRealmStore = defineStore('realm', {
             // Update user preferences
             const gsId = import.meta.env.VITE_GAMING_SYSTEM_ID;
             await userStore.setPref('ActiveRealm', { [gsId]: realmId });
+
+            // Stamp last-accessed time on UserXRealm
+            try {
+                await apiClient.put('/realms/user', {
+                    UserID: userStore.userSub,
+                    RealmID: realmId,
+                    LastAccessedAt: new Date().toISOString()
+                });
+            } catch (err) {
+                console.warn('Failed to update LastAccessedAt:', err);
+            }
             
             // Load characters for the newly active realm
             try {
