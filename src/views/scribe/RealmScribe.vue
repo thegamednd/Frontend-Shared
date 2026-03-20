@@ -190,7 +190,7 @@
                         Processing...
                     </p>
                 </div>
-                <button class="btn-secondary" @click="backToIdle">Back to Sessions</button>
+                <button class="btn-primary" @click="backToIdle"><span class="material-symbols-outlined">arrow_back</span> Back to Sessions</button>
             </div>
 
             <!-- REVIEW STATE -->
@@ -301,7 +301,7 @@
                         <span class="material-symbols-outlined">undo</span>
                         Revert to Review
                     </button>
-                    <button class="btn-secondary" @click="backToIdle">Back to Sessions</button>
+                    <button class="btn-primary" @click="backToIdle"><span class="material-symbols-outlined">arrow_back</span> Back to Sessions</button>
                 </div>
             </div>
 
@@ -316,7 +316,7 @@
                     <span class="material-symbols-outlined">refresh</span>
                     Retry Processing
                 </button>
-                <button class="btn-secondary" @click="backToIdle">Back to Sessions</button>
+                <button class="btn-primary" @click="backToIdle"><span class="material-symbols-outlined">arrow_back</span> Back to Sessions</button>
             </div>
 
             <!-- Add Funds Modal -->
@@ -501,7 +501,7 @@ import { useAudioRecorder } from '@shared/composables/useAudioRecorder';
 
 const emits = defineEmits(['set-room']);
 import { useSessionGuard } from '@shared/composables/useSessionGuard';
-import { estimateCost, estimateCostFromChunks, formatCost } from '@shared/utils/scribeCost';
+import { estimateCost, estimateCostFromChunks, estimateRegenerateCost, formatCost } from '@shared/utils/scribeCost';
 import VueMultiselect from 'vue-multiselect';
 import 'vue-multiselect/dist/vue-multiselect.css';
 import InlineEditor from '@shared/components/cms/InlineEditor.vue';
@@ -925,14 +925,32 @@ async function openSession(session) {
 const isRegenerating = ref(false);
 
 async function regenerateReport() {
-    const sessionId = scribeStore.currentSession?.sessionId;
-    if (!sessionId) return;
+    const session = scribeStore.currentSession;
+    if (!session?.sessionId) return;
+
+    const durationSeconds = session.audioDurationSeconds || (session.chunkCount || 0) * 30;
+    const cost = estimateRegenerateCost(durationSeconds);
+    const balance = scribeStore.walletBalance ?? 0;
+
+    if (balance < cost) {
+        alert(`Insufficient balance. Regeneration costs ${formatCost(cost)} but your balance is ${formatCost(balance)}.`);
+        return;
+    }
+
+    if (!confirm(`Regenerating the report will cost ${formatCost(cost)}. Your balance is ${formatCost(balance)}.\n\nProceed?`)) {
+        return;
+    }
+
     isRegenerating.value = true;
     try {
-        await scribeStore.regenerateReport(sessionId);
-        startSessionPolling(sessionId);
+        await scribeStore.regenerateReport(session.sessionId);
+        await scribeStore.getWallet().catch(() => {});
+        startSessionPolling(session.sessionId);
     } catch (err) {
         console.error('Failed to regenerate report:', err);
+        if (err.response?.status === 402) {
+            alert(`Insufficient balance. Required: ${formatCost(err.response.data.cost)}, available: ${formatCost(err.response.data.balance)}.`);
+        }
     } finally {
         isRegenerating.value = false;
     }
@@ -943,24 +961,24 @@ async function publishReport() {
     if (!sessionId) return;
 
     const data = {
-        Author: reportData.value.author?.ID || null,
-        Year: Number(reportData.value.year),
-        Dates: {
+        realmId: realmStore.activeRealmId,
+        author: reportData.value.author?.ID || features.scribeName,
+        year: Number(reportData.value.year),
+        dates: {
             Start: {
                 Y: Number(reportData.value.year),
-                M: Number(reportData.value.month),
+                M: Number(reportData.value.month) + 1,
                 D: Number(reportData.value.dom),
             },
             End: {
                 Y: Number(reportData.value.year_end),
-                M: Number(reportData.value.month_end),
+                M: Number(reportData.value.month_end) + 1,
                 D: Number(reportData.value.dom_end),
             },
         },
-        Characters: reportData.value.characters.map(c => c.ID || c),
-        Report: reportData.value.report,
-        Sanitized: reportData.value.report,
-        EndingAt: reportData.value.endingAt,
+        characters: reportData.value.characters.map(c => c.ID || c),
+        report: reportData.value.report,
+        endingAt: reportData.value.endingAt,
     };
 
     await scribeStore.publishReport(sessionId, data);

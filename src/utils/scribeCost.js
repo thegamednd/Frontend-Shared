@@ -13,6 +13,11 @@ export function estimateCostFromChunks(chunkCount) {
   return estimateCost(chunkCount * 30);
 }
 
+export function estimateRegenerateCost(audioDurationSeconds) {
+  const wholeMinutes = Math.ceil(audioDurationSeconds / 60);
+  return wholeMinutes * 0.01;
+}
+
 export function formatCost(amount) {
   return `$${amount.toFixed(2)} USD`;
 }
