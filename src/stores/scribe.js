@@ -197,6 +197,20 @@ export const useScribeStore = defineStore('scribe', {
             }
         },
 
+        async regenerateReport(sessionId) {
+            try {
+                const realmId = this._getRealmId();
+                const response = await apiClient.post(`${SESSIONS_BASE_URL}/sessions/session/${sessionId}/regenerate`, { realmId });
+                if (this.currentSession) {
+                    this.currentSession.status = 'generating';
+                }
+                return response.data;
+            } catch (err) {
+                this.error = err.response?.data?.message || err.message;
+                throw err;
+            }
+        },
+
         async getSession(sessionId) {
             try {
                 const realmId = this._getRealmId();

@@ -265,6 +265,10 @@
                         <span class="material-symbols-outlined">save</span>
                         {{ saveButtonLabel }}
                     </button>
+                    <button class="btn-secondary" @click="regenerateReport" :disabled="isRegenerating">
+                        <span class="material-symbols-outlined">refresh</span>
+                        {{ isRegenerating ? 'Regenerating...' : 'Regenerate Report' }}
+                    </button>
                     <button class="btn-primary" @click="handleDownload" :disabled="isDownloading">
                         <span class="material-symbols-outlined">download</span>
                         <template v-if="isPreparing">Processing ({{ formatMss(elapsedSeconds) }}<template v-if="prepareEstimate"> / ~{{ formatMss(prepareEstimate) }}</template>)<span class="dots-anim"></span></template>
@@ -917,6 +921,22 @@ watch(() => guard.showSilencePausedDialog.value, (show) => {
 
 async function openSession(session) {
     await scribeStore.getSession(session.sessionId);
+}
+
+const isRegenerating = ref(false);
+
+async function regenerateReport() {
+    const sessionId = scribeStore.currentSession?.sessionId;
+    if (!sessionId) return;
+    isRegenerating.value = true;
+    try {
+        await scribeStore.regenerateReport(sessionId);
+        startSessionPolling(sessionId);
+    } catch (err) {
+        console.error('Failed to regenerate report:', err);
+    } finally {
+        isRegenerating.value = false;
+    }
 }
 
 async function publishReport() {
