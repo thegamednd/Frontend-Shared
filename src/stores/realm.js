@@ -348,6 +348,17 @@ export const useRealmStore = defineStore('realm', {
 
                 if (this.activeRealmId && this.activeRealm) {
                     dateStore.date = this.activeRealm.Date;
+
+                    // Stamp last-accessed time on UserXRealm
+                    try {
+                        await apiClient.put('/realms/user', {
+                            UserID: userStore.userSub,
+                            RealmID: this.activeRealmId,
+                            LastAccessedAt: new Date().toISOString()
+                        });
+                    } catch (err) {
+                        console.warn('Failed to update LastAccessedAt:', err);
+                    }
                 }
 
                 // Load subscriptions on initial load
