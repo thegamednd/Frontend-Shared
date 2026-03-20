@@ -299,9 +299,13 @@ const formatReportText = (text) => {
 const getAuthorName = (report) => {
   const authorId = report.Author;
   if (!authorId) return 'Unknown';
-  
+
+  // Check if it's a character ID (UUID format) or a plain name string
   const character = characterStore.characters[authorId];
-  return character?.Name || 'Unknown';
+  if (character) return character.Name;
+
+  // Not a character ID — treat as a name string (e.g. "The Scribe", "Lorekeeper")
+  return authorId;
 };
 
 const getCharacterName = (characterId) => {

@@ -243,21 +243,23 @@ const getAuthorName = (report) => {
   return character?.Name || 'Unknown';
 };
 
+import scribeAvatar from '@shared/assets/images/scribe-avatar.svg';
+
 const getAuthorImage = (report) => {
   const authorId = report.Author;
-  if (!authorId) return '/images/default-avatar.png';
-  
+  if (!authorId) return scribeAvatar;
+
   const character = characterStore.characters[authorId];
   const characterImage = character?.Image;
-  
-  if (!characterImage) return '/images/default-avatar.png';
-  
+
+  if (!characterImage) return scribeAvatar;
+
   const imagesCdnUrl = import.meta.env.VITE_IMAGES_CDN_URL;
   return `${imagesCdnUrl}/${characterImage}`;
 };
 
 const handleImageError = (event) => {
-  event.target.src = '/images/default-avatar.png';
+  event.target.src = scribeAvatar;
 };
 
 // Lifecycle
