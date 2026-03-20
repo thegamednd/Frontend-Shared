@@ -349,16 +349,12 @@ export const useRealmStore = defineStore('realm', {
                 if (this.activeRealmId && this.activeRealm) {
                     dateStore.date = this.activeRealm.Date;
 
-                    // Stamp last-accessed time on UserXRealm
-                    try {
-                        await apiClient.put('/realms/user', {
-                            UserID: userStore.userSub,
-                            RealmID: this.activeRealmId,
-                            LastAccessedAt: new Date().toISOString()
-                        });
-                    } catch (err) {
-                        console.warn('Failed to update LastAccessedAt:', err);
-                    }
+                    // Stamp last-accessed time on UserXRealm (fire-and-forget)
+                    apiClient.put('/realms/user', {
+                        UserID: userStore.userSub,
+                        RealmID: this.activeRealmId,
+                        LastAccessedAt: new Date().toISOString()
+                    }).catch(() => {});
                 }
 
                 // Load subscriptions on initial load
@@ -493,16 +489,12 @@ export const useRealmStore = defineStore('realm', {
             const gsId = import.meta.env.VITE_GAMING_SYSTEM_ID;
             await userStore.setPref('ActiveRealm', { [gsId]: realmId });
 
-            // Stamp last-accessed time on UserXRealm
-            try {
-                await apiClient.put('/realms/user', {
-                    UserID: userStore.userSub,
-                    RealmID: realmId,
-                    LastAccessedAt: new Date().toISOString()
-                });
-            } catch (err) {
-                console.warn('Failed to update LastAccessedAt:', err);
-            }
+            // Stamp last-accessed time on UserXRealm (fire-and-forget)
+            apiClient.put('/realms/user', {
+                UserID: userStore.userSub,
+                RealmID: realmId,
+                LastAccessedAt: new Date().toISOString()
+            }).catch(() => {});
             
             // Load characters for the newly active realm
             try {
