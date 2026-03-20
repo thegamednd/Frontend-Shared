@@ -266,25 +266,23 @@ const setActiveReportAndFetch = async (reportId) => {
   }
 };
 
-const selectReport = async (reportId) => {
+const selectReport = async (reportId, { replace = false } = {}) => {
   selectedReportId.value = reportId;
   showReportPanel.value = true;
   explicitlyClosedReport.value = false; // Reset flag when selecting a report
-  
+
   // Set active report in store and fetch if needed
   await setActiveReportAndFetch(reportId);
-  
+
   // Update active report year for year browser synchronization
   const report = reportsStore.getReportById(reportId);
   if (report) {
     activeReportYear.value = report.Year || report.Dates?.Start?.Y;
   }
-  
-  // Update URL to new format
-  router.push({ 
-    name: 'ReportView', 
-    params: { id: reportId } 
-  });
+
+  // Update URL — replace when auto-selecting to avoid polluting history
+  const dest = { name: 'ReportView', params: { id: reportId } };
+  replace ? router.replace(dest) : router.push(dest);
 };
 
 const closeReport = () => {
@@ -369,8 +367,8 @@ const loadLatestReportIfNeeded = async () => {
       // Set the active report year for year browser synchronization
       activeReportYear.value = reportYear;
       
-      // Select the latest report
-      await selectReport(reportId);
+      // Select the latest report (replace URL to avoid back-button loop)
+      await selectReport(reportId, { replace: true });
       
       notifyInfo(`Latest report loaded: ${reportYear || 'Unknown Year'}`);
     }

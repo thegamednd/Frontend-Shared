@@ -408,7 +408,7 @@
           <h2>Delete This Realm</h2>
         </div>
         <p class="danger-description">
-          Permanently delete this realm and all its data. A backup will be stored before deletion.
+          Permanently delete this realm and all its data. We may not be able to restore your realm, so be careful here.
         </p>
         <button @click="showDeleteRealmDialog = true" class="btn-delete-realm">
           <span class="material-symbols-outlined">delete_forever</span>
@@ -436,7 +436,7 @@
           <span class="material-symbols-outlined">warning</span>
           <div class="warning-content">
             <strong>This action is permanent</strong>
-            <p>All realm data will be permanently deleted, including characters, articles, maps, sessions, reports, invitations, and custom content. A backup will be saved before deletion.</p>
+            <p>All realm data will be permanently deleted, including characters, articles, maps, sessions, reports, invitations, and custom content. We may not be able to restore your realm, so be careful here.</p>
           </div>
         </div>
 
