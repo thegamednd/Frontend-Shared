@@ -812,7 +812,7 @@ function onMicDialogClose() {
 async function startRecordingWithMic(deviceId) {
     try {
         chunksUploaded.value = 0;
-        const userName = userStore.user?.username || userStore.displayName || 'Unknown';
+        const userName = userStore.fullName || userStore.firstName || userStore.user?.username || 'Unknown';
         const session = await scribeStore.startSession(userName);
 
         recorder.onChunkReady((blob, chunkIndex) => {
@@ -1065,7 +1065,7 @@ async function handleFileSelected(event) {
 
     try {
         isUploading.value = true;
-        const userName = userStore.user?.username || userStore.displayName || 'Unknown';
+        const userName = userStore.fullName || userStore.firstName || userStore.user?.username || 'Unknown';
         await scribeStore.uploadRecording(userName, file);
     } catch (err) {
         console.error('Failed to upload recording:', err);
