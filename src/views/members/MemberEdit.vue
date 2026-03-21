@@ -421,6 +421,7 @@ import { useCharacterStore } from '@shared/stores/character';
 import { useRealmStore } from '@shared/stores/realm';
 import { useUserStore } from '@shared/stores/user';
 import { features } from '@shared/config/features';
+import apiClient from '@shared/utils/api';
 import VueMultiselect from 'vue-multiselect';
 import 'vue-multiselect/dist/vue-multiselect.min.css';
 import InlineEditor from '@shared/components/cms/InlineEditor.vue';
@@ -432,29 +433,9 @@ const realmStore = useRealmStore();
 const userStore = useUserStore();
 const imagesCdnUrl = import.meta.env.VITE_IMAGES_CDN_URL;
 
-// Conditionally initialize classes/races/account stores
-let classesStore = null;
-let racesStore = null;
-let accountStoreForAccess = null;
-if (features.hasClasses) {
-  Promise.all([
-    (() => { const p = '@' + '/stores/classes'; return import(/* @vite-ignore */ p); })(),
-    (() => { const p = '@' + '/stores/races'; return import(/* @vite-ignore */ p); })(),
-    import('@shared/stores/account')
-  ]).then(([classesModule, racesModule, accountModule]) => {
-    classesStore = classesModule.useClassesStore();
-    racesStore = racesModule.useRacesStore();
-    accountStoreForAccess = accountModule.useAccountStore();
-  }).catch(() => {});
-} else if (features.hasRaces) {
-  Promise.all([
-    (() => { const p = '@' + '/stores/races'; return import(/* @vite-ignore */ p); })(),
-    import('@shared/stores/account')
-  ]).then(([racesModule, accountModule]) => {
-    racesStore = racesModule.useRacesStore();
-    accountStoreForAccess = accountModule.useAccountStore();
-  }).catch(() => {});
-}
+// Classes and races loaded directly via API (avoids dynamic import issues with @/ alias)
+const loadedClasses = ref([]);
+const loadedRaces = ref([]);
 
 const loading = ref(false);
 const error = ref(null);
@@ -540,32 +521,17 @@ const selectedOwner = computed({
   }
 });
 
-// Computed property to filter out disabled classes
+// Available classes (loaded via API, filtered)
 const availableClasses = computed(() => {
-  if (!classesStore) return [];
-  let allClasses = classesStore.getSortedClasses || [];
-  // Filter by granular access
-  const gamingSystemId = realmStore.activeRealmClassesSystemId;
-  if (gamingSystemId && accountStoreForAccess) {
-    const classesAccess = accountStoreForAccess.access?.[gamingSystemId]?.Classes;
-    if (Array.isArray(classesAccess)) {
-      allClasses = allClasses.filter(c => classesAccess.includes(c.ID) || c.RealmID);
-    }
-  }
-  return allClasses.filter(classItem => !classItem.IsDisabled);
+  return loadedClasses.value
+    .filter(c => !c.IsDisabled)
+    .sort((a, b) => (a.ClassName || '').localeCompare(b.ClassName || ''));
 });
 
+// Available races (loaded via API)
 const filteredRaceOptions = computed(() => {
-  if (!racesStore) return [];
-  let races = racesStore.getSortedRaces || [];
-  const gamingSystemId = realmStore.activeRealmRacesSystemId;
-  if (gamingSystemId && accountStoreForAccess) {
-    const racesAccess = accountStoreForAccess.access?.[gamingSystemId]?.Races;
-    if (Array.isArray(racesAccess)) {
-      races = races.filter(r => racesAccess.includes(r.ID) || r.RealmID);
-    }
-  }
-  return races;
+  return loadedRaces.value
+    .sort((a, b) => (a.RaceName || '').localeCompare(b.RaceName || ''));
 });
 
 // Note: Level can now be set for both living and deceased characters
@@ -589,6 +555,26 @@ onMounted(async () => {
         router.push('/gallery');
         return;
       }
+    }
+
+    // Load classes and races via API
+    if (features.hasClasses || features.hasRaces) {
+      const loads = [];
+      if (features.hasClasses) {
+        loads.push(
+          apiClient.get('/classes').then(res => {
+            loadedClasses.value = Array.isArray(res.data) ? res.data : [];
+          }).catch(() => {})
+        );
+      }
+      if (features.hasClasses || features.hasRaces) {
+        loads.push(
+          apiClient.get('/races').then(res => {
+            loadedRaces.value = Array.isArray(res.data) ? res.data : [];
+          }).catch(() => {})
+        );
+      }
+      await Promise.all(loads);
     }
 
     await loadCharacter(characterId);
@@ -654,10 +640,7 @@ const loadCharacter = async (characterId) => {
       }
     }
 
-    // Load races from races store if available
-    if (racesStore) {
-      await racesStore.loadRaces();
-    }
+    // Races already loaded via API in onMounted
 
     // Get character from store or fetch if not available
     let characterData = characterStore.characters[characterId];
@@ -751,33 +734,26 @@ const loadCharacter = async (characterId) => {
       return value;
     };
 
-    // Handle classes (stored as array of class IDs)
-    if (features.hasClasses && classesStore) {
+    // Handle classes (stored as array of class IDs or names)
+    if (features.hasClasses && loadedClasses.value.length) {
       const classesData = characterData.Classes || characterData.classes || [];
       if (Array.isArray(classesData)) {
         character.Classes = classesData
           .map(classItem => {
             const parsed = parseDynamoDBValue(classItem);
 
-            // Handle different formats
             if (typeof parsed === 'string') {
-              // ID format (new): "class-uuid-123"
-              // Try to find by ID first
-              let classObj = classesStore.getSortedClasses?.find(cls => cls.ID === parsed);
-
-              // Fallback: Legacy format - class name string
+              // Try to find by ID first, then by name
+              let classObj = loadedClasses.value.find(cls => cls.ID === parsed);
               if (!classObj) {
-                classObj = classesStore.getSortedClasses?.find(cls => cls.ClassName === parsed);
+                classObj = loadedClasses.value.find(cls => cls.ClassName === parsed);
               }
-
               return classObj || { ID: parsed, ClassName: parsed };
             } else if (parsed && typeof parsed === 'object' && parsed.ID) {
-              // Object format with ID
-              const classObj = classesStore.getSortedClasses?.find(cls => cls.ID === parsed.ID);
+              const classObj = loadedClasses.value.find(cls => cls.ID === parsed.ID);
               return classObj || parsed;
             } else if (parsed && typeof parsed === 'object' && parsed.ClassName) {
-              // Legacy object format with ClassName only
-              const classObj = classesStore.getSortedClasses?.find(cls => cls.ClassName === parsed.ClassName);
+              const classObj = loadedClasses.value.find(cls => cls.ClassName === parsed.ClassName);
               return classObj || parsed;
             }
 
@@ -787,26 +763,22 @@ const loadCharacter = async (characterId) => {
       }
     }
 
-    // Handle races - use races store instead of character store
-    if (features.hasRaces && racesStore) {
+    // Handle races
+    if (features.hasRaces && loadedRaces.value.length) {
       const racesData = characterData.Races || characterData.races || [];
       if (Array.isArray(racesData)) {
         character.Races = racesData
           .map(raceItem => {
             const parsed = parseDynamoDBValue(raceItem);
 
-            // Handle different formats
             if (typeof parsed === 'string') {
-              // Simple string format: "Human" - find by RaceName
-              const raceObj = racesStore.getSortedRaces?.find(race => race.RaceName === parsed);
+              const raceObj = loadedRaces.value.find(race => race.RaceName === parsed);
               return raceObj || { ID: parsed, RaceName: parsed };
             } else if (parsed && typeof parsed === 'object' && parsed.RaceName) {
-              // Object format with RaceName (new format)
-              const raceObj = racesStore.getSortedRaces?.find(race => race.RaceName === parsed.RaceName);
+              const raceObj = loadedRaces.value.find(race => race.RaceName === parsed.RaceName);
               return raceObj || { ID: parsed.ID, RaceName: parsed.RaceName };
             } else if (parsed && typeof parsed === 'object' && parsed.name) {
-              // Object format with name (legacy format)
-              const raceObj = racesStore.getSortedRaces?.find(race => race.RaceName === parsed.name);
+              const raceObj = loadedRaces.value.find(race => race.RaceName === parsed.name);
               return raceObj || { ID: parsed.name, RaceName: parsed.name };
             }
 
