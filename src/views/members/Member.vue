@@ -157,6 +157,7 @@ import { useCharacterStore } from '@shared/stores/character';
 import { useUserStore } from '@shared/stores/user';
 import { useRealmStore } from '@shared/stores/realm';
 import { features } from '@shared/config/features';
+import apiClient from '@shared/utils/api';
 
 const props = defineProps({
     id: {
@@ -172,12 +173,7 @@ const userStore = useUserStore();
 const realmStore = useRealmStore();
 const imagesCdnUrl = import.meta.env.VITE_IMAGES_CDN_URL;
 
-let classesStore = null;
-if (features.hasClasses) {
-    (() => { const p = '@' + '/stores/classes'; return import(/* @vite-ignore */ p); })()
-        .then(({ useClassesStore }) => { classesStore = useClassesStore(); })
-        .catch(() => {});
-}
+const classesLookup = ref({});
 
 const member = ref(null);
 const loading = ref(true);
@@ -226,10 +222,9 @@ const classDisplayNames = computed(() => {
     }
 
     return member.value.Classes.map(c => {
-        // Case 1: c is a UUID string - look it up in the store
+        // Case 1: c is a UUID string - look it up in the pre-resolved cache
         if (typeof c === 'string' && characterStore.isUUID(c)) {
-            const classObj = classesStore?.getClassById(c);
-            return classObj ? classObj.ClassName : c; // Fallback to UUID if not found
+            return classesLookup.value[c] || c;
         }
         // Case 2: c is an object with ClassName property
         else if (c && typeof c === 'object' && c.ClassName) {
@@ -275,6 +270,19 @@ onMounted(async () => {
     if (!member.value) {
         router.replace('/gallery');
         return;
+    }
+
+    // Resolve any class UUIDs to names via API
+    if (features.hasClasses && member.value.Classes?.length) {
+        const uuidClasses = member.value.Classes.filter(c => typeof c === 'string' && characterStore.isUUID(c));
+        for (const uuid of uuidClasses) {
+            try {
+                const response = await apiClient.get(`/classes/class/${uuid}`);
+                if (response.data?.ClassName) {
+                    classesLookup.value = { ...classesLookup.value, [uuid]: response.data.ClassName };
+                }
+            } catch (e) { /* class not found */ }
+        }
     }
 
     loading.value = false;
