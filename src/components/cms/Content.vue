@@ -361,6 +361,17 @@ figcaption {
     display: table;
 }
 
+.content figure.table {
+    display: block;
+    width: 100%;
+    overflow-x: auto;
+}
+
+.content table {
+    table-layout: fixed;
+    width: 100%;
+}
+
 .content figure.image-style-side {
     float: right;
     margin-left: 1rem;
