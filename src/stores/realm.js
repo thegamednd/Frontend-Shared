@@ -159,6 +159,15 @@ export const useRealmStore = defineStore('realm', {
             if (!maps || Array.isArray(maps)) return null;
             return maps.EnabledShopItems || null;
         },
+        // Get enabled pantheon IDs for the active realm
+        // Returns array of enabled pantheon IDs, or null if all are enabled (not configured)
+        activeRealmPantheonsEnabledIds(state) {
+            const realm = this.activeRealm;
+            if (!realm) return null;
+            const pantheons = realm.GamingSystem?.pantheons;
+            if (!pantheons) return null;
+            return pantheons.EnabledPantheonIds || null;
+        },
         // Get enabled modules for the active realm
         // Returns an array of module IDs that are enabled for this realm
         activeRealmModules(state) {
