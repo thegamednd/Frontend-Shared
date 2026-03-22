@@ -511,6 +511,17 @@ watch(() => [props.roomPath, props.contentName, props.fullContentPath], loadCont
   display: table;
 }
 
+.content-html figure.table {
+  display: block;
+  width: 100%;
+  overflow-x: auto;
+}
+
+.content-html table {
+  table-layout: fixed;
+  width: 100%;
+}
+
 .content-html figure.image-style-side {
   float: right;
   margin-left: 1rem;

@@ -157,6 +157,11 @@ div.ck div.ck-content {
 div.ck-content.ck-editor__editable {
     height: 20em;
 }
+
+div.ck-content table {
+    table-layout: fixed;
+    width: 100%;
+}
 </style>
 
 
