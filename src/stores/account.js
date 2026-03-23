@@ -305,11 +305,25 @@ export const useAccountStore = defineStore('account', {
                     if (ID && !accessMap[gamingSystemId].Maps.includes(ID)) {
                         accessMap[gamingSystemId].Maps.push(ID);
                     }
+                    if (IDs && IDs.length > 0) {
+                        IDs.forEach(id => {
+                            if (!accessMap[gamingSystemId].Maps.includes(id)) {
+                                accessMap[gamingSystemId].Maps.push(id);
+                            }
+                        });
+                    }
                     break;
 
                 case 'Modules':
                     if (ID && !accessMap[gamingSystemId].Modules.includes(ID)) {
                         accessMap[gamingSystemId].Modules.push(ID);
+                    }
+                    if (IDs && IDs.length > 0) {
+                        IDs.forEach(id => {
+                            if (!accessMap[gamingSystemId].Modules.includes(id)) {
+                                accessMap[gamingSystemId].Modules.push(id);
+                            }
+                        });
                     }
                     break;
 
