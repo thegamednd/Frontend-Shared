@@ -712,10 +712,11 @@ const purchasedShopItems = ref([]);
 const activatedShopItemIds = ref([]);
 const realmForgeEssentialsId = ref(null); // Track RealmForge Essentials ID to prevent deselection
 
-// Per-gaming-system free realm limit (falls back to account-level limit)
+// Per-gaming-system free realm limit (loaded from gaming system, falls back to account-level limit)
+const freeRealmLimit = ref(accountStore.account?.Realms || 3);
+
 const gamingSystemFreeRealms = computed(() => {
-  // Try to get from gaming system data if available, otherwise fall back to account limit
-  return accountStore.account?.Realms || 3;
+  return freeRealmLimit.value;
 });
 
 const remainingRealms = computed(() => {
@@ -839,6 +840,24 @@ watch(() => customCalendar.value.Months.map(m => m.Days), () => {
 onMounted(async () => {
   if (elName.value) {
     elName.value.focus();
+  }
+
+  // Load gaming system's FreeRealms limit
+  const gsId = import.meta.env.VITE_GAMING_SYSTEM_ID;
+  if (gsId) {
+    try {
+      const { useGamingSystemsStore } = await import('@/stores/gamingSystems');
+      const gamingSystemsStore = useGamingSystemsStore();
+      if (!gamingSystemsStore.isLoaded) {
+        await gamingSystemsStore.fetchGamingSystems();
+      }
+      const gs = gamingSystemsStore.getSystemById(gsId);
+      if (gs?.FreeRealms !== undefined) {
+        freeRealmLimit.value = gs.FreeRealms;
+      }
+    } catch (err) {
+      console.warn('Failed to load gaming system free realm limit:', err);
+    }
   }
 
   // Load purchased shop items for the auto-assigned gaming system (only when hasShop)

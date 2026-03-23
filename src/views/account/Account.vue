@@ -35,7 +35,7 @@
                         <div class="progress-bar">
                             <div class="progress-fill" :style="{ width: realmUsagePercentage + '%' }"></div>
                         </div>
-                        <span class="progress-text">{{ realmStore.arOwnedRealms?.length || 0 }}/{{ accountStore.account.Realms }}</span>
+                        <span class="progress-text">{{ realmStore.arOwnedRealms?.length || 0 }}/{{ freeRealmLimit }}</span>
                     </div>
                 </div>
             </div>
@@ -319,9 +319,29 @@ const userStore = useUserStore();
 // Emit events
 const emits = defineEmits(['set-room']);
 
-// Set room to hearth when mounting
-onMounted(() => {
+// Free realm limit from gaming system (falls back to account.Realms)
+const freeRealmLimit = ref(accountStore.account?.Realms || 3);
+
+onMounted(async () => {
     emits('set-room', 'hrth');
+
+    // Load gaming system's FreeRealms limit
+    const gsId = import.meta.env.VITE_GAMING_SYSTEM_ID;
+    if (gsId) {
+        try {
+            const { useGamingSystemsStore } = await import('@/stores/gamingSystems');
+            const gamingSystemsStore = useGamingSystemsStore();
+            if (!gamingSystemsStore.isLoaded) {
+                await gamingSystemsStore.fetchGamingSystems();
+            }
+            const gs = gamingSystemsStore.getSystemById(gsId);
+            if (gs?.FreeRealms !== undefined) {
+                freeRealmLimit.value = gs.FreeRealms;
+            }
+        } catch (err) {
+            console.warn('Failed to load gaming system free realm limit:', err);
+        }
+    }
 });
 
 // Realm switch dialog state
@@ -331,8 +351,8 @@ const switchingRealm = ref(false);
 
 // Computed properties
 const realmUsagePercentage = computed(() => {
-    if (!accountStore.account?.Realms) return 0;
-    return Math.round(((realmStore.arOwnedRealms?.length || 0) / accountStore.account.Realms) * 100);
+    if (!freeRealmLimit.value) return 0;
+    return Math.round(((realmStore.arOwnedRealms?.length || 0) / freeRealmLimit.value) * 100);
 });
 
 const totalPlayers = computed(() => {
