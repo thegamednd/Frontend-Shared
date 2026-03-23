@@ -33,7 +33,7 @@
         <!-- User has reached realm limit -->
         <div v-if="realmLimitReached" class="realm-limit-reached">
           <h3>Realm Limit Reached</h3>
-          <p>You've reached your account's realm limit ({{ accountStore.account?.Realms || 1 }} realm{{ (accountStore.account?.Realms || 1) > 1 ? 's' : '' }}).</p>
+          <p>You've reached your realm limit ({{ freeRealmLimit }} realm{{ freeRealmLimit > 1 ? 's' : '' }}).</p>
           <p>To create additional realms, consider upgrading your account or request an invitation to join an existing realm.</p>
           <div class="actions">
             <button @click="checkUserRealmStatus" class="btn btn-secondary">
@@ -93,15 +93,18 @@ const error = ref(null);
 const invitations = ref([]);
 const userRealms = ref([]);
 
-// Check if user can create more realms based on their account tier
+// Free realm limit from gaming system (falls back to account.Realms)
+const freeRealmLimit = ref(accountStore.account?.Realms || 3);
+
+// Check if user can create more realms based on gaming system limit
 const canCreateMoreRealms = computed(() => {
   if (!accountStore.account) return false;
-  return realmStore.arRealms.length < accountStore.account.Realms;
+  return realmStore.arRealms.length < freeRealmLimit.value;
 });
 
 const realmLimitReached = computed(() => {
   if (!accountStore.account) return false;
-  return realmStore.arRealms.length >= accountStore.account.Realms;
+  return realmStore.arRealms.length >= freeRealmLimit.value;
 });
 
 const checkUserRealmStatus = async () => {
@@ -224,7 +227,25 @@ const requestAccess = () => {
   alert(message);
 };
 
-onMounted(() => {
+onMounted(async () => {
+  // Load gaming system's FreeRealms limit
+  const gsId = import.meta.env.VITE_GAMING_SYSTEM_ID;
+  if (gsId) {
+    try {
+      const { useGamingSystemsStore } = await import('@/stores/gamingSystems');
+      const gamingSystemsStore = useGamingSystemsStore();
+      if (!gamingSystemsStore.isLoaded) {
+        await gamingSystemsStore.fetchGamingSystems();
+      }
+      const gs = gamingSystemsStore.getSystemById(gsId);
+      if (gs?.FreeRealms !== undefined) {
+        freeRealmLimit.value = gs.FreeRealms;
+      }
+    } catch (err) {
+      console.warn('Failed to load gaming system free realm limit:', err);
+    }
+  }
+
   checkUserRealmStatus();
 });
 </script>
