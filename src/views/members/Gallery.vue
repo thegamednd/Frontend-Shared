@@ -674,6 +674,10 @@ nav > .filter > button {
 #memberPlatform #memberList > div > a {
     color: var(--theme-accent);
     text-decoration: none;
+    display: flex;
+    align-items: center;
+    padding: 0.75rem 1rem;
+    min-height: 44px;
 }
 
 @media only screen and (min-width: 600px) {

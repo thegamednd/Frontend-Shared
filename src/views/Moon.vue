@@ -5,9 +5,8 @@
             <div class="date-display">
                 <div class="date-info">
                     <h1 class="current-date">
-                        {{ dateStore.arMonths[localDate.m]?.Name || `...` }} {{ localDate.d }}, {{ localDate.y }}{{ getDateSuffix() }}
+                        {{ dateStore.arMonths[headerDate.m]?.Name || `...` }} {{ headerDate.d }}, {{ headerDate.y }}{{ getDateSuffix() }}
                     </h1>
-                    <p class="ordinal-date">{{ dateStore.ordinalDate }}</p>
                 </div>
             </div>
             <div class="header-actions" v-if="isEditor">
@@ -36,11 +35,9 @@
                     ></div>
                 </div>
                 <div class="constellation-info">
-                    <h3>Current Constellation</h3>
                     <p class="constellation-name">{{ zodiacName }}</p>
                     <div class="constellation-details">
-                        <p>This is the {{ dateStore.ordinalDate }}.</p>
-                        <p>The sun is in the constellation <strong>{{ zodiacName }}</strong>.</p>
+                        <p>The {{ localOrdinalDate }}.</p>
                         <div v-if="equinoxState" class="equinox-state">
                             <span class="status-badge special">{{ equinoxState }}</span>
                         </div>
@@ -119,19 +116,20 @@
                 </div>
             </section>
 
-            <!-- AI Weather Generator (Editors only) -->
-            <section class="weather-card" v-if="isEditor">
+            <!-- AI Weather -->
+            <section class="weather-card">
                 <div class="weather-header">
                     <h3>
-                        AI Weather Generator
-                        <span class="toggle-btn" @click="aiWeatherExpanded = !aiWeatherExpanded">
+                        Weather
+                        <span v-if="isEditor" class="toggle-btn" @click="aiWeatherExpanded = !aiWeatherExpanded">
                             <span class="material-symbols-outlined">{{ aiWeatherExpanded ? 'expand_less' : 'expand_more' }}</span>
                         </span>
                     </h3>
                 </div>
 
-                <div class="weather-content" v-show="aiWeatherExpanded">
-                    <div class="weather-controls">
+                <div class="weather-content" v-show="isEditor ? aiWeatherExpanded : true">
+                    <!-- Weather Generator Controls (DM only) -->
+                    <div v-if="isEditor" class="weather-controls">
                         <div class="latitude-control">
                             <label>Latitude</label>
                             <div class="slider-container">
@@ -169,6 +167,7 @@
                             </div>
 
                             <button
+                                v-if="!isFreeRealm || !aiWeather"
                                 class="weather-generate-btn"
                                 @click="aiWeather ? regenerateAIWeather() : generateAIWeather()"
                                 :disabled="aiLoading"
@@ -279,6 +278,7 @@ const daysInYear = computed(() => dateStore.yearLength);
 
 // const ordinalDOM = computed(() => dateStore.getOrdinalNumber(localDate.value.d));
 const isEditor = computed(() => userStore.isDeity || realmStore.isRealmDM || realmStore.isOwner);
+const isFreeRealm = computed(() => !realmStore.activeRealm?.SubscriptionPlan || realmStore.activeRealm.SubscriptionPlan === 'free');
 
 // Computed properties for navigation button states
 const canGoForward = computed(() => {
@@ -299,6 +299,16 @@ const isAtServerDate = computed(() => {
     return localDate.value.d === serverDate.value.d &&
            localDate.value.m === serverDate.value.m &&
            localDate.value.y === serverDate.value.y;
+});
+
+// Header shows server date when locked, local date when editing
+const headerDate = computed(() => dateLocked.value ? serverDate.value : localDate.value);
+
+// Ordinal date based on the browsed (local) date
+const localOrdinalDate = computed(() => {
+    const suffix = realmStore.activeRealm?.DateSuffix?.Abbr || 'SF';
+    const monthName = dateStore.arMonths[localDate.value.m]?.Name || '...';
+    return `${dateStore.getOrdinalNumber(localDate.value.d)} day of ${monthName}, ${localDate.value.y}${suffix}`;
 });
 
 // Preload all moon images for smooth transitions
@@ -882,13 +892,6 @@ const aiWeatherAlerts = computed(() => {
   color: var(--theme-accent);
   font-weight: 600;
   font-family: 'Calistoga', cursive;
-}
-
-.date-info .ordinal-date {
-  margin: 0;
-  color: #ccc;
-  font-size: 1rem;
-  margin-top: 0.25rem;
 }
 
 .header-actions {
