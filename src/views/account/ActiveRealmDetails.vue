@@ -300,8 +300,8 @@
               <span class="email">{{ invitation.email }}</span>
               <span class="expires">Expires {{ formatExpiration(invitation.ttl) }}</span>
             </div>
-            <button 
-              @click="cancelInvitation(invitation.invitationId)"
+            <button
+              @click="promptCancelInvitation(invitation)"
               class="cancel-btn"
               title="Cancel invitation"
             >
@@ -471,6 +471,29 @@
           <span v-if="isDeletingRealm" class="material-symbols-outlined loading">hourglass_empty</span>
           <span v-else class="material-symbols-outlined">delete_forever</span>
           {{ isDeletingRealm ? 'Deleting...' : 'Delete Realm' }}
+        </button>
+      </div>
+    </dialog>
+
+    <!-- Cancel Invitation Confirmation Dialog -->
+    <dialog ref="cancelInviteDialogRef" class="cancel-invite-dialog">
+      <div class="modal-header">
+        <h3>
+          <span class="material-symbols-outlined">cancel</span>
+          Cancel Invitation
+        </h3>
+        <button @click="showCancelInviteDialog = false" class="close-btn">
+          <span class="material-symbols-outlined">close</span>
+        </button>
+      </div>
+      <div class="modal-body">
+        <p>Are you sure you want to cancel the invitation to <strong>{{ cancelInviteTarget?.email }}</strong>?</p>
+      </div>
+      <div class="modal-footer">
+        <button @click="showCancelInviteDialog = false" class="btn-cancel">Keep</button>
+        <button @click="confirmCancelInvitation" class="btn-confirm btn-remove">
+          <span class="material-symbols-outlined">cancel</span>
+          Cancel Invitation
         </button>
       </div>
     </dialog>
@@ -1234,6 +1257,11 @@ const canConfirmDelete = computed(() => {
   return deleteRealmAcknowledged.value &&
     deleteRealmConfirmName.value === realmStore.activeRealm?.Name;
 });
+
+// Cancel invitation dialog state
+const showCancelInviteDialog = ref(false);
+const cancelInviteTarget = ref(null);
+const cancelInviteDialogRef = ref(null);
 
 // Subscription dialog state
 const showSubscriptionDialog = ref(false);
@@ -2150,18 +2178,17 @@ const sendInvitation = async () => {
   }
 };
 
-const cancelInvitation = async (invitationId) => {
-  if (!confirm('Are you sure you want to cancel this invitation?')) return;
-  
-  try {
-    // Find the invitation to get the email and realmId for the delete request
-    const invitation = pendingInvitations.value.find(inv => inv.invitationId === invitationId);
-    if (!invitation) {
-      showToast('Invitation not found.', 'error');
-      return;
-    }
+const promptCancelInvitation = (invitation) => {
+  cancelInviteTarget.value = invitation;
+  showCancelInviteDialog.value = true;
+};
 
-    // Call API to delete the invitation
+const confirmCancelInvitation = async () => {
+  const invitation = cancelInviteTarget.value;
+  if (!invitation) return;
+  showCancelInviteDialog.value = false;
+
+  try {
     await axios.delete(
       `${import.meta.env.VITE_API_BASE_URL}/invitations`,
       {
@@ -2175,9 +2202,8 @@ const cancelInvitation = async (invitationId) => {
       }
     );
 
-    // Remove from local array on success
     pendingInvitations.value = pendingInvitations.value.filter(
-      inv => inv.invitationId !== invitationId
+      inv => inv.invitationId !== invitation.invitationId
     );
     showToast('Invitation canceled successfully.', 'success');
   } catch (error) {
@@ -2188,6 +2214,7 @@ const cancelInvitation = async (invitationId) => {
     }
     showToast(errorMessage, 'error');
   }
+  cancelInviteTarget.value = null;
 };
 
 const formatExpiration = (ttl) => {
@@ -2634,6 +2661,15 @@ watch(showCalendarConfirmDialog, async (newValue) => {
     calendarConfirmDialog.value?.showModal();
   } else {
     calendarConfirmDialog.value?.close();
+  }
+});
+
+watch(showCancelInviteDialog, async (newValue) => {
+  if (newValue) {
+    await nextTick();
+    cancelInviteDialogRef.value?.showModal();
+  } else {
+    cancelInviteDialogRef.value?.close();
   }
 });
 
@@ -5882,6 +5918,28 @@ onMounted(async () => {
   .delete-realm-dialog {
     max-width: 95vw;
   }
+}
+
+/* Cancel Invitation Dialog */
+.cancel-invite-dialog {
+  background: #1a1f2e;
+  border: 1px solid color-mix(in srgb, var(--theme-accent) 30%, transparent);
+  border-radius: 1rem;
+  color: #ffffff;
+  max-width: 420px;
+  width: 90vw;
+  padding: 0;
+}
+
+.cancel-invite-dialog::backdrop {
+  background: rgba(0, 0, 0, 0.7);
+}
+
+.cancel-invite-dialog .modal-body p {
+  color: rgba(255, 255, 255, 0.85);
+  font-size: 1rem;
+  line-height: 1.5;
+  margin: 0;
 }
 
 /* Display Preferences / Theme Selector */
