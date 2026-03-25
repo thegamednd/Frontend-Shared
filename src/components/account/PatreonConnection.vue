@@ -1194,6 +1194,7 @@ onMounted(async () => {
 .connection-actions {
   display: flex;
   justify-content: flex-end;
+  margin-top: 1em;
 }
 
 .btn-connect,
@@ -1216,7 +1217,7 @@ onMounted(async () => {
 }
 
 .btn-connect:hover:not(:disabled) {
-  background: linear-gradient(135deg, #e6b373 0%, #d4a366 100%);
+  background: linear-gradient(135deg, #7a5c2a 0%, #6b4f22 100%);
   transform: translateY(-1px);
   box-shadow: 0 3px 6px rgba(0, 0, 0, 0.15);
 }
