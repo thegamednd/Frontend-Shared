@@ -333,21 +333,11 @@ const characterStore = useCharacterStore();
 const userStore = useUserStore();
 const realmStore = useRealmStore();
 
-// Conditionally import gaming-system-specific stores
+// Conditionally import gaming-system-specific stores (resolved in onMounted)
 let classesStore = null;
 let racesStore = null;
 let accountStore = null;
-if (features.hasClasses) {
-    Promise.all([
-        (() => { const p = '@' + '/stores/classes'; return import(/* @vite-ignore */ p); })(),
-        (() => { const p = '@' + '/stores/races'; return import(/* @vite-ignore */ p); })(),
-        import('@shared/stores/account')
-    ]).then(([classesModule, racesModule, accountModule]) => {
-        classesStore = classesModule.useClassesStore();
-        racesStore = racesModule.useRacesStore();
-        accountStore = accountModule.useAccountStore();
-    }).catch(() => {});
-}
+const storesReady = ref(false);
 
 const btnSave = ref(null);
 const editor = ref(null);
@@ -374,13 +364,33 @@ const selectedFile = ref(null);
 const router = useRouter();
 
 onMounted(async () => {
+    // Load gaming-system-specific stores before using them
+    if (features.hasClasses) {
+        try {
+            const [classesModule, racesModule, accountModule] = await Promise.all([
+                import('@/stores/classes'),
+                import('@/stores/races'),
+                import('@shared/stores/account')
+            ]);
+            classesStore = classesModule.useClassesStore();
+            racesStore = racesModule.useRacesStore();
+            accountStore = accountModule.useAccountStore();
+            storesReady.value = true;
+        } catch (e) {
+            console.warn('Gaming system stores not available:', e);
+        }
+    }
+
     if (userStore.loaded) {
         characterData.value = Object.fromEntries(
             Object.entries(characterStore.default).map(([key, { val }]) => [key, val])
         );
-        // Load races from races store (if available)
-        if (racesStore) {
-            await racesStore.loadRaces();
+        // Initialize stores (sets currentRealmId and loads data)
+        if (racesStore && !racesStore.loaded) {
+            await racesStore.init();
+        }
+        if (classesStore && !classesStore.loaded) {
+            await classesStore.init();
         }
         if (classesStore) {
             characterClasses.value = classesStore.getSortedClasses;
@@ -414,9 +424,13 @@ if (features.hasRaces) {
     });
 }
 
-if (features.hasClasses && classesStore) {
-    watch(() => classesStore.getSortedClasses, (newVal) => {
-        characterClasses.value = newVal;
+if (features.hasClasses) {
+    watch(storesReady, () => {
+        if (classesStore) {
+            watch(() => classesStore.getSortedClasses, (newVal) => {
+                characterClasses.value = newVal;
+            });
+        }
     });
 }
 
@@ -426,7 +440,7 @@ watch(() => realmStore.activeRealmId, (newVal) => {
 
 // Filter races by granular access
 const filteredRaceOptions = computed(() => {
-    if (!racesStore) return [];
+    if (!storesReady.value || !racesStore) return [];
     let races = racesStore.getSortedRaces;
     const gamingSystemId = realmStore.activeRealmRacesSystemId;
     if (gamingSystemId && accountStore) {
@@ -439,9 +453,9 @@ const filteredRaceOptions = computed(() => {
 });
 
 const filteredClasses = computed(() => {
-    if (!classesStore) return [];
+    if (!storesReady.value || !classesStore) return [];
     const isWizard = (characterData.value.Classes || []).some((selectedClass) => {
-        return selectedClass.IsWizard;
+        return selectedClass.IsWizard || selectedClass.MechanicsData?.IsWizard;
     });
 
     // Apply granular access filtering
@@ -454,16 +468,22 @@ const filteredClasses = computed(() => {
         }
     }
 
+    const selectedClassIds = (characterData.value.Classes || []).map(c => c.ID);
+
+    // Build set of parent class names that have children (e.g., "Wizard")
+    const parentNames = new Set(baseClasses.map(c => c.MechanicsData?.Parent).filter(Boolean));
+
     return baseClasses.filter((thisClass) => {
         // Filter out disabled classes
         if (thisClass.IsDisabled) {
             return false;
         }
-        // Filter based on wizard logic
-        if (!isWizard) {
-            return true;
+        // Hide parent classes that have subclasses (e.g., "Wizard" when wizard subclasses exist)
+        if (parentNames.has(thisClass.ClassName)) {
+            return false;
         }
-        if (thisClass.IsWizard) {
+        // If a wizard class is already selected, hide other wizard classes (only one allowed)
+        if (isWizard && (thisClass.IsWizard || thisClass.MechanicsData?.IsWizard) && !selectedClassIds.includes(thisClass.ID)) {
             return false;
         }
         return true;
