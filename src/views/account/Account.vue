@@ -16,7 +16,10 @@
                     <span class="material-symbols-outlined">mail</span>
                     <span class="btn-text">Invitations</span>
                 </router-link>
-                <router-link to="/account/settings" class="settings-btn" title="Account Settings">
+                <a v-if="realmforgeSettingsUrl" :href="realmforgeSettingsUrl" class="settings-btn" title="Account Settings">
+                    <span class="material-symbols-outlined">settings</span>
+                </a>
+                <router-link v-else to="/account/settings" class="settings-btn" title="Account Settings">
                     <span class="material-symbols-outlined">settings</span>
                 </router-link>
             </div>
@@ -315,6 +318,12 @@ import { useUserStore } from '@shared/stores/user';
 const accountStore = useAccountStore();
 const realmStore = useRealmStore();
 const userStore = useUserStore();
+
+// If VITE_REGISTER_URL is set, this is a gaming system app — link settings to RealmForge-Vue
+const realmforgeSettingsUrl = computed(() => {
+    const registerUrl = import.meta.env.VITE_REGISTER_URL;
+    return registerUrl ? registerUrl.replace('/register', '/account') : null;
+});
 
 // Emit events
 const emits = defineEmits(['set-room']);
