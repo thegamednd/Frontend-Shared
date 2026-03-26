@@ -129,7 +129,7 @@
 
                 <div class="weather-content" v-show="isEditor ? aiWeatherExpanded : true">
                     <!-- Weather Generator Controls (DM only) -->
-                    <div v-if="isEditor" class="weather-controls">
+                    <div v-if="isEditor" class="weather-controls" :class="{ 'controls-disabled': isFreeRealm }">
                         <div class="latitude-control">
                             <label>Latitude</label>
                             <div class="slider-container">
@@ -167,13 +167,17 @@
                             </div>
 
                             <button
-                                v-if="!isFreeRealm || !aiWeather"
+                                v-if="!isFreeRealm"
                                 class="weather-generate-btn"
                                 @click="aiWeather ? regenerateAIWeather() : generateAIWeather()"
                                 :disabled="aiLoading"
                             >
                                 {{ aiLoading ? 'Generating...' : (aiWeather ? 'Regenerate' : 'Generate') }} Weather
                             </button>
+                            <div v-else class="weather-upgrade-notice">
+                                <span class="material-symbols-outlined">lock</span>
+                                <p>Weather generation is available on paid plans. <a href="https://realmforge.io/pricing" target="_blank">Upgrade your realm</a> to unlock this feature.</p>
+                            </div>
                         </div>
                     </div>
 
@@ -1317,6 +1321,47 @@ const aiWeatherAlerts = computed(() => {
 .weather-generate-btn:disabled {
   opacity: 0.5;
   cursor: not-allowed;
+}
+
+.weather-controls.controls-disabled .latitude-control,
+.weather-controls.controls-disabled .weather-right-column select,
+.weather-controls.controls-disabled .weather-right-column textarea {
+  opacity: 0.4;
+  pointer-events: none;
+}
+
+.weather-upgrade-notice {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+  padding: 0.75rem 1rem;
+  background: rgba(255, 197, 129, 0.06);
+  border: 1px solid rgba(255, 197, 129, 0.15);
+  border-radius: 0.5rem;
+  margin-top: 0.5rem;
+}
+
+.weather-upgrade-notice .material-symbols-outlined {
+  color: rgba(255, 197, 129, 0.5);
+  font-size: 1.2rem;
+  flex-shrink: 0;
+  margin-top: 0.1rem;
+}
+
+.weather-upgrade-notice p {
+  margin: 0;
+  font-size: 0.8rem;
+  color: rgba(255, 255, 255, 0.5);
+  line-height: 1.5;
+}
+
+.weather-upgrade-notice a {
+  color: var(--theme-accent, #ffc581);
+  text-decoration: none;
+}
+
+.weather-upgrade-notice a:hover {
+  text-decoration: underline;
 }
 
 .weather-error {
