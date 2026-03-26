@@ -6,14 +6,8 @@
     </div>
 
     <div v-else-if="room" class="room-layout">
-      <!-- Mobile sidebar toggle (outside aside to avoid transform context) -->
-      <button class="sidebar-toggle" @click="sidebarOpen = !sidebarOpen">
-        <span class="material-symbols-outlined">{{ sidebarOpen ? 'close' : 'menu_book' }}</span>
-        <span>{{ sidebarOpen ? 'Close' : 'Contents' }}</span>
-      </button>
-
       <!-- Sidebar -->
-      <aside class="room-sidebar" :class="{ 'sidebar-open': sidebarOpen }">
+      <aside class="room-sidebar">
         <div class="sidebar-inner">
           <div class="sidebar-header">
             <router-link :to="`/rooms/${room.Path}`" class="sidebar-room-link" @click="sidebarOpen = false">
@@ -70,6 +64,39 @@
         </div>
       </aside>
 
+      <!-- Mobile contents accordion (visible only on mobile) -->
+      <div v-if="filteredRoomContents.length > 0" class="mobile-contents-accordion">
+        <button class="accordion-toggle" @click="sidebarOpen = !sidebarOpen">
+          <span class="material-symbols-outlined">menu_book</span>
+          <span>Contents ({{ filteredRoomContents.length }})</span>
+          <span class="material-symbols-outlined accordion-arrow">{{ sidebarOpen ? 'expand_less' : 'expand_more' }}</span>
+        </button>
+        <nav v-if="sidebarOpen" class="accordion-list">
+          <template v-for="content in filteredRoomContents" :key="content.ID">
+            <div
+              v-if="content.Link && content.Link.trim()"
+              class="accordion-item"
+              @click="openExternalLink(content); sidebarOpen = false"
+            >
+              <span>{{ content.Name }}</span>
+              <span class="material-symbols-outlined" style="font-size: 14px;">open_in_new</span>
+            </div>
+            <a
+              v-else
+              :href="`/rooms/${content.Path.replace(/^\//, '')}`"
+              class="accordion-item"
+              @click.prevent="navigateToContent(content)"
+            >
+              {{ content.Name }}
+            </a>
+          </template>
+          <router-link v-if="canEditRoom" to="/rooms/add" class="accordion-item accordion-add">
+            <span class="material-symbols-outlined" style="font-size: 16px;">add</span>
+            Add Content
+          </router-link>
+        </nav>
+      </div>
+
       <!-- Main Content -->
       <main class="room-main">
         <div class="room-header">
@@ -86,18 +113,7 @@
           </div>
         </div>
 
-        <div class="room-content" :class="{ 'room-content-collapsed': !isContentExpanded }">
-          <button
-            @click="toggleContent"
-            class="content-toggle-btn"
-            :title="isContentExpanded ? 'Collapse content' : 'Expand content'"
-            aria-label="Toggle room content visibility"
-          >
-            <span class="material-symbols-outlined">
-              {{ isContentExpanded ? 'keyboard_arrow_up' : 'keyboard_arrow_down' }}
-            </span>
-          </button>
-
+        <div class="room-content">
           <div v-if="room.Description" class="room-description" v-html="room.Description"></div>
           <div v-else class="no-description">
             <p>No description provided for this room.</p>
@@ -112,8 +128,6 @@
       <router-link to="/" class="btn btn-primary">Return to Hearth</router-link>
     </div>
 
-    <!-- Mobile sidebar backdrop -->
-    <div v-if="sidebarOpen" class="sidebar-backdrop" @click="sidebarOpen = false"></div>
   </div>
 </template>
 
@@ -258,6 +272,11 @@ const openExternalLink = (content) => {
   }
 };
 
+const navigateToContent = (content) => {
+  const path = `/rooms/${content.Path.replace(/^\//, '')}`;
+  router.push(path);
+};
+
 // Navigate to edit content page
 const editContent = (content, event) => {
   event.preventDefault();
@@ -316,7 +335,68 @@ watch(room, (newRoom) => {
   position: relative;
 }
 
-.sidebar-toggle { display: none; }
+/* Mobile contents accordion — hidden on desktop, shown on mobile */
+.mobile-contents-accordion {
+  display: none;
+  border: 1px solid color-mix(in srgb, var(--theme-accent) 15%, transparent);
+  border-radius: 0.5rem;
+  overflow: hidden;
+  margin-bottom: 1rem;
+  background: color-mix(in srgb, var(--theme-bg-surface) 60%, transparent);
+}
+
+.accordion-toggle {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  width: 100%;
+  padding: 0.75rem 1rem;
+  background: none;
+  border: none;
+  color: var(--theme-accent);
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.accordion-toggle .material-symbols-outlined {
+  font-size: 18px;
+}
+
+.accordion-arrow {
+  margin-left: auto;
+}
+
+.accordion-list {
+  border-top: 1px solid color-mix(in srgb, var(--theme-accent) 10%, transparent);
+}
+
+.accordion-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.6rem 1rem 0.6rem 2.5rem;
+  color: rgba(255, 255, 255, 0.7);
+  text-decoration: none;
+  font-size: 0.85rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+  cursor: pointer;
+}
+
+.accordion-item:last-child {
+  border-bottom: none;
+}
+
+.accordion-item:hover,
+.accordion-item.router-link-active {
+  color: var(--theme-accent);
+  background: color-mix(in srgb, var(--theme-accent) 6%, transparent);
+}
+
+.accordion-add {
+  color: color-mix(in srgb, var(--theme-accent) 50%, transparent);
+  font-style: italic;
+}
 
 .sidebar-inner {
   position: sticky;
@@ -568,51 +648,6 @@ watch(room, (newRoom) => {
   transition: all 0.3s ease;
 }
 
-.room-content-collapsed {
-  max-height: 8em;
-  overflow: hidden;
-  position: relative;
-}
-
-.room-content-collapsed::after {
-  content: '';
-  position: absolute;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  height: 2em;
-  background: linear-gradient(transparent, var(--theme-bg-surface));
-  pointer-events: none;
-}
-
-.content-toggle-btn {
-  position: absolute;
-  top: 1rem;
-  right: 1rem;
-  background: color-mix(in srgb, var(--theme-accent) 20%, transparent);
-  border: 1px solid color-mix(in srgb, var(--theme-accent) 50%, transparent);
-  border-radius: 50%;
-  width: 2.5rem;
-  height: 2.5rem;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  color: var(--theme-accent);
-  transition: all 0.2s ease;
-  z-index: 10;
-}
-
-.content-toggle-btn:hover {
-  background: color-mix(in srgb, var(--theme-accent) 30%, transparent);
-  border-color: var(--theme-accent);
-  transform: scale(1.1);
-}
-
-.content-toggle-btn .material-symbols-outlined {
-  font-size: 1.25rem;
-}
-
 .room-description {
   line-height: 1.6;
 }
@@ -697,55 +732,21 @@ watch(room, (newRoom) => {
     align-items: center;
   }
 
-  .room-actions {
-    justify-content: center;
+  .room-actions,
+  .archived-badge,
+  .accordion-add {
+    display: none;
   }
 
-  /* Sidebar → slide-out drawer */
+  /* Hide desktop sidebar on mobile */
   .room-sidebar {
-    position: fixed;
-    top: 0;
-    left: 0;
-    bottom: 0;
-    width: 280px;
-    z-index: 1000;
-    transform: translateX(-100%);
-    transition: transform 0.3s ease;
+    display: none;
   }
 
-  .room-sidebar.sidebar-open {
-    transform: translateX(0);
+  /* Show mobile accordion */
+  .mobile-contents-accordion {
+    display: block;
   }
-
-  .room-sidebar .sidebar-inner {
-    height: 100%;
-    max-height: 100%;
-    border-right: 1px solid color-mix(in srgb, var(--theme-accent) 20%, transparent);
-    background: rgba(14, 18, 32, 0.98);
-    padding-top: 1.25rem;
-  }
-
-  .sidebar-toggle {
-    display: flex;
-    align-items: center;
-    gap: 0.45rem;
-    position: fixed;
-    bottom: 1rem;
-    right: 1rem;
-    z-index: 999;
-    padding: 0.55rem 0.9rem;
-    background: color-mix(in srgb, var(--theme-bg-surface) 92%, transparent);
-    border: 1px solid color-mix(in srgb, var(--theme-accent) 35%, transparent);
-    border-radius: 2rem;
-    color: var(--theme-accent);
-    font-size: 0.82rem;
-    font-weight: 600;
-    cursor: pointer;
-    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
-    backdrop-filter: blur(6px);
-  }
-
-  .sidebar-toggle .material-symbols-outlined { font-size: 18px; }
 
   .sidebar-backdrop {
     display: block;
