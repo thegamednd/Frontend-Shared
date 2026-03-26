@@ -6,14 +6,8 @@
     </div>
 
     <div v-else-if="content" class="room-layout">
-      <!-- Mobile sidebar toggle (outside aside to avoid transform context) -->
-      <button class="sidebar-toggle" @click="sidebarOpen = !sidebarOpen">
-        <span class="material-symbols-outlined">{{ sidebarOpen ? 'close' : 'menu_book' }}</span>
-        <span>{{ sidebarOpen ? 'Close' : 'Contents' }}</span>
-      </button>
-
       <!-- Sidebar -->
-      <aside class="room-sidebar" :class="{ 'sidebar-open': sidebarOpen }">
+      <aside class="room-sidebar">
         <div class="sidebar-inner">
           <!-- Breadcrumb -->
           <nav class="sidebar-breadcrumb" aria-label="Content breadcrumb">
@@ -80,6 +74,47 @@
         </div>
       </aside>
 
+      <!-- Mobile contents accordion -->
+      <div v-if="roomChildContents.length > 0 || childContents.length > 0" class="mobile-contents-accordion">
+        <button class="accordion-toggle" @click="sidebarOpen = !sidebarOpen">
+          <span class="material-symbols-outlined">menu_book</span>
+          <span>Contents</span>
+          <span class="material-symbols-outlined accordion-arrow">{{ sidebarOpen ? 'expand_less' : 'expand_more' }}</span>
+        </button>
+        <nav v-if="sidebarOpen" class="accordion-list">
+          <!-- Breadcrumb -->
+          <div class="accordion-breadcrumb">
+            <a
+              v-for="(crumb, index) in breadcrumbs"
+              :key="index"
+              :href="crumb.path"
+              class="accordion-crumb"
+              @click.prevent="router.push(crumb.path)"
+            >{{ crumb.name }}<span v-if="index < breadcrumbs.length - 1"> &rsaquo; </span></a>
+          </div>
+          <!-- Room siblings -->
+          <template v-for="sibling in roomChildContents" :key="sibling.ID">
+            <a
+              :href="`/rooms/${sibling.Path.replace(/^\//, '')}`"
+              class="accordion-item"
+              :class="{ 'accordion-active': sibling.Path === activeRoomChildPath }"
+              @click.prevent="router.push(`/rooms/${sibling.Path.replace(/^\//, '')}`)"
+            >{{ sibling.Name }}</a>
+          </template>
+          <!-- Current article's children -->
+          <template v-if="childContents.length > 0">
+            <div class="accordion-divider"></div>
+            <a
+              v-for="child in childContents"
+              :key="child.ID"
+              :href="`/rooms/${child.Path.replace(/^\//, '')}`"
+              class="accordion-item accordion-child"
+              @click.prevent="router.push(`/rooms/${child.Path.replace(/^\//, '')}`)"
+            >{{ child.Name }}</a>
+          </template>
+        </nav>
+      </div>
+
       <!-- Main Content -->
       <main class="room-main">
         <div class="content-header">
@@ -129,8 +164,6 @@
       <router-link :to="`/rooms/${roomPath}`" class="btn btn-primary">Return to Room</router-link>
     </div>
 
-    <!-- Mobile sidebar backdrop -->
-    <div v-if="sidebarOpen" class="sidebar-backdrop" @click="sidebarOpen = false"></div>
   </div>
 </template>
 
@@ -155,6 +188,11 @@ const props = defineProps({
 
 const loading = ref(true);
 const sidebarOpen = ref(false);
+
+// Collapse accordion on route change (same component, different params)
+watch(() => route.params, () => {
+  sidebarOpen.value = false;
+});
 
 // Get the room by path
 const room = computed(() => {
@@ -380,7 +418,71 @@ watch(() => [props.roomPath, props.contentName, props.fullContentPath], loadCont
   position: relative;
 }
 
-.sidebar-toggle { display: none; }
+/* Mobile contents accordion — hidden on desktop */
+.mobile-contents-accordion { display: none; }
+
+.accordion-toggle {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  width: 100%;
+  padding: 0.75rem 1rem;
+  background: none;
+  border: none;
+  color: var(--theme-accent);
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.accordion-toggle .material-symbols-outlined { font-size: 18px; }
+.accordion-arrow { margin-left: auto; }
+
+.accordion-list {
+  border-top: 1px solid color-mix(in srgb, var(--theme-accent) 10%, transparent);
+}
+
+.accordion-breadcrumb {
+  padding: 0.5rem 1rem;
+  font-size: 0.75rem;
+  color: rgba(255, 255, 255, 0.4);
+}
+
+.accordion-crumb {
+  color: rgba(255, 255, 255, 0.4);
+  text-decoration: none;
+}
+
+.accordion-crumb:hover { color: var(--theme-accent); }
+
+.accordion-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.6rem 1rem 0.6rem 2.5rem;
+  color: rgba(255, 255, 255, 0.7);
+  text-decoration: none;
+  font-size: 0.85rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+  cursor: pointer;
+}
+
+.accordion-item:last-child { border-bottom: none; }
+
+.accordion-item:hover,
+.accordion-item.router-link-active,
+.accordion-item.accordion-active {
+  color: var(--theme-accent);
+  background: color-mix(in srgb, var(--theme-accent) 6%, transparent);
+}
+
+.accordion-child { padding-left: 3.5rem; }
+
+.accordion-divider {
+  height: 1px;
+  background: color-mix(in srgb, var(--theme-accent) 10%, transparent);
+  margin: 0.25rem 1rem;
+}
 
 .sidebar-inner {
   position: sticky;
@@ -841,55 +943,25 @@ watch(() => [props.roomPath, props.contentName, props.fullContentPath], loadCont
     align-items: center;
   }
 
-  .content-actions {
-    justify-content: center;
+  .content-actions,
+  .inactive-badge {
+    display: none;
   }
 
-  /* Sidebar → slide-out drawer */
+  /* Hide desktop sidebar on mobile */
   .room-sidebar {
-    position: fixed;
-    top: 0;
-    left: 0;
-    bottom: 0;
-    width: 280px;
-    z-index: 1000;
-    transform: translateX(-100%);
-    transition: transform 0.3s ease;
+    display: none;
   }
 
-  .room-sidebar.sidebar-open {
-    transform: translateX(0);
+  /* Show mobile accordion */
+  .mobile-contents-accordion {
+    display: block;
+    border: 1px solid color-mix(in srgb, var(--theme-accent) 15%, transparent);
+    border-radius: 0.5rem;
+    overflow: hidden;
+    margin-bottom: 1rem;
+    background: color-mix(in srgb, var(--theme-bg-surface) 60%, transparent);
   }
-
-  .room-sidebar .sidebar-inner {
-    height: 100%;
-    max-height: 100%;
-    border-right: 1px solid color-mix(in srgb, var(--theme-accent) 20%, transparent);
-    background: rgba(14, 18, 32, 0.98);
-    padding-top: 1.25rem;
-  }
-
-  .sidebar-toggle {
-    display: flex;
-    align-items: center;
-    gap: 0.45rem;
-    position: fixed;
-    bottom: 1rem;
-    right: 1rem;
-    z-index: 999;
-    padding: 0.55rem 0.9rem;
-    background: color-mix(in srgb, var(--theme-bg-surface) 92%, transparent);
-    border: 1px solid color-mix(in srgb, var(--theme-accent) 35%, transparent);
-    border-radius: 2rem;
-    color: var(--theme-accent);
-    font-size: 0.82rem;
-    font-weight: 600;
-    cursor: pointer;
-    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
-    backdrop-filter: blur(6px);
-  }
-
-  .sidebar-toggle .material-symbols-outlined { font-size: 18px; }
 
   .sidebar-backdrop {
     display: block;
