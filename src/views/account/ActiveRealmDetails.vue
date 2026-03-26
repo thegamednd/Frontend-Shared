@@ -1216,21 +1216,21 @@ const CharacterSheetDialog = shallowRef(null);
 onMounted(async () => {
   if (features.hasPayPal) {
     try {
-      const { usePayPalStore } = await import(/* @vite-ignore */ '@/stores/paypal');
+      const { usePayPalStore } = await import('@/stores/paypal');
       paypalStore = usePayPalStore();
-      const paypalComponent = await import(/* @vite-ignore */ '@/components/payment/PayPalSubscriptionButton.vue');
+      const paypalComponent = await import('@/components/payment/PayPalSubscriptionButton.vue');
       PayPalSubscriptionButton.value = paypalComponent.default;
     } catch (e) { console.warn('PayPal not available:', e); }
   }
   if (features.hasGamingSystems) {
     try {
-      const { useGamingSystemsStore } = await import(/* @vite-ignore */ '@/stores/gamingSystems');
+      const { useGamingSystemsStore } = await import('@/stores/gamingSystems');
       gamingSystemsStore = useGamingSystemsStore();
     } catch (e) { console.warn('Gaming systems not available:', e); }
   }
   if (features.hasCharacterSheets) {
     try {
-      const charSheetComponent = await import(/* @vite-ignore */ '@/components/dialogs/CharacterSheetDialog.vue');
+      const charSheetComponent = await import('@/components/dialogs/CharacterSheetDialog.vue');
       CharacterSheetDialog.value = charSheetComponent.default;
     } catch (e) { console.warn('Character sheet dialog not available:', e); }
   }

@@ -846,7 +846,7 @@ onMounted(async () => {
   const gsId = import.meta.env.VITE_GAMING_SYSTEM_ID;
   if (gsId) {
     try {
-      const { useGamingSystemsStore } = await import(/* @vite-ignore */ '@/stores/gamingSystems');
+      const { useGamingSystemsStore } = await import('@/stores/gamingSystems');
       const gamingSystemsStore = useGamingSystemsStore();
       if (!gamingSystemsStore.isLoaded) {
         await gamingSystemsStore.fetchGamingSystems();
