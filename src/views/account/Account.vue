@@ -338,8 +338,9 @@ onMounted(async () => {
     const gsId = import.meta.env.VITE_GAMING_SYSTEM_ID;
     if (gsId) {
         try {
-            const { useGamingSystemsStore } = await import('@/stores/gamingSystems');
-            const gamingSystemsStore = useGamingSystemsStore();
+            const mod = await import('@/stores/gamingSystems');
+            if (typeof mod.useGamingSystemsStore !== 'function') throw new Error('Store not available');
+            const gamingSystemsStore = mod.useGamingSystemsStore();
             if (!gamingSystemsStore.isLoaded) {
                 await gamingSystemsStore.fetchGamingSystems();
             }
@@ -347,8 +348,8 @@ onMounted(async () => {
             if (gs?.FreeRealms !== undefined) {
                 freeRealmLimit.value = gs.FreeRealms;
             }
-        } catch (err) {
-            console.warn('Failed to load gaming system free realm limit:', err);
+        } catch {
+            // Gaming systems store not available in this app — use default limit
         }
     }
 });

@@ -4,81 +4,115 @@
       <div class="loading-spinner"></div>
       <p>Loading content...</p>
     </div>
-    
-    <div v-else-if="content" class="content-container">
-      <!-- Breadcrumb Navigation -->
-      <nav class="breadcrumb-nav" aria-label="Content breadcrumb">
-        <div class="breadcrumb-list">
-          <router-link 
-            v-for="(crumb, index) in breadcrumbs" 
-            :key="index"
-            :to="crumb.path"
-            class="breadcrumb-item"
-            :class="{ 'current': index === breadcrumbs.length - 1 }"
-          >
-            {{ crumb.name }}
-          </router-link>
+
+    <div v-else-if="content" class="room-layout">
+      <!-- Mobile sidebar toggle (outside aside to avoid transform context) -->
+      <button class="sidebar-toggle" @click="sidebarOpen = !sidebarOpen">
+        <span class="material-symbols-outlined">{{ sidebarOpen ? 'close' : 'menu_book' }}</span>
+        <span>{{ sidebarOpen ? 'Close' : 'Contents' }}</span>
+      </button>
+
+      <!-- Sidebar -->
+      <aside class="room-sidebar" :class="{ 'sidebar-open': sidebarOpen }">
+        <div class="sidebar-inner">
+          <!-- Breadcrumb -->
+          <nav class="sidebar-breadcrumb" aria-label="Content breadcrumb">
+            <router-link
+              v-for="(crumb, index) in breadcrumbs"
+              :key="index"
+              :to="crumb.path"
+              class="crumb"
+              :class="{ 'current': index === breadcrumbs.length - 1 }"
+              @click="sidebarOpen = false"
+            >
+              {{ crumb.name }}
+            </router-link>
+          </nav>
+
+          <!-- Room's direct children (sibling navigation) -->
+          <div v-if="roomChildContents.length > 0" class="children-section">
+            <h4 class="sidebar-label">Contents</h4>
+            <nav class="children-list">
+              <router-link
+                v-for="sibling in roomChildContents"
+                :key="sibling.ID"
+                :to="`/rooms/${sibling.Path.replace(/^\//, '')}`"
+                class="child-link"
+                :class="{
+                  'active-child': sibling.Path === activeRoomChildPath,
+                  'inactive-child': !sibling.IsActive
+                }"
+                @click="sidebarOpen = false"
+              >
+                <div class="child-info">
+                  <span class="child-name">{{ sibling.Name }}</span>
+                </div>
+              </router-link>
+            </nav>
+          </div>
+
+          <!-- Current article's children -->
+          <div v-if="childContents.length > 0" class="children-section">
+            <h4 class="sidebar-label">Sub-Content</h4>
+            <nav class="children-list">
+              <router-link
+                v-for="child in childContents"
+                :key="child.ID"
+                :to="`/rooms/${child.Path.replace(/^\//, '')}`"
+                class="child-link"
+                :class="{ 'inactive-child': !child.IsActive }"
+                @click="sidebarOpen = false"
+              >
+                <div class="child-info">
+                  <span class="child-name">{{ child.Name }}</span>
+                </div>
+              </router-link>
+            </nav>
+          </div>
+
+          <!-- Add child content -->
+          <div v-if="canAddChildContent" class="children-section">
+            <button @click="addChildContent" class="btn-sidebar-add">
+              <span class="material-symbols-outlined">add</span>
+              Add Content
+            </button>
+          </div>
         </div>
-      </nav>
-      
-      <div class="content-header">
-        <div class="content-title">
-          <h1>{{ content.Name }}</h1>
-          <span v-if="!content.IsActive" class="inactive-badge" title="This content is inactive">
-            <span class="material-symbols-outlined">visibility_off</span>
-            Inactive
-          </span>
+      </aside>
+
+      <!-- Main Content -->
+      <main class="room-main">
+        <div class="content-header">
+          <div class="content-title">
+            <h1>{{ content.Name }}</h1>
+            <span v-if="!content.IsActive" class="inactive-badge" title="This content is inactive">
+              <span class="material-symbols-outlined">visibility_off</span>
+              Inactive
+            </span>
+          </div>
+          <div class="content-actions">
+            <button v-if="canEditContent" @click="editContent" class="btn-edit" title="Edit Content">
+              <span class="material-symbols-outlined">edit</span>
+            </button>
+          </div>
         </div>
-        <div class="content-actions">
-          <button v-if="canEditContent" @click="editContent" class="btn-edit" title="Edit Content">
-            <span class="material-symbols-outlined">edit</span>
-          </button>
+
+        <div class="content-body">
+          <div v-if="content.Content" class="content-html" v-html="content.Content"></div>
+          <div v-else class="no-content">
+            <p>No content provided for this article.</p>
+          </div>
         </div>
-      </div>
-      
-      <div class="content-body">
-        <div v-if="content.Content" class="content-html" v-html="content.Content"></div>
-        <div v-else class="no-content">
-          <p>No content provided for this article.</p>
+
+        <div v-if="content.Link" class="content-external-link">
+          <a :href="content.Link" target="_blank" rel="noopener noreferrer" class="external-link">
+            <span class="material-symbols-outlined">open_in_new</span>
+            Related Link
+          </a>
         </div>
-      </div>
-      
-      <!-- Add Child Content Button -->
-      <div v-if="canAddChildContent" class="add-content-section">
-        <button @click="addChildContent" class="btn-add-content" title="Add Child Content">
-          <span class="material-symbols-outlined">add</span>
-          Add Content
-        </button>
-      </div>
-      
-      <!-- Child Content Section -->
-      <div v-if="childContents.length > 0" class="child-contents-section">
-        <h3>Sub-Content</h3>
-        <div class="content-links">
-          <router-link 
-            v-for="childContent in childContents" 
-            :key="childContent.ID"
-            :to="`/rooms/${childContent.Path.replace(/^\//, '')}`"
-            class="content-link"
-            :class="{ 'inactive-content': !childContent.IsActive }"
-          >
-            <div class="content-link-info">
-              <span class="content-name">{{ childContent.Name }}</span>
-              <span v-if="childContent.Intro" class="content-intro">{{ childContent.Intro }}</span>
-              <span v-if="!childContent.IsActive && canEditContent" class="inactive-badge">Inactive</span>
-            </div>
-          </router-link>
-        </div>
-      </div>
-      
-      <div v-if="content.Link" class="content-link">
-        <a :href="content.Link" target="_blank" rel="noopener noreferrer" class="external-link">
-          <span class="material-symbols-outlined">open_in_new</span>
-          Related Link
-        </a>
-      </div>
+      </main>
     </div>
-    
+
     <div v-else class="content-not-found">
       <!-- Breadcrumb for not found page -->
       <nav class="breadcrumb-nav" aria-label="Content breadcrumb" v-if="room">
@@ -89,16 +123,19 @@
           <span class="breadcrumb-item current">Content Not Found</span>
         </div>
       </nav>
-      
+
       <h2>Content Not Found</h2>
       <p>The content article could not be found or you don't have permission to view it.</p>
       <router-link :to="`/rooms/${roomPath}`" class="btn btn-primary">Return to Room</router-link>
     </div>
+
+    <!-- Mobile sidebar backdrop -->
+    <div v-if="sidebarOpen" class="sidebar-backdrop" @click="sidebarOpen = false"></div>
   </div>
 </template>
 
 <script setup>
-import { ref, computed, onMounted, watch } from 'vue';
+import { ref, computed, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useUserStore } from '@shared/stores/user';
 import { useRealmStore } from '@shared/stores/realm';
@@ -117,6 +154,7 @@ const props = defineProps({
 });
 
 const loading = ref(true);
+const sidebarOpen = ref(false);
 
 // Get the room by path
 const room = computed(() => {
@@ -128,41 +166,37 @@ const content = computed(() => {
   if (!room.value || !room.value.contents) {
     return null;
   }
-  
+
   // Use the fullContentPath passed from the router, but normalize it
   const expectedPath = props.fullContentPath;
   const normalizedExpectedPath = expectedPath.startsWith('/') ? expectedPath.substring(1) : expectedPath;
-  
+
   // Look through all content items for this room
   const roomContents = room.value.contents.map(contentId => contentStore.contents[contentId]).filter(Boolean);
-  
+
   // Find content by matching against the normalized path (without leading slash)
   return roomContents.find(c => c.Path === normalizedExpectedPath) || null;
 });
 
 // Check if user can edit this content
 const canEditContent = computed(() => {
-  // Admin (check if user is member of Administrators group)
   if (userStore.groups.includes('Administrators')) {
     return true;
   }
-  
-  // Realm owner
+
   if (realmStore.isOwner) {
     return true;
   }
-  
-  // Check if user has write access in this realm (from UserXRealm table)
+
   const currentUserPlayer = realmStore.arActivePlayers?.find(player => player.UserID === userStore.userSub);
   if (currentUserPlayer?.WriteAccess) {
     return true;
   }
-  
-  // Check if user is in the content's editors list
+
   if (content.value && content.value.Editors && content.value.Editors.includes(userStore.userSub)) {
     return true;
   }
-  
+
   return false;
 });
 
@@ -171,22 +205,20 @@ const isAtMaxDepth = computed(() => {
   if (!content.value) {
     return false;
   }
-  
-  // Split the path and calculate content depth
+
   const pathSegments = content.value.Path.split('/').filter(segment => segment.length > 0);
-  const contentDepth = pathSegments.length - 1; // First segment is room
+  const contentDepth = pathSegments.length - 1;
   const MAX_CONTENT_DEPTH = 4;
-  
+
   return contentDepth >= MAX_CONTENT_DEPTH;
 });
 
-// Check if user can add child content (must have edit permission, not be at max depth, and content must not have a Link)
+// Check if user can add child content
 const canAddChildContent = computed(() => {
-  // Don't allow adding child content if this content has an external link
   if (content.value?.Link && content.value.Link.trim()) {
     return false;
   }
-  
+
   return canEditContent.value && !isAtMaxDepth.value;
 });
 
@@ -195,37 +227,55 @@ const breadcrumbs = computed(() => {
   if (!content.value || !room.value) {
     return [];
   }
-  
+
   const crumbs = [];
-  
-  // Start with the room
+
   crumbs.push({
     name: room.value.Name,
     path: `/rooms/${room.value.Path}`
   });
-  
-  // Build path segments from content path
+
   const contentPath = content.value.Path;
   const pathSegments = contentPath.split('/');
-  
-  // Remove the room segment (first segment) since we already have it
   const contentSegments = pathSegments.slice(1);
-  
-  // Build breadcrumbs for each content level
+
   let currentPath = room.value.Path;
   for (let i = 0; i < contentSegments.length; i++) {
     currentPath += '/' + contentSegments[i];
-    
-    // Find the content item for this path to get the display name
+
     const contentItem = contentStore.arContents.find(c => c.Path === currentPath);
-    
+
     crumbs.push({
       name: contentItem ? contentItem.Name : contentSegments[i],
       path: `/rooms/${currentPath}`
     });
   }
-  
+
   return crumbs;
+});
+
+// Get room's direct child contents for sidebar navigation
+const roomChildContents = computed(() => {
+  if (!room.value || !room.value.contents) return [];
+  const allRoomContents = room.value.contents
+    .map(contentId => contentStore.contents[contentId])
+    .filter(Boolean);
+  const directChildren = allRoomContents.filter(c => c.Parent === room.value.Path);
+  if (canEditContent.value) {
+    return directChildren;
+  }
+  return directChildren.filter(c => c.IsActive);
+});
+
+// Compute which room child is the ancestor of the current content (for highlighting)
+const activeRoomChildPath = computed(() => {
+  if (!content.value || !room.value) return null;
+  const contentPath = content.value.Path;
+  const roomPath = room.value.Path;
+  if (!contentPath.startsWith(roomPath + '/')) return contentPath;
+  const relativePath = contentPath.substring(roomPath.length + 1);
+  const firstSegment = relativePath.split('/')[0];
+  return roomPath + '/' + firstSegment;
 });
 
 // Get child contents for this content
@@ -233,20 +283,15 @@ const childContents = computed(() => {
   if (!content.value) {
     return [];
   }
-  
-  // Find all contents where the Parent matches this content's Path
+
   const allContents = contentStore.arContents;
   const currentContentPath = content.value.Path;
-  
-  // Get child contents
+
   const childContentItems = allContents.filter(c => c.Parent === currentContentPath);
-  
-  // Filter based on user permissions
+
   if (canEditContent.value) {
-    // Users with edit permission can see all child content (active and inactive)
     return childContentItems;
   } else {
-    // Normal users can only see active child content
     return childContentItems.filter(c => c.IsActive);
   }
 });
@@ -261,21 +306,18 @@ const addChildContent = () => {
 // Load room and content data
 const loadContent = async () => {
   loading.value = true;
-  
+
   try {
-    // Ensure rooms are loaded
     if (contentStore.arRooms.length === 0) {
       await contentStore.loadRooms();
     }
-    
-    // Load room contents if room exists and doesn't have contents loaded
+
     if (room.value && room.value.ID) {
       if (!room.value.contents) {
         await contentStore.loadRoomContents(room.value.ID);
       }
     }
-    
-    // Load all contents to support child content display
+
     await contentStore.loadAllContents();
   } catch (error) {
     console.error('Failed to load content:', error);
@@ -292,18 +334,15 @@ const editContent = () => {
 };
 
 // Watch for route changes
-// immediate: true will call loadContent on mount, so we don't need onMounted
 watch(() => [props.roomPath, props.contentName, props.fullContentPath], loadContent, { immediate: true });
-
-// Removed onMounted since the watcher with immediate: true handles initial load
 </script>
 
 <style scoped>
 .content-article {
-  padding: 2rem;
   color: #ffffff;
 }
 
+/* Loading */
 .loading-state {
   display: flex;
   flex-direction: column;
@@ -326,50 +365,165 @@ watch(() => [props.roomPath, props.contentName, props.fullContentPath], loadCont
   to { transform: rotate(360deg); }
 }
 
-/* Breadcrumb Navigation */
-.breadcrumb-nav {
-  margin-bottom: 1.5rem;
-  padding: 0.75rem 1.5rem;
-  background: color-mix(in srgb, var(--theme-accent) 10%, transparent);
-  border: 1px solid color-mix(in srgb, var(--theme-accent) 30%, transparent);
-  border-radius: 0.5rem;
+/* ── Two-Column Layout ── */
+.room-layout {
+  display: grid;
+  grid-template-columns: 240px 1fr;
+  min-height: 100%;
 }
 
-.breadcrumb-list {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  flex-wrap: wrap;
-}
+/* ═══════════════════════════════════════
+   SIDEBAR
+   ═══════════════════════════════════════ */
 
-.breadcrumb-item {
-  color: var(--theme-accent);
-  text-decoration: none;
-  font-weight: 500;
-  transition: color 0.2s ease;
+.room-sidebar {
   position: relative;
 }
 
-.breadcrumb-item:not(.current):hover {
-  color: #ffffff;
+.sidebar-toggle { display: none; }
+
+.sidebar-inner {
+  position: sticky;
+  top: 0;
+  max-height: 100vh;
+  overflow-y: auto;
+  padding: 1.25rem 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  border-right: 1px solid color-mix(in srgb, var(--theme-accent) 10%, transparent);
+  background: linear-gradient(180deg, rgba(14, 18, 32, 0.5) 0%, rgba(14, 18, 32, 0.7) 100%);
 }
 
-.breadcrumb-item:not(:last-child)::after {
-  content: '>';
-  margin-left: 0.5rem;
-  color: #8a9ba8;
-  font-weight: normal;
+.sidebar-inner::-webkit-scrollbar { width: 3px; }
+.sidebar-inner::-webkit-scrollbar-thumb {
+  background: color-mix(in srgb, var(--theme-accent) 15%, transparent);
+  border-radius: 3px;
 }
 
-.breadcrumb-item.current {
-  color: #ffffff;
+/* Breadcrumb in sidebar */
+.sidebar-breadcrumb {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  flex-wrap: wrap;
+  font-size: 0.78rem;
+}
+
+.crumb {
+  color: color-mix(in srgb, var(--theme-accent) 60%, transparent);
+  text-decoration: none;
+  transition: color 0.15s;
+}
+
+.crumb:not(.current):hover { color: var(--theme-accent); }
+
+.crumb:not(:last-child)::after {
+  content: '\203A';
+  margin-left: 0.35rem;
+  color: color-mix(in srgb, var(--theme-accent) 25%, transparent);
+}
+
+.crumb.current {
+  color: rgba(255, 255, 255, 0.85);
   font-weight: 600;
-  cursor: default;
 }
 
-.content-container {
-  max-width: 800px;
-  margin: 0 auto;
+.sidebar-label {
+  font-family: 'Pirata One', cursive;
+  font-size: 0.9rem;
+  color: var(--theme-accent);
+  margin: 0 0 0.6rem;
+  padding-bottom: 0.4rem;
+  border-bottom: 1px solid color-mix(in srgb, var(--theme-accent) 12%, transparent);
+  letter-spacing: 0.03em;
+}
+
+/* ── Child Content Navigation ── */
+.children-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.child-link {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.45rem 0.5rem;
+  border-radius: 5px;
+  text-decoration: none;
+  color: #D2B48C;
+  transition: all 0.15s ease;
+  cursor: pointer;
+  border-left: 2px solid transparent;
+}
+
+.child-link:hover {
+  color: var(--theme-accent);
+  background: color-mix(in srgb, var(--theme-accent) 6%, transparent);
+}
+
+.child-link.active-child {
+  color: var(--theme-accent);
+  background: color-mix(in srgb, var(--theme-accent) 10%, transparent);
+  border-left-color: var(--theme-accent);
+}
+
+.child-link.inactive-child {
+  opacity: 0.5;
+}
+
+.child-info {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  overflow: hidden;
+  min-width: 0;
+  flex: 1;
+}
+
+.child-name {
+  font-size: 0.82rem;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.btn-sidebar-add {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.4rem 0.6rem;
+  border: 1px dashed color-mix(in srgb, var(--theme-accent) 30%, transparent);
+  border-radius: 5px;
+  background: transparent;
+  color: color-mix(in srgb, var(--theme-accent) 60%, transparent);
+  font-size: 0.8rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s;
+  width: 100%;
+}
+
+.btn-sidebar-add:hover {
+  border-color: var(--theme-accent);
+  color: var(--theme-accent);
+  background: color-mix(in srgb, var(--theme-accent) 5%, transparent);
+}
+
+.btn-sidebar-add .material-symbols-outlined {
+  font-size: 1rem;
+}
+
+/* ═══════════════════════════════════════
+   MAIN CONTENT
+   ═══════════════════════════════════════ */
+
+.room-main {
+  padding: 2rem 2.5rem 4rem;
+  max-width: 780px;
 }
 
 .content-header {
@@ -418,7 +572,6 @@ watch(() => [props.roomPath, props.contentName, props.fullContentPath], loadCont
   display: flex;
   gap: 0.5rem;
 }
-
 
 .btn-edit {
   padding: 0.5rem;
@@ -498,14 +651,12 @@ watch(() => [props.roomPath, props.contentName, props.fullContentPath], loadCont
   max-width: 50%;
 }
 
-/* Clear floats after content */
 .content-html::after {
   content: "";
   display: table;
   clear: both;
 }
 
-/* CKEditor image captions */
 .content-html figure {
   margin: 0;
   display: table;
@@ -553,7 +704,7 @@ watch(() => [props.roomPath, props.contentName, props.fullContentPath], loadCont
   padding: 2rem;
 }
 
-.content-link {
+.content-external-link {
   text-align: center;
 }
 
@@ -575,6 +726,7 @@ watch(() => [props.roomPath, props.contentName, props.fullContentPath], loadCont
   transform: translateY(-1px);
 }
 
+/* Not Found */
 .content-not-found {
   text-align: center;
   max-width: 600px;
@@ -587,6 +739,46 @@ watch(() => [props.roomPath, props.contentName, props.fullContentPath], loadCont
   font-family: 'Pirata One', cursive;
   font-size: 2rem;
   margin-bottom: 1rem;
+}
+
+/* Breadcrumb for not-found page */
+.breadcrumb-nav {
+  margin-bottom: 1.5rem;
+  padding: 0.75rem 1.5rem;
+  background: color-mix(in srgb, var(--theme-accent) 10%, transparent);
+  border: 1px solid color-mix(in srgb, var(--theme-accent) 30%, transparent);
+  border-radius: 0.5rem;
+}
+
+.breadcrumb-list {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.breadcrumb-item {
+  color: var(--theme-accent);
+  text-decoration: none;
+  font-weight: 500;
+  transition: color 0.2s ease;
+}
+
+.breadcrumb-item:not(.current):hover {
+  color: #ffffff;
+}
+
+.breadcrumb-item:not(:last-child)::after {
+  content: '>';
+  margin-left: 0.5rem;
+  color: #8a9ba8;
+  font-weight: normal;
+}
+
+.breadcrumb-item.current {
+  color: #ffffff;
+  font-weight: 600;
+  cursor: default;
 }
 
 .btn {
@@ -613,145 +805,124 @@ watch(() => [props.roomPath, props.contentName, props.fullContentPath], loadCont
   transform: translateY(-1px);
 }
 
-/* Add Content Button */
-.add-content-section {
-  text-align: right;
-  margin: 2rem 0;
+/* ── Mobile sidebar backdrop ── */
+.sidebar-backdrop {
+  display: none;
 }
 
-.btn-add-content {
-  padding: 0.5rem 1rem;
-  border: none;
-  border-radius: 0.5rem;
-  cursor: pointer;
-  display: inline-flex;
-  align-items: center;
-  gap: 0.5rem;
-  background: linear-gradient(135deg, #4a90e2 0%, #357abd 100%);
-  color: white;
-  font-weight: 500;
-  transition: all 0.2s ease;
-  font-size: 0.9rem;
-}
+/* ═══════════════════════════════════════
+   RESPONSIVE
+   ═══════════════════════════════════════ */
 
-.btn-add-content:hover {
-  background: linear-gradient(135deg, #357abd 0%, #2968a3 100%);
-  transform: translateY(-1px);
-}
-
-/* Child Content Section */
-.child-contents-section {
-  background: linear-gradient(135deg, var(--theme-bg-surface) 0%, #2a3a5a 100%);
-  border: 1px solid var(--theme-accent);
-  border-radius: 1rem;
-  padding: 2rem;
-  margin-top: 2rem;
-}
-
-.child-contents-section h3 {
-  color: var(--theme-accent);
-  font-family: 'Pirata One', cursive;
-  font-size: 1.5rem;
-  margin: 0 0 1.5rem 0;
-  border-bottom: 1px solid var(--theme-accent);
-  padding-bottom: 0.5rem;
-}
-
-.content-links {
-  display: grid;
-  gap: 1rem;
-}
-
-.content-link {
-  display: block;
-  background: color-mix(in srgb, var(--theme-accent) 10%, transparent);
-  border: 1px solid color-mix(in srgb, var(--theme-accent) 30%, transparent);
-  border-radius: 0.5rem;
-  padding: 1rem;
-  text-decoration: none;
-  transition: all 0.2s ease;
-  color: #ffffff;
-}
-
-.content-link:hover {
-  background: color-mix(in srgb, var(--theme-accent) 20%, transparent);
-  border-color: var(--theme-accent);
-  transform: translateY(-1px);
-}
-
-.content-link.inactive-content {
-  opacity: 0.7;
-  border-style: dashed;
-}
-
-.content-link-info {
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-}
-
-.content-name {
-  font-size: 1.1rem;
-  font-weight: 600;
-  color: var(--theme-accent);
-}
-
-.content-intro {
-  font-size: 0.9rem;
-  color: #cccccc;
-  line-height: 1.4;
-}
-
-.inactive-badge {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.25rem;
-  padding: 0.25rem 0.5rem;
-  background: rgba(255, 107, 107, 0.2);
-  border: 1px solid rgba(255, 107, 107, 0.5);
-  border-radius: 0.25rem;
-  color: #ff6b6b;
-  font-size: 0.7rem;
-  font-weight: 500;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  width: fit-content;
-}
-
-/* Responsive Design */
-@media (max-width: 768px) {
-  .content-article {
-    padding: 1rem;
+@media (max-width: 900px) {
+  .room-layout {
+    grid-template-columns: 1fr;
   }
-  
+
+  .room-main {
+    padding: 1.25rem 1rem 3rem;
+    max-width: 100%;
+  }
+
+  .content-header h1 {
+    font-size: 2rem;
+  }
+
   .content-header {
     flex-direction: column;
     gap: 1rem;
     align-items: stretch;
     text-align: center;
   }
-  
+
   .content-title {
     flex-direction: column;
     gap: 0.5rem;
     align-items: center;
   }
-  
-  .content-header h1 {
-    font-size: 2rem;
-  }
-  
+
   .content-actions {
     justify-content: center;
   }
-  
-  .breadcrumb-nav {
-    padding: 0.5rem 1rem;
-    margin-bottom: 1rem;
+
+  /* Sidebar → slide-out drawer */
+  .room-sidebar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    bottom: 0;
+    width: 280px;
+    z-index: 1000;
+    transform: translateX(-100%);
+    transition: transform 0.3s ease;
   }
-  
-  .breadcrumb-list {
-    font-size: 0.9rem;
+
+  .room-sidebar.sidebar-open {
+    transform: translateX(0);
+  }
+
+  .room-sidebar .sidebar-inner {
+    height: 100%;
+    max-height: 100%;
+    border-right: 1px solid color-mix(in srgb, var(--theme-accent) 20%, transparent);
+    background: rgba(14, 18, 32, 0.98);
+    padding-top: 1.25rem;
+  }
+
+  .sidebar-toggle {
+    display: flex;
+    align-items: center;
+    gap: 0.45rem;
+    position: fixed;
+    bottom: 1rem;
+    right: 1rem;
+    z-index: 999;
+    padding: 0.55rem 0.9rem;
+    background: color-mix(in srgb, var(--theme-bg-surface) 92%, transparent);
+    border: 1px solid color-mix(in srgb, var(--theme-accent) 35%, transparent);
+    border-radius: 2rem;
+    color: var(--theme-accent);
+    font-size: 0.82rem;
+    font-weight: 600;
+    cursor: pointer;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+    backdrop-filter: blur(6px);
+  }
+
+  .sidebar-toggle .material-symbols-outlined { font-size: 18px; }
+
+  .sidebar-backdrop {
+    display: block;
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.45);
+    z-index: 999;
+  }
+
+  .content-html :deep(table) {
+    display: block;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .content-html :deep(figure) {
+    float: none;
+    max-width: 100%;
+    margin-left: 0;
+  }
+}
+
+@media (max-width: 480px) {
+  .room-main {
+    padding: 1rem 0.75rem 3rem;
+  }
+
+  .content-header h1 {
+    font-size: 1.75rem;
+  }
+
+  .content-body {
+    padding: 1rem;
   }
 }
 </style>
