@@ -65,6 +65,15 @@ export const useRealmStore = defineStore('realm', {
             if (!classes || typeof classes === 'string') return null;
             return classes.EnabledShopItems || null;
         },
+        // Get enabled class IDs for the active realm
+        // Returns array of enabled class IDs, or null if all are enabled (not configured)
+        activeRealmClassesEnabledIds(state) {
+            const realm = this.activeRealm;
+            if (!realm) return null;
+            const classes = realm.GamingSystem?.classes;
+            if (!classes || typeof classes === 'string') return null;
+            return classes.EnabledClassIds || null;
+        },
         // Get gaming system ID for races
         // Returns GamingSystem.races.GamingSystemID (new format) or GamingSystem.races (old string format)
         // Returns null if not set (No System)
@@ -90,6 +99,15 @@ export const useRealmStore = defineStore('realm', {
             const races = realm.GamingSystem?.races;
             if (!races || typeof races === 'string') return null;
             return races.EnabledShopItems || null;
+        },
+        // Get enabled race IDs for the active realm
+        // Returns array of enabled race IDs, or null if all are enabled (not configured)
+        activeRealmRacesEnabledIds(state) {
+            const realm = this.activeRealm;
+            if (!realm) return null;
+            const races = realm.GamingSystem?.races;
+            if (!races || typeof races === 'string') return null;
+            return races.EnabledRaceIds || null;
         },
         // Get gaming system ID for spells
         // Returns GamingSystem.spells.GamingSystemID (new format) or GamingSystem.spells (old string format)
