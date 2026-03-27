@@ -186,6 +186,15 @@ export const useRealmStore = defineStore('realm', {
             if (!pantheons) return null;
             return pantheons.EnabledPantheonIds || null;
         },
+        // Get enabled prayer IDs for the active realm
+        // Returns array of enabled prayer IDs, or null if all are enabled (not configured)
+        activeRealmPantheonsEnabledPrayerIds(state) {
+            const realm = this.activeRealm;
+            if (!realm) return null;
+            const pantheons = realm.GamingSystem?.pantheons;
+            if (!pantheons) return null;
+            return pantheons.EnabledPrayerIds || null;
+        },
         // Get enabled shop items for pantheons
         // Returns array of enabled shop item IDs, or null if all are enabled
         activeRealmPantheonsEnabledShopItems(state) {
