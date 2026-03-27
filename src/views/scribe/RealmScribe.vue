@@ -43,6 +43,45 @@
                     </div>
                 </div>
 
+                <details class="tipsSection">
+                    <summary class="tipsSummary">
+                        <span class="material-symbols-outlined tipsIcon">lightbulb</span>
+                        Tips for Best Results
+                        <span class="material-symbols-outlined tipsArrow">expand_more</span>
+                    </summary>
+                    <ul class="tipsList">
+                        <li>
+                            <strong>Set the scene first</strong> — State your location, who is present,
+                            and the current in-game date at the start of each session.
+                        </li>
+                        <li>
+                            <strong>Spell out names</strong> — The DM should spell out character, NPC,
+                            and location names so the transcript captures the correct spelling.
+                        </li>
+                        <li>
+                            <strong>Speak one at a time</strong> — Overlapping speech makes it harder
+                            to identify who is speaking.
+                        </li>
+                        <li>
+                            <strong>Minimize background noise</strong> — Place the recording device
+                            centrally, at equal distance from all speakers.
+                        </li>
+                        <li>
+                            <strong>Use character names in-character</strong> — The chronicle is written
+                            from the game world's perspective, so naming characters helps {{ features.scribeName }}
+                            tell the story.
+                        </li>
+                        <li>
+                            <strong>Recap key moments</strong> — Briefly narrate or summarize important
+                            events to make sure nothing is lost.
+                        </li>
+                        <li>
+                            <strong>Announce new NPCs and locations</strong> — Say and spell out names
+                            clearly when they are first introduced.
+                        </li>
+                    </ul>
+                </details>
+
                 <div v-if="scribeStore.sessions.length" class="pastSessions">
                     <h3>Past Sessions</h3>
                     <div
@@ -1639,6 +1678,78 @@ function formatMss(totalSeconds) {
     display: inline-flex;
     align-items: center;
     gap: 0.5em;
+}
+
+/* Tips for Best Results */
+.tipsSection {
+    margin-top: 1.5em;
+    background: rgba(76, 31, 51, 0.3);
+    border: 1px solid rgba(212, 175, 55, 0.25);
+    border-radius: 0.5em;
+    max-width: 600px;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+.tipsSummary {
+    display: flex;
+    align-items: center;
+    gap: 0.5em;
+    padding: 0.7em 1em;
+    cursor: pointer;
+    color: var(--theme-accent);
+    font-weight: 600;
+    font-size: 0.95em;
+    list-style: none;
+}
+
+.tipsSummary::-webkit-details-marker {
+    display: none;
+}
+
+.tipsIcon {
+    font-size: 20px;
+    color: rgba(212, 175, 55, 0.8);
+}
+
+.tipsArrow {
+    margin-left: auto;
+    font-size: 20px;
+    transition: transform 0.2s ease;
+}
+
+details.tipsSection[open] .tipsArrow {
+    transform: rotate(180deg);
+}
+
+details.tipsSection[open] .tipsSummary {
+    border-bottom: 1px solid rgba(212, 175, 55, 0.15);
+}
+
+.tipsList {
+    list-style: none;
+    padding: 0.8em 1em 0.8em 1.2em;
+    margin: 0;
+}
+
+.tipsList li {
+    position: relative;
+    padding: 0.4em 0 0.4em 1.2em;
+    font-size: 0.9em;
+    color: bisque;
+    line-height: 1.4;
+    text-align: left;
+}
+
+.tipsList li::before {
+    content: '\2726';
+    position: absolute;
+    left: 0;
+    color: rgba(212, 175, 55, 0.5);
+}
+
+.tipsList li strong {
+    color: var(--theme-accent);
 }
 
 /* UPLOADING */
