@@ -100,7 +100,6 @@ export const useAccountStore = defineStore('account', {
             }
 
             const accessMap = {};
-            let accessNeedsSync = false;
 
             try {
                 // Process each gaming system in the Access map
@@ -127,45 +126,6 @@ export const useAccountStore = defineStore('account', {
 
                     // Fetch and process all shop items for this gaming system
                     await this.processShopItems(shopItemIds, gamingSystemId, accessMap);
-
-                    // Also include system products (e.g., RealmForge Essentials) that may
-                    // not be in Account.Access (GrantToNewAccounts only applies at creation)
-                    try {
-                        const { data } = await apiClient.get(
-                            `/shop/systems/system/${gamingSystemId}`,
-                            { params: { source: 'realm-create' } }
-                        );
-                        const products = data?.products || (Array.isArray(data) ? data : []);
-                        const missingIds = products
-                            .filter(p => p.IsSystemProduct && p.GrantToNewAccounts && !shopItemIds.includes(p.ID))
-                            .map(p => p.ID);
-                        if (missingIds.length > 0) {
-                            await this.processShopItems(missingIds, gamingSystemId, accessMap);
-                            // Persist to Account.Access so it sticks
-                            this.account.Access[gamingSystemId].push(...missingIds);
-                            accessNeedsSync = true;
-                        }
-                    } catch (err) {
-                        console.warn(`Failed to fetch system products for ${gamingSystemId}:`, err);
-                    }
-                }
-
-                // Persist any missing system products back to the account
-                if (accessNeedsSync && this.account?.AccountID) {
-                    try {
-                        const userStore = useUserStore();
-                        const token = userStore.user?.auth?.idToken;
-                        if (token) {
-                            await axios.put(
-                                `${BASE_URL}/accounts/account/${this.account.AccountID}`,
-                                { Access: this.account.Access },
-                                { headers: { Authorization: `Bearer ${token}` } }
-                            );
-                            console.log('Synced missing system products to account Access');
-                        }
-                    } catch (err) {
-                        console.warn('Failed to persist system products to account:', err);
-                    }
                 }
 
                 this.access = accessMap;
