@@ -643,9 +643,15 @@ watch(room, (newRoom) => {
   background: linear-gradient(135deg, var(--theme-bg-surface) 0%, #2a3a5a 100%);
   border: 1px solid var(--theme-accent);
   border-radius: 1rem;
-  padding: 2rem;
+  padding: 1rem;
   position: relative;
   transition: all 0.3s ease;
+}
+
+@media (min-width: 901px) {
+  .room-content {
+    padding: 2rem;
+  }
 }
 
 .room-description {
