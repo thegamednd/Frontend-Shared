@@ -300,13 +300,24 @@
               <span class="email">{{ invitation.email }}</span>
               <span class="expires">Expires {{ formatExpiration(invitation.ttl) }}</span>
             </div>
-            <button
-              @click="promptCancelInvitation(invitation)"
-              class="cancel-btn"
-              title="Cancel invitation"
-            >
-              <span class="material-symbols-outlined">cancel</span>
-            </button>
+            <div class="invitation-actions">
+              <button
+                @click="resendInvitation(invitation)"
+                class="resend-btn"
+                :disabled="resendingInvitationId === invitation.invitationId"
+                title="Resend invitation"
+              >
+                <span v-if="resendingInvitationId === invitation.invitationId" class="material-symbols-outlined spinning">sync</span>
+                <span v-else class="material-symbols-outlined">forward_to_inbox</span>
+              </button>
+              <button
+                @click="promptCancelInvitation(invitation)"
+                class="cancel-btn"
+                title="Cancel invitation"
+              >
+                <span class="material-symbols-outlined">cancel</span>
+              </button>
+            </div>
           </div>
         </div>
         
@@ -1415,6 +1426,7 @@ const calendarConfirmDialog = ref(null);
 const showInviteModal = ref(false);
 const isSending = ref(false);
 const pendingInvitations = ref([]);
+const resendingInvitationId = ref(null);
 
 const inviteForm = ref({
   email: '',
@@ -2215,6 +2227,45 @@ const confirmCancelInvitation = async () => {
     showToast(errorMessage, 'error');
   }
   cancelInviteTarget.value = null;
+};
+
+const resendInvitation = async (invitation) => {
+  if (resendingInvitationId.value) return;
+
+  resendingInvitationId.value = invitation.invitationId;
+
+  try {
+    const response = await axios.post(
+      `${import.meta.env.VITE_API_BASE_URL}/invitations/invitation/${invitation.invitationId}/resend`,
+      null,
+      {
+        headers: {
+          'Authorization': `Bearer ${userStore.user.auth.idToken}`
+        }
+      }
+    );
+
+    const result = response.data;
+
+    // Update the invitation in the local list with the new data
+    const index = pendingInvitations.value.findIndex(
+      inv => inv.invitationId === invitation.invitationId
+    );
+    if (index !== -1 && result.data) {
+      pendingInvitations.value[index] = result.data;
+    }
+
+    showToast(`Invitation resent to ${invitation.email}!`, 'success');
+  } catch (error) {
+    console.error('Error resending invitation:', error);
+    let errorMessage = 'Failed to resend invitation. Please try again.';
+    if (error.response?.data?.message) {
+      errorMessage = error.response.data.message;
+    }
+    showToast(errorMessage, 'error');
+  } finally {
+    resendingInvitationId.value = null;
+  }
 };
 
 const formatExpiration = (ttl) => {
@@ -3766,6 +3817,41 @@ onMounted(async () => {
 .invitation-info .expires {
   color: #888;
   font-size: 0.8rem;
+}
+
+.invitation-actions {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.resend-btn {
+  background: transparent;
+  border: 1px solid var(--theme-accent);
+  color: var(--theme-accent);
+  border-radius: 0.5rem;
+  padding: 0.5rem;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.resend-btn:hover:not(:disabled) {
+  background: var(--theme-accent);
+  color: var(--theme-bg);
+}
+
+.resend-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.spinning {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
 }
 
 .cancel-btn {
