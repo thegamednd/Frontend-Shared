@@ -295,16 +295,18 @@ export const useRealmStore = defineStore('realm', {
         /**
          * Check if psionics are enabled by verifying the Psionicist class
          * is available in the realm's class packages. Requires classes store
-         * to be loaded first.
+         * to be loaded first. Pass the classesStore instance from the caller.
          */
-        async checkPsionicsEnabled() {
+        async checkPsionicsEnabled(classesStore) {
             // Skip if already checked for this realm
             if (this.psionicsEnabled !== null) return this.psionicsEnabled;
 
             try {
-                const classesPath = '@' + '/stores/classes';
-                const { useClassesStore } = await import(/* @vite-ignore */ classesPath);
-                const classesStore = useClassesStore();
+                if (!classesStore) {
+                    console.warn('checkPsionicsEnabled called without classesStore');
+                    this.psionicsEnabled = false;
+                    return false;
+                }
 
                 const psionicist = classesStore.getClassByName('Psionicist');
                 if (!psionicist) {
