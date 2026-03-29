@@ -157,6 +157,14 @@ export const useRealmStore = defineStore('realm', {
         activeRealmPsionicsSystemId(state) {
             return this.activeRealmClassesSystemId;
         },
+        // Get enabled shop items for psionics
+        // Checks GamingSystem.psionicsEnabledShopItems
+        // Returns null if all items enabled or not set
+        activeRealmPsionicsEnabledShopItems(state) {
+            const realm = this.activeRealm;
+            if (!realm) return null;
+            return realm.GamingSystem?.psionicsEnabledShopItems || null;
+        },
         // Get enabled maps for the active realm
         // Returns an array of map IDs that are enabled for this realm
         activeRealmMaps(state) {
