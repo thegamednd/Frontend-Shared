@@ -210,6 +210,13 @@ export const useRealmStore = defineStore('realm', {
             if (!realm) return null;
             return realm.GamingSystem?.pantheonsEnabledShopItems || null;
         },
+        // Get enabled shop items for modules
+        // Returns array of enabled shop item IDs, or null if all are enabled
+        activeRealmModulesEnabledShopItems(state) {
+            const realm = this.activeRealm;
+            if (!realm) return null;
+            return realm.GamingSystem?.modulesEnabledShopItems || null;
+        },
         // Get enabled modules for the active realm
         // Returns an array of module IDs that are enabled for this realm
         activeRealmModules(state) {
