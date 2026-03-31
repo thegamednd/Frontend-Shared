@@ -210,17 +210,6 @@ export const useRealmStore = defineStore('realm', {
             if (!realm) return null;
             return realm.GamingSystem?.pantheonsEnabledShopItems || null;
         },
-        // Get gaming system ID for healing (uses same system as classes)
-        activeRealmHealingSystemId(state) {
-            return this.activeRealmClassesSystemId;
-        },
-        // Get enabled shop items for healing
-        // Returns null if all items enabled or not set
-        activeRealmHealingEnabledShopItems(state) {
-            const realm = this.activeRealm;
-            if (!realm) return null;
-            return realm.GamingSystem?.healingEnabledShopItems || null;
-        },
         // Get enabled modules for the active realm
         // Returns an array of module IDs that are enabled for this realm
         activeRealmModules(state) {
