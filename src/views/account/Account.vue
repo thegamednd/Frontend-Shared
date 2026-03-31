@@ -34,7 +34,12 @@
                 <div class="stat-content">
                     <div class="stat-value">{{ realmStore.arOwnedRealms?.length || 0 }}</div>
                     <div class="stat-label">Owned Realms</div>
-                    <div class="stat-meta">Free Realms: {{ realmStore.arOwnedFreeRealms?.length || 0 }}/{{ accountStore.account?.Realms || 3 }}</div>
+                    <div class="stat-progress">
+                        <div class="progress-bar">
+                            <div class="progress-fill" :style="{ width: realmUsagePercentage + '%' }"></div>
+                        </div>
+                        <span class="progress-text">{{ realmStore.arOwnedRealms?.length || 0 }}/{{ freeRealmLimit }}</span>
+                    </div>
                 </div>
             </div>
 
@@ -112,7 +117,7 @@
                 </h2>
                 <div class="header-actions">
                     <button
-                        v-if="(realmStore.arOwnedFreeRealms?.length || 0) < (accountStore.account?.Realms || 3)"
+                        v-if="(realmStore.arOwnedRealms?.length || 0) < accountStore.account.Realms"
                         @click="$router.push('/realm/create')"
                         class="create-realm-btn"
                     >
@@ -233,8 +238,8 @@
                     </div>
                     <h3>No realms yet</h3>
                     <!-- Show different content based on realm limit -->
-                    <div v-if="(realmStore.arOwnedFreeRealms?.length || 0) >= (accountStore.account?.Realms || 3)">
-                        <p>You've reached your free realm limit ({{ accountStore.account?.Realms || 3 }}).</p>
+                    <div v-if="(realmStore.arOwnedRealms?.length || 0) >= accountStore.account?.Realms">
+                        <p>You've reached your account's realm limit ({{ accountStore.account?.Realms || 1 }} realm{{ (accountStore.account?.Realms || 1) > 1 ? 's' : '' }}).</p>
                         <p>To create additional realms, consider upgrading your account or request an invitation to join an existing realm.</p>
                     </div>
                     <div v-else>
@@ -323,14 +328,42 @@ const realmforgeSettingsUrl = computed(() => {
 // Emit events
 const emits = defineEmits(['set-room']);
 
+// Free realm limit from gaming system (falls back to account.Realms)
+const freeRealmLimit = ref(accountStore.account?.Realms || 3);
+
 onMounted(async () => {
     emits('set-room', 'hrth');
+
+    // Load gaming system's FreeRealms limit
+    const gsId = import.meta.env.VITE_GAMING_SYSTEM_ID;
+    if (gsId) {
+        try {
+            const mod = await import('@/stores/gamingSystems');
+            if (typeof mod.useGamingSystemsStore !== 'function') throw new Error('Store not available');
+            const gamingSystemsStore = mod.useGamingSystemsStore();
+            if (!gamingSystemsStore.isLoaded) {
+                await gamingSystemsStore.fetchGamingSystems();
+            }
+            const gs = gamingSystemsStore.getSystemById(gsId);
+            if (gs?.FreeRealms !== undefined) {
+                freeRealmLimit.value = gs.FreeRealms;
+            }
+        } catch {
+            // Gaming systems store not available in this app — use default limit
+        }
+    }
 });
 
 // Realm switch dialog state
 const realmSwitchDialog = ref(null);
 const targetRealmId = ref(null);
 const switchingRealm = ref(false);
+
+// Computed properties
+const realmUsagePercentage = computed(() => {
+    if (!freeRealmLimit.value) return 0;
+    return Math.round(((realmStore.arOwnedRealms?.length || 0) / freeRealmLimit.value) * 100);
+});
 
 const totalPlayers = computed(() => {
     if (!realmStore.arRealms) return 0;

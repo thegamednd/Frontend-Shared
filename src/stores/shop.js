@@ -40,7 +40,7 @@ export const useShopStore = defineStore('shop', {
          */
         getProductNameById: (state) => (id) => {
             const product = state.products[id];
-            return product?.DisplayTitle || product?.Name || 'Unknown Product';
+            return product?.Name || 'Unknown Product';
         },
 
         /**
