@@ -282,6 +282,25 @@ export const patreonService = {
   },
 
   /**
+   * Gets public Patreon benefit summary for a gaming system
+   * No authentication required — used for promotional banners
+   * @param {string} gamingSystemId - The gaming system ID
+   * @returns {Promise<Object|null>} { campaignName, patreonURL, benefits: [{ type, description }] }
+   */
+  async getSystemBenefits(gamingSystemId) {
+    try {
+      const response = await patreonClient.get(`/patreon/system-benefits/${gamingSystemId}`);
+      if (response.data?.success && response.data?.data) {
+        return response.data.data;
+      }
+      return null;
+    } catch (error) {
+      console.error('Error fetching system benefits:', error);
+      return null;
+    }
+  },
+
+  /**
    * Removes a Patreon benefit with full PayPal subscription handling
    * Cancels old subscription, processes refund, removes benefit, and updates realm tier
    * @param {string} campaignId - The campaign ID
