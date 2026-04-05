@@ -244,6 +244,44 @@ export const patreonService = {
   },
 
   /**
+   * Gets active Patreon discounts for the authenticated user
+   * @returns {Promise<Array>} Array of { GamingSystemID, DiscountPercent, CampaignID, BenefitID }
+   */
+  async getMyDiscounts() {
+    try {
+      const response = await patreonClient.get('/patreon/my-discounts');
+      if (response.data?.success && response.data?.data) {
+        return response.data.data;
+      }
+      return [];
+    } catch (error) {
+      if (error.response?.status === 404) {
+        return [];
+      }
+      console.error('Error fetching Patreon discounts:', error);
+      return [];
+    }
+  },
+
+  /**
+   * Validates discount for cart items (server-side price validation)
+   * @param {Array} items - Array of { productId, quantity }
+   * @returns {Promise<Object>} { items, totalOriginal, totalDiscounted, totalSavings }
+   */
+  async validateDiscount(items) {
+    try {
+      const response = await patreonClient.post('/patreon/validate-discount', { items });
+      if (response.data?.success && response.data?.data) {
+        return response.data.data;
+      }
+      return null;
+    } catch (error) {
+      console.error('Error validating discount:', error);
+      return null;
+    }
+  },
+
+  /**
    * Removes a Patreon benefit with full PayPal subscription handling
    * Cancels old subscription, processes refund, removes benefit, and updates realm tier
    * @param {string} campaignId - The campaign ID
