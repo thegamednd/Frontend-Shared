@@ -1,5 +1,5 @@
 import axios from 'axios';
-import { useUserStore } from '@shared/stores/user';
+import { getCurrentUser, fetchAuthSession } from '@aws-amplify/auth';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
 
@@ -14,21 +14,19 @@ const patreonClient = axios.create({
 });
 
 // Request interceptor to add authentication token
+// Uses Amplify directly so it works in any frontend app without requiring shared user store init
 patreonClient.interceptors.request.use(
   async (config) => {
     try {
-      const userStore = useUserStore();
-      const token = await userStore.getValidToken();
-
-      if (token) {
-        config.headers.Authorization = `Bearer ${token}`;
+      await getCurrentUser();
+      const session = await fetchAuthSession();
+      if (session.tokens?.idToken) {
+        config.headers.Authorization = `Bearer ${session.tokens.idToken.toString()}`;
       }
-
-      return config;
-    } catch (error) {
-      console.error('Error in Patreon request interceptor:', error);
-      return config;
+    } catch {
+      // User is not authenticated — proceed without auth header
     }
+    return config;
   },
   (error) => {
     return Promise.reject(error);
