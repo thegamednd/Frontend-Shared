@@ -38,7 +38,15 @@
                 @click="openCampaignDetails(campaign)"
               >
                 <div class="campaign-info">
-                  <div class="campaign-name">{{ campaign.CampaignName }}</div>
+                  <a
+                    v-if="campaign.PatreonURL"
+                    :href="campaign.PatreonURL"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    class="campaign-name campaign-name--link"
+                    @click.stop
+                  >{{ campaign.CampaignName }} <span class="material-symbols-outlined" style="font-size: 0.85rem; vertical-align: middle;">open_in_new</span></a>
+                  <div v-else class="campaign-name">{{ campaign.CampaignName }}</div>
                   <div class="campaign-creator">by {{ campaign.CreatorName }}</div>
                   <div v-if="getAppliedRealmForCampaign(campaign.CampaignID)" class="campaign-realm">
                     <span class="material-symbols-outlined">castle</span>
@@ -46,17 +54,6 @@
                   </div>
                 </div>
                 <div class="campaign-actions">
-                  <a
-                    v-if="campaign.PatreonURL"
-                    :href="campaign.PatreonURL"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    class="campaign-link"
-                    title="View on Patreon"
-                    @click.stop
-                  >
-                    <span class="material-symbols-outlined">open_in_new</span>
-                  </a>
                   <span class="campaign-view-benefits material-symbols-outlined">chevron_right</span>
                 </div>
               </div>
@@ -539,7 +536,7 @@ const supportedCampaigns = computed(() => {
 
 // Get all owned realms from the realm store, sorted alphabetically by name
 const availableRealms = computed(() => {
-  return [...realmStore.arOwnedRealms].sort((a, b) => {
+  return [...(realmStore.arOwnedRealms || [])].sort((a, b) => {
     const nameA = (a.Name || '').toLowerCase();
     const nameB = (b.Name || '').toLowerCase();
     return nameA.localeCompare(nameB);
@@ -1137,6 +1134,16 @@ onMounted(async () => {
   font-weight: 600;
   font-size: 0.95rem;
   margin-bottom: 0.25rem;
+}
+
+.campaign-name--link {
+  text-decoration: none;
+  color: #ffffff;
+  transition: color 0.2s;
+}
+
+.campaign-name--link:hover {
+  color: #ff424d;
 }
 
 .campaign-creator {
