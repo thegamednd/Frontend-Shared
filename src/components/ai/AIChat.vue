@@ -94,18 +94,23 @@
           </div>
         </div>
 
-        <!-- Thinking Indicator -->
-        <div v-if="aiStore.isLoading" class="message ai-message thinking">
+        <!-- Thinking / Streaming Indicator -->
+        <div v-if="aiStore.isLoading || streamingText" class="message ai-message" :class="{ thinking: aiStore.isLoading && !streamingText }">
           <div class="message-avatar">
             <span class="material-symbols-outlined">auto_awesome</span>
           </div>
           <div class="message-content">
             <span class="message-label">{{ aiName }}</span>
             <div class="message-bubble">
-              <div class="thinking-dots">
+              <div v-if="streamingText" v-html="streamingText"></div>
+              <div v-else class="thinking-dots">
                 <span></span>
                 <span></span>
                 <span></span>
+              </div>
+              <div v-if="toolIndicator" class="tool-indicator">
+                <span class="material-symbols-outlined">search</span>
+                {{ toolIndicator }}
               </div>
             </div>
           </div>
@@ -145,18 +150,23 @@
 </template>
 
 <script setup>
-import { ref, computed, watch, nextTick, onMounted } from 'vue';
+import { ref, computed, watch, nextTick, onMounted, onUnmounted } from 'vue';
 import { useAIStore } from '@shared/stores/ai';
 import { useRealmStore } from '@shared/stores/realm';
+import { useAIStream } from '@shared/composables/useAIStream';
 
 const aiStore = useAIStore();
 const realmStore = useRealmStore();
+const { connectionId, isConnected, isStreaming, connect, disconnect, onToken, onToolUse, onComplete, onError, startStreaming } = useAIStream();
 
 const question = ref('');
 const conversation = ref([]);
 const messagesContainer = ref(null);
 const inputField = ref(null);
 const sidebarOpen = ref(false);
+const streamingText = ref('');
+const toolIndicator = ref('');
+let fallbackTimer = null;
 
 defineEmits(['show-purchase']);
 
@@ -175,6 +185,54 @@ function initWelcomeMessage() {
 onMounted(() => {
   initWelcomeMessage();
   scrollToBottom();
+  connect();
+
+  // Register streaming callbacks
+  onToken((text) => {
+    streamingText.value += text.replace(/\n/g, '<br />');
+    scrollToBottom();
+  });
+
+  onToolUse((toolName) => {
+    toolIndicator.value = 'Consulting the archives...';
+  });
+
+  onComplete((message) => {
+    clearFallbackTimer();
+    const answer = message.answer?.replace(/\n/g, '<br />') || streamingText.value;
+    if (conversation.value.length > 0) {
+      const lastEntry = conversation.value[conversation.value.length - 1];
+      if (lastEntry.question && !lastEntry.answer) {
+        lastEntry.answer = answer;
+      }
+    }
+    if (message.creditsRemaining !== undefined) {
+      aiStore.credits = message.creditsRemaining;
+    }
+    streamingText.value = '';
+    toolIndicator.value = '';
+    aiStore.isLoading = false;
+    scrollToBottom();
+  });
+
+  onError((errorMsg) => {
+    clearFallbackTimer();
+    if (conversation.value.length > 0) {
+      const lastEntry = conversation.value[conversation.value.length - 1];
+      if (lastEntry.question && !lastEntry.answer) {
+        lastEntry.answer = errorMsg || "Hmmmm... my thoughts are clouded. Try again shortly.";
+      }
+    }
+    streamingText.value = '';
+    toolIndicator.value = '';
+    aiStore.isLoading = false;
+    scrollToBottom();
+  });
+});
+
+onUnmounted(() => {
+  clearFallbackTimer();
+  disconnect();
 });
 
 function scrollToBottom() {
@@ -216,6 +274,29 @@ function handleNewConversation() {
   scrollToBottom();
 }
 
+function clearFallbackTimer() {
+  if (fallbackTimer) {
+    clearTimeout(fallbackTimer);
+    fallbackTimer = null;
+  }
+}
+
+function startFallbackTimer(conversationId) {
+  clearFallbackTimer();
+  fallbackTimer = setTimeout(async () => {
+    if (isStreaming.value || (aiStore.isLoading && streamingText.value === '')) {
+      await aiStore.loadConversation(conversationId);
+      if (aiStore.activeConversation && aiStore.activeConversation.length > 0) {
+        conversation.value = aiStore.activeConversation;
+      }
+      streamingText.value = '';
+      toolIndicator.value = '';
+      aiStore.isLoading = false;
+      scrollToBottom();
+    }
+  }, 120000);
+}
+
 async function submitQuestion() {
   if (aiStore.isLoading || aiStore.credits <= 0) return;
 
@@ -231,7 +312,7 @@ async function submitQuestion() {
   conversation.value.push({ question: currentQuestion, answer: '' });
   scrollToBottom();
 
-  const data = await aiStore.sendMessage(currentQuestion);
+  const data = await aiStore.sendMessage(currentQuestion, false, connectionId.value);
 
   if (!data) {
     conversation.value[conversation.value.length - 1].answer =
@@ -247,6 +328,15 @@ async function submitQuestion() {
     conversation.value[conversation.value.length - 1].requiresConfirmation = true;
     conversation.value[conversation.value.length - 1].pendingQuestion = currentQuestion;
     scrollToBottom();
+    return;
+  }
+
+  // Streaming path: backend accepted, answer will arrive via WebSocket
+  if (data.status === 'streaming') {
+    startStreaming();
+    streamingText.value = '';
+    toolIndicator.value = '';
+    startFallbackTimer(data.conversationId);
     return;
   }
 
@@ -671,6 +761,29 @@ watch(conversation, () => {
 .cancel-btn:hover {
   background: color-mix(in srgb, var(--theme-bg-surface) 70%, transparent);
   color: #fff;
+}
+
+/* Tool Indicator */
+.tool-indicator {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 8px;
+  padding-top: 6px;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  color: #888;
+  font-size: 0.8em;
+  font-style: italic;
+}
+
+.tool-indicator .material-symbols-outlined {
+  font-size: 14px;
+  animation: pulse 2s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 0.4; }
+  50% { opacity: 1; }
 }
 
 /* Thinking Animation */
