@@ -351,12 +351,21 @@ async function confirmBroadQuery(index) {
   entry.requiresConfirmation = false;
   entry.answer = '';
 
-  const data = await aiStore.sendMessage(pendingQuestion, true);
+  const data = await aiStore.sendMessage(pendingQuestion, true, connectionId.value);
 
   if (!data) {
     conversation.value[index].answer =
       "Hmmmm... my thoughts are clouded. Try again shortly.";
     scrollToBottom();
+    return;
+  }
+
+  // Streaming path: backend accepted, answer will arrive via WebSocket
+  if (data.status === 'streaming') {
+    startStreaming();
+    streamingText.value = '';
+    toolIndicator.value = '';
+    startFallbackTimer(data.conversationId);
     return;
   }
 
