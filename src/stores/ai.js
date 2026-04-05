@@ -29,7 +29,7 @@ export const useAIStore = defineStore('ai', {
             return AI_API_URL || import.meta.env.VITE_API_BASE_URL;
         },
 
-        async sendMessage(question, confirmed = false) {
+        async sendMessage(question, confirmed = false, connectionId = null) {
             if (!this.realmId) {
                 this.error = 'No active realm selected';
                 return null;
@@ -44,6 +44,7 @@ export const useAIStore = defineStore('ai', {
                     realmId: this.realmId,
                     ...(this.activeConversationId && { conversationId: this.activeConversationId }),
                     ...(confirmed && { confirmed: true }),
+                    ...(connectionId && { connectionId }),
                 });
 
                 const data = response.data;
@@ -56,6 +57,11 @@ export const useAIStore = defineStore('ai', {
                 // Update credits from server response
                 if (data.creditsRemaining !== undefined) {
                     this.credits = data.creditsRemaining;
+                }
+
+                // Streaming path: backend accepted async, answer will arrive via WebSocket
+                if (data.status === 'streaming') {
+                    return data;
                 }
 
                 return data;
