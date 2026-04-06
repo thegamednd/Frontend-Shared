@@ -1200,7 +1200,7 @@
 
 <script setup>
 import { ref, shallowRef, computed, onMounted, nextTick, watch } from 'vue';
-import { useRouter } from 'vue-router';
+import { useRouter, useRoute } from 'vue-router';
 import axios from 'axios';
 import { useAccountStore } from '@shared/stores/account';
 import { useUserStore } from '@shared/stores/user';
@@ -1256,6 +1256,7 @@ const subscriptionStore = useSubscriptionStore();
 const sessionStore = useSessionStore();
 const configStore = useConfigStore();
 const router = useRouter();
+const route = useRoute();
 
 // Delete realm state
 const showDeleteRealmDialog = ref(false);
@@ -2763,6 +2764,23 @@ onMounted(async () => {
       await sessionStore.loadRealmSessions(realmStore.activeRealmId);
     } catch (error) {
       console.error('Error loading sessions:', error);
+    }
+  }
+
+  // Handle ?tier= query param for cross-subdomain subscription deep link
+  const tierParam = route.query.tier;
+  if (tierParam) {
+    router.replace({ path: route.path, query: {} });
+    if (!subscriptionStore.loaded) {
+      await subscriptionStore.loadSubscriptions();
+    }
+    showSubscriptionDialog.value = true;
+    await nextTick();
+    const targetPlan = subscriptionStore.allSubscriptions.find(
+      sub => sub.Tier.toLowerCase() === tierParam.toLowerCase()
+    );
+    if (targetPlan) {
+      selectPlan(targetPlan);
     }
   }
 });
