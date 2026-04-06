@@ -214,23 +214,27 @@
                     </div>
                   </div>
                 </div>
+
+                <!-- Discount Info -->
+                <div v-if="benefit.DiscountPercent" class="benefit-discount-info">
+                  <span class="material-symbols-outlined">percent</span>
+                  <div class="discount-details">
+                    <strong>{{ benefit.DiscountPercent }}% off</strong> all shop products for this gaming system
+                  </div>
+                </div>
               </div>
 
               <!-- Application Status -->
               <div class="benefit-application">
-                <!-- Credit Benefits: Read-Only Status (Automatically Issued) -->
-                <div v-if="benefit.BenefitType === 'credit'">
-                  <div v-if="benefit.AppliedToAccount" class="benefit-auto-issued">
+                <!-- Discount / Shop Items: Account-level, no realm application needed -->
+                <div v-if="!benefit.GrantedTier">
+                  <div class="benefit-auto-issued">
                     <span class="material-symbols-outlined">check_circle</span>
-                    <span>Automatically issued to your account</span>
-                  </div>
-                  <div v-else class="benefit-pending-auto">
-                    <span class="material-symbols-outlined">schedule</span>
-                    <span>Will be automatically issued when you connect Patreon</span>
+                    <span>Automatically applied to your account</span>
                   </div>
                 </div>
 
-                <!-- Direct Tier Benefits: Manual Application to Realm -->
+                <!-- Subscription Tier Benefits: Manual Application to Realm -->
                 <div v-else>
                   <div v-if="benefit.AppliedToRealmID" class="benefit-applied-section">
                     <div class="benefit-applied">
@@ -858,60 +862,27 @@ const shopBaseUrl = computed(() => {
 
 // Utility methods for benefit display
 const getBenefitIcon = (benefit) => {
-  // New schema: check for GrantedTier and/or ShopItems
-  if (benefit.GrantedTier && benefit.ShopItems?.length > 0) {
-    return 'card_membership'; // Combined benefit
-  } else if (benefit.GrantedTier) {
-    return 'workspace_premium'; // Tier grant
-  } else if (benefit.ShopItems?.length > 0) {
-    return 'shopping_bag'; // Shop items
-  }
-  // Fallback to legacy BenefitType
-  switch (benefit.BenefitType) {
-    case 'credit':
-      return 'account_balance_wallet';
-    case 'direct_tier':
-      return 'workspace_premium';
-    case 'custom':
-      return 'card_giftcard';
-    default:
-      return 'redeem';
-  }
+  if (benefit.DiscountPercent) return 'percent';
+  if (benefit.GrantedTier && benefit.ShopItems?.length > 0) return 'card_membership';
+  if (benefit.GrantedTier) return 'workspace_premium';
+  if (benefit.ShopItems?.length > 0) return 'shopping_bag';
+  return 'redeem';
 };
 
 const getBenefitTypeLabel = (benefit) => {
-  // New schema: check for GrantedTier and/or ShopItems
-  if (benefit.GrantedTier && benefit.ShopItems?.length > 0) {
-    return 'Tier + Shop Items';
-  } else if (benefit.GrantedTier) {
-    return 'Tier Grant';
-  } else if (benefit.ShopItems?.length > 0) {
-    return 'Shop Items';
-  }
-  // Fallback to legacy BenefitType
-  switch (benefit.BenefitType) {
-    case 'credit':
-      return 'Credit';
-    case 'direct_tier':
-      return 'Tier Grant';
-    case 'custom':
-      return 'Custom';
-    default:
-      return benefit.BenefitType || 'Benefit';
-  }
+  const parts = [];
+  if (benefit.GrantedTier) parts.push('Tier Grant');
+  if (benefit.ShopItems?.length > 0) parts.push('Shop Items');
+  if (benefit.DiscountPercent) parts.push('Shop Discount');
+  return parts.length > 0 ? parts.join(' + ') : 'Benefit';
 };
 
 const getBenefitTypeClass = (benefit) => {
-  // New schema: determine class based on what the benefit grants
-  if (benefit.GrantedTier && benefit.ShopItems?.length > 0) {
-    return 'benefit-type-combined';
-  } else if (benefit.GrantedTier) {
-    return 'benefit-type-direct_tier';
-  } else if (benefit.ShopItems?.length > 0) {
-    return 'benefit-type-shop_items';
-  }
-  // Fallback to legacy BenefitType
-  return `benefit-type-${benefit.BenefitType || 'default'}`;
+  if (benefit.DiscountPercent) return 'benefit-type-discount';
+  if (benefit.GrantedTier && benefit.ShopItems?.length > 0) return 'benefit-type-combined';
+  if (benefit.GrantedTier) return 'benefit-type-direct_tier';
+  if (benefit.ShopItems?.length > 0) return 'benefit-type-shop_items';
+  return 'benefit-type-default';
 };
 
 // Load applied realms for all campaigns
@@ -1543,6 +1514,12 @@ onMounted(async () => {
   border: 1px solid rgba(103, 58, 183, 0.3);
 }
 
+.benefit-type-discount {
+  background: rgba(46, 204, 113, 0.2);
+  color: #2ecc71;
+  border: 1px solid rgba(46, 204, 113, 0.3);
+}
+
 .benefit-details {
   margin-bottom: 1rem;
   display: flex;
@@ -1633,6 +1610,30 @@ onMounted(async () => {
   background: color-mix(in srgb, var(--theme-accent) 25%, transparent);
   border-color: color-mix(in srgb, var(--theme-accent) 50%, transparent);
   color: #ffe0b2;
+}
+
+.benefit-discount-info {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem;
+  background: rgba(46, 204, 113, 0.1);
+  border: 1px solid rgba(46, 204, 113, 0.2);
+  border-radius: 0.5rem;
+}
+
+.benefit-discount-info .material-symbols-outlined {
+  color: #2ecc71;
+  font-size: 1.25rem;
+}
+
+.discount-details {
+  color: #ccc;
+  font-size: 0.9rem;
+}
+
+.discount-details strong {
+  color: #2ecc71;
 }
 
 .shop-item-link .material-symbols-outlined {
