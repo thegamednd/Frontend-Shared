@@ -1050,12 +1050,23 @@
           <div v-if="selectedPlan && canUpgrade" class="proration-info">
             <div class="proration-header">
               <span class="material-symbols-outlined">info</span>
-              <strong v-if="isUpgrade">Upgrading to {{ selectedPlan.Name }}</strong>
+              <strong v-if="isIntervalChange">Switching to {{ billingInterval === 'annual' ? 'Annual' : 'Monthly' }} Billing</strong>
+              <strong v-else-if="isUpgrade">Upgrading to {{ selectedPlan.Name }}</strong>
               <strong v-else>Downgrading to {{ selectedPlan.Name }}</strong>
             </div>
             <div class="proration-content">
+              <!-- Interval change (same tier, different billing period) -->
+              <div v-if="isIntervalChange">
+                <p v-if="billingInterval === 'annual'">
+                  <strong>Switch to Annual Billing:</strong> Your current monthly billing will continue until the end of this billing period, then your annual subscription begins. You'll save 20% compared to paying monthly.
+                </p>
+                <p v-else>
+                  <strong>Switch to Monthly Billing:</strong> Your annual subscription will remain active until the end of your current annual period. Monthly billing will begin after that.
+                </p>
+                <p class="proration-note">Your features and limits stay exactly the same.</p>
+              </div>
               <!-- Patreon Billing Sync Info -->
-              <div v-if="isPatreonUpgradeTier && isUpgrade" class="patreon-billing-sync">
+              <div v-else-if="isPatreonUpgradeTier && isUpgrade" class="patreon-billing-sync">
                 <div v-if="isLoadingBillingInfo" class="billing-loading">
                   <span class="material-symbols-outlined spinning">refresh</span>
                   Loading billing sync info...
@@ -1089,20 +1100,33 @@
               </div>
               <!-- Regular upgrade/downgrade info -->
               <div v-else>
-                <p v-if="isUpgrade">
-                  <strong v-if="isUpgradeFromFree">Start Your Subscription:</strong>
-                  <strong v-else>Immediate Upgrade:</strong>
-                  <span v-if="isUpgradeFromFree">Your subscription will start immediately and billing begins now. Changes take effect right away!</span>
-                  <span v-else>You'll only pay the difference for the remaining days in your billing cycle and changes take effect immediately.</span>
-                </p>
-                <p v-else>
-                  <strong>Scheduled Downgrade:</strong> You'll keep all current features until your billing period ends, then automatically transition to {{ selectedPlan.Name }}. No refunds needed - you get full value for what you've paid!
-                </p>
-                <p class="proration-note" v-if="isUpgrade">
-                  <span v-if="isUpgradeFromFree">Start enjoying premium features immediately!</span>
-                  <span v-else>Changes take effect immediately. No lost subscription time!</span>
-                </p>
-                <p class="proration-note downgrade-transition" v-else>Your current plan will remain active until {{ nextBillingDate }}, then automatically change to {{ selectedPlan.Name }}.</p>
+                <!-- Loading proration -->
+                <div v-if="isLoadingProration" style="text-align: center; padding: 0.5rem 0;">
+                  <span class="material-symbols-outlined spinning" style="font-size: 1.2rem;">refresh</span>
+                  Calculating billing...
+                </div>
+                <!-- Proration preview available -->
+                <template v-else-if="prorationPreview?.preview && isUpgrade && !isUpgradeFromFree">
+                  <p>
+                    <strong>Immediate Upgrade:</strong>
+                    <span v-if="prorationPreview.preview.billing.immediateCharge > 0">You'll be charged <strong>${{ (prorationPreview.preview.billing.immediateCharge / 100).toFixed(2) }}</strong> today<span v-if="prorationPreview.preview.currentPlan.unusedAmount > 0"> (after a ${{ (prorationPreview.preview.currentPlan.unusedAmount / 100).toFixed(2) }} credit for {{ prorationPreview.preview.currentPlan.daysRemaining }} unused days on your current plan)</span>. Your {{ selectedPlan.Name }} {{ billingInterval }} plan begins immediately at ${{ (prorationPreview.preview.newPlan.cycleRate / 100).toFixed(2) }}{{ billingInterval === 'annual' ? '/year' : '/month' }} going forward.</span>
+                    <span v-else>No charge today. Your {{ selectedPlan.Name }} {{ billingInterval }} plan begins immediately at ${{ (prorationPreview.preview.newPlan.cycleRate / 100).toFixed(2) }}{{ billingInterval === 'annual' ? '/year' : '/month' }} going forward.</span>
+                  </p>
+                </template>
+                <!-- Fallback without proration data -->
+                <template v-else>
+                  <p v-if="isUpgrade">
+                    <strong v-if="isUpgradeFromFree">Start Your Subscription:</strong>
+                    <strong v-else>Immediate Upgrade:</strong>
+                    <span v-if="isUpgradeFromFree">Your subscription will start immediately and billing begins now. Changes take effect right away!</span>
+                    <span v-else-if="isCrossIntervalUpgrade">Your current {{ subscriptionStore.formatCost(currentPlan.Cost) }} plan will be cancelled and any unused days credited. Your {{ selectedPlan.Name }} annual plan starts immediately at ${{ (annualCostFor(selectedPlan) / 100).toFixed(2) }}/year.</span>
+                    <span v-else>You'll pay the prorated difference for the remaining days in your current billing cycle. Your new {{ selectedPlan.Name }} plan at {{ subscriptionStore.formatCost(selectedPlan.Cost, billingInterval) }} takes effect immediately.</span>
+                  </p>
+                  <p v-else>
+                    <strong>Scheduled Downgrade:</strong> You'll keep all current features until your billing period ends, then automatically transition to {{ selectedPlan.Name }}. No refunds needed - you get full value for what you've paid!
+                  </p>
+                  <p class="proration-note downgrade-transition" v-if="!isUpgrade">Your current plan will remain active until {{ nextBillingDate }}, then automatically change to {{ selectedPlan.Name }}.</p>
+                </template>
               </div>
             </div>
           </div>
@@ -1224,6 +1248,7 @@
 import { ref, shallowRef, computed, onMounted, nextTick, watch } from 'vue';
 import { useRouter, useRoute } from 'vue-router';
 import axios from 'axios';
+import apiClient from '@shared/utils/api';
 import { useAccountStore } from '@shared/stores/account';
 import { useUserStore } from '@shared/stores/user';
 import { useRealmStore } from '@shared/stores/realm';
@@ -1302,6 +1327,8 @@ const showSubscriptionDialog = ref(false);
 const selectedPlanTier = ref('');
 const selectedPlan = ref(null);
 const billingInterval = ref('monthly');
+const prorationPreview = ref(null);
+const isLoadingProration = ref(false);
 
 function annualCostFor(subscription) {
   return subscription.AnnualCost || Math.round(subscription.Cost * 12 * 0.80);
@@ -1409,9 +1436,9 @@ const availablePlans = computed(() => {
     return subscriptionStore.getUpgradeTiersForPatreon;
   }
 
-  // Otherwise, show only regular tiers (excluding upgrade tiers and current tier)
+  // Show regular tiers, excluding current tier only if same billing interval
   return subscriptionStore.getRegularSubscriptions
-    .filter(sub => sub.Tier.toLowerCase() !== currentTier);
+    .filter(sub => sub.Tier.toLowerCase() !== currentTier || billingInterval.value !== realmBillingInterval.value);
 });
 
 // State for character management
@@ -2425,6 +2452,7 @@ const loadPendingInvitations = async () => {
 // Subscription dialog functions
 const openSubscriptionDialog = async () => {
   showSubscriptionDialog.value = true;
+  billingInterval.value = realmBillingInterval.value;
   // Load subscriptions when opening dialog
   if (!subscriptionStore.loaded) {
     await subscriptionStore.loadSubscriptions();
@@ -2467,6 +2495,9 @@ const selectPlan = async (plan) => {
   selectedPlanTier.value = plan.Tier;
   selectedPlan.value = plan;
 
+  // Fetch proration preview for paid tier changes
+  await fetchProrationPreview(plan.Tier);
+
   // Fetch Patreon billing info when selecting a Patreon upgrade tier
   if (plan.RequiresPatreonFellowship && hasPatreonBenefit.value) {
     await fetchPatreonBillingInfo();
@@ -2477,19 +2508,47 @@ const selectPlan = async (plan) => {
   }
 };
 
+// Refetch proration when billing interval changes
+watch(billingInterval, () => {
+  if (selectedPlan.value) {
+    fetchProrationPreview(selectedPlan.value.Tier);
+  }
+});
+
+const fetchProrationPreview = async (newTier) => {
+  // Only fetch for paid plans when there's an active subscription to prorate from
+  if (!realmStore.activeRealmId || realmTier.value === 'Free') {
+    prorationPreview.value = null;
+    return;
+  }
+
+  isLoadingProration.value = true;
+  prorationPreview.value = null;
+
+  try {
+    const response = await apiClient.post('/subscriptions/proration-preview', {
+      realmId: realmStore.activeRealmId,
+      newTier,
+      billingInterval: billingInterval.value
+    });
+
+    if (response.data?.success) {
+      prorationPreview.value = response.data.data;
+    }
+  } catch (error) {
+    console.error('Failed to fetch proration preview:', error);
+    prorationPreview.value = null;
+  } finally {
+    isLoadingProration.value = false;
+  }
+};
+
 const fetchPatreonBillingInfo = async () => {
   isLoadingBillingInfo.value = true;
   billingInfoError.value = null;
 
   try {
-    const response = await axios.get(
-      `${import.meta.env.VITE_PAYPAL_API_BASE_URL}/subscriptions/patreon-billing-info`,
-      {
-        headers: {
-          Authorization: `Bearer ${userStore.idToken}`
-        }
-      }
-    );
+    const response = await apiClient.get('/subscriptions/patreon-billing-info');
 
     if (response.data.success && response.data.data.hasBillingInfo) {
       patreonBillingInfo.value = response.data.data;
@@ -2540,8 +2599,16 @@ const patreonSyncSetupFee = computed(() => {
   };
 });
 
+const realmBillingInterval = computed(() => {
+  return realmStore.activeRealm?.BillingInterval || 'monthly';
+});
+
 const canUpgrade = computed(() => {
-  return selectedPlanTier.value && selectedPlanTier.value !== realmTier.value.toLowerCase();
+  if (!selectedPlanTier.value) return false;
+  const sameTier = selectedPlanTier.value === realmTier.value.toLowerCase();
+  const sameInterval = billingInterval.value === realmBillingInterval.value;
+  // Allow action if tier differs OR billing interval differs
+  return !sameTier || !sameInterval;
 });
 
 const nextBillingDate = computed(() => {
@@ -2553,9 +2620,22 @@ const nextBillingDate = computed(() => {
   return nextMonth.toLocaleDateString();
 });
 
+const isIntervalChange = computed(() => {
+  if (!selectedPlan.value) return false;
+  const sameTier = selectedPlanTier.value === realmTier.value.toLowerCase();
+  return sameTier && billingInterval.value !== realmBillingInterval.value;
+});
+
 const isUpgrade = computed(() => {
   if (!selectedPlan.value || !currentPlan.value) return false;
   return selectedPlan.value.Cost > currentPlan.value.Cost;
+});
+
+const isCrossIntervalUpgrade = computed(() => {
+  if (!selectedPlan.value) return false;
+  const differentTier = selectedPlanTier.value !== realmTier.value.toLowerCase();
+  const differentInterval = billingInterval.value !== realmBillingInterval.value;
+  return differentTier && differentInterval && isUpgrade.value;
 });
 
 const isUpgradeFromFree = computed(() => {
@@ -2563,8 +2643,13 @@ const isUpgradeFromFree = computed(() => {
 });
 
 const getActionButtonText = () => {
-  if (selectedPlanTier.value === realmTier.value.toLowerCase()) {
+  const sameTier = selectedPlanTier.value === realmTier.value.toLowerCase();
+  const sameInterval = billingInterval.value === realmBillingInterval.value;
+  if (sameTier && sameInterval) {
     return 'Current Plan';
+  }
+  if (sameTier && !sameInterval) {
+    return billingInterval.value === 'annual' ? 'Switch to Annual' : 'Switch to Monthly';
   }
   if (isUpgrade.value) {
     return 'Upgrade Plan';
@@ -2794,10 +2879,14 @@ onMounted(async () => {
     }
   }
 
-  // Handle ?tier= query param for cross-subdomain subscription deep link
+  // Handle ?tier= and ?interval= query params for cross-subdomain subscription deep link
   const tierParam = route.query.tier;
+  const intervalParam = route.query.interval;
   if (tierParam) {
     router.replace({ path: route.path, query: {} });
+    if (intervalParam === 'annual' || intervalParam === 'monthly') {
+      billingInterval.value = intervalParam;
+    }
     if (!subscriptionStore.loaded) {
       await subscriptionStore.loadSubscriptions();
     }
