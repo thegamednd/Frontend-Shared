@@ -1119,6 +1119,7 @@
                     <strong v-if="isUpgradeFromFree">Start Your Subscription:</strong>
                     <strong v-else>Immediate Upgrade:</strong>
                     <span v-if="isUpgradeFromFree">Your subscription will start immediately and billing begins now. Changes take effect right away!</span>
+                    <span v-else-if="isCrossIntervalUpgrade && crossIntervalDiscount">You have {{ crossIntervalDiscount.daysRemaining }} days remaining on your current plan worth ${{ (crossIntervalDiscount.remainingValue / 100).toFixed(2) }}. A credit of <strong>${{ (crossIntervalDiscount.discount / 100).toFixed(2) }}</strong> will be applied to your first year. You'll pay <strong>${{ (crossIntervalDiscount.firstYearPrice / 100).toFixed(2) }}</strong> today for your first year of {{ selectedPlan.Name }}. Renews at ${{ (crossIntervalDiscount.renewalPrice / 100).toFixed(2) }}/year.</span>
                     <span v-else-if="isCrossIntervalUpgrade">Your current {{ subscriptionStore.formatCost(currentPlan.Cost) }} plan will be cancelled and any unused days credited. Your {{ selectedPlan.Name }} annual plan starts immediately at ${{ (annualCostFor(selectedPlan) / 100).toFixed(2) }}/year.</span>
                     <span v-else>You'll pay the prorated difference for the remaining days in your current billing cycle. Your new {{ selectedPlan.Name }} plan at {{ subscriptionStore.formatCost(selectedPlan.Cost, billingInterval) }} takes effect immediately.</span>
                   </p>
@@ -2629,6 +2630,10 @@ const isIntervalChange = computed(() => {
 const isUpgrade = computed(() => {
   if (!selectedPlan.value || !currentPlan.value) return false;
   return selectedPlan.value.Cost > currentPlan.value.Cost;
+});
+
+const crossIntervalDiscount = computed(() => {
+  return prorationPreview.value?.preview?.crossIntervalDiscount || null;
 });
 
 const isCrossIntervalUpgrade = computed(() => {
