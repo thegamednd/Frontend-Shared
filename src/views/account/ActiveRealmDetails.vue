@@ -970,6 +970,23 @@
               <p>Your realm is currently on the {{ realmTier }} subscription plan.</p>
             </div>
           </div>
+          <!-- Billing Interval Toggle -->
+          <div class="billing-interval-toggle">
+            <button
+              class="interval-btn"
+              :class="{ active: billingInterval === 'monthly' }"
+              @click="billingInterval = 'monthly'"
+            >Monthly</button>
+            <button
+              class="interval-btn"
+              :class="{ active: billingInterval === 'annual' }"
+              @click="billingInterval = 'annual'"
+            >
+              Annual
+              <span class="save-badge">Save 20%</span>
+            </button>
+          </div>
+
           <div class="available-plans">
             <h4>Available Plans</h4>
 
@@ -1012,7 +1029,11 @@
                 <div class="plan-header">
                   <strong>{{ subscription.Name || subscriptionStore.formatTierName(subscription.Tier) }}</strong>
                   <span v-if="subscription.RequiresPatreonFellowship" class="patreon-badge">Patreon Upgrade</span>
-                  <span class="plan-cost">{{ subscriptionStore.formatCost(subscription.Cost) }}</span>
+                  <span v-if="billingInterval === 'annual' && subscription.Cost > 0" class="plan-cost">
+                    {{ subscriptionStore.formatCost(annualCostFor(subscription), 'annual') }}
+                    <span class="plan-cost-effective">${{ (annualCostFor(subscription) / 100 / 12).toFixed(2) }}/mo</span>
+                  </span>
+                  <span v-else class="plan-cost">{{ subscriptionStore.formatCost(subscription.Cost) }}</span>
                 </div>
                 <div class="plan-features">
                   <div class="feature">{{ subscription.Articles }} Articles</div>
@@ -1096,6 +1117,7 @@
               <div class="paypal-button-wrapper">
                 <PayPalSubscriptionButton
                   :plan-tier="selectedPlanTier"
+                  :billing-interval="billingInterval"
                   :realm-id="realmStore.activeRealmId"
                   :disabled="!canUpgrade || paypalStore?.isProcessing || isLoadingBillingInfo"
                   :compact="true"
@@ -1279,6 +1301,11 @@ const cancelInviteDialogRef = ref(null);
 const showSubscriptionDialog = ref(false);
 const selectedPlanTier = ref('');
 const selectedPlan = ref(null);
+const billingInterval = ref('monthly');
+
+function annualCostFor(subscription) {
+  return subscription.AnnualCost || Math.round(subscription.Cost * 12 * 0.80);
+}
 const isProcessingCreditPayment = ref(false);
 
 // Patreon billing sync state
@@ -5160,6 +5187,64 @@ onMounted(async () => {
   overflow-y: auto;
   flex: 1;
   min-height: 0;
+}
+
+/* Billing Interval Toggle */
+.billing-interval-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0;
+  margin: 1rem 0;
+  border: 1px solid rgba(255, 215, 0, 0.2);
+  border-radius: 8px;
+  overflow: hidden;
+  background: rgba(0, 0, 0, 0.3);
+  width: fit-content;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.interval-btn {
+  font-family: inherit;
+  font-size: 0.85rem;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  padding: 0.5rem 1.25rem;
+  border: none;
+  background: transparent;
+  color: rgba(255, 255, 255, 0.5);
+  cursor: pointer;
+  transition: all 0.25s ease;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.interval-btn.active {
+  background: rgba(255, 215, 0, 0.12);
+  color: #ffd700;
+}
+
+.save-badge {
+  font-size: 0.65rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  color: #1a0f0a;
+  background: linear-gradient(135deg, #c9a876, #ffd700);
+  padding: 0.1rem 0.4rem;
+  border-radius: 3px;
+  line-height: 1.3;
+  letter-spacing: 0.3px;
+}
+
+.plan-cost-effective {
+  display: block;
+  font-size: 0.75rem;
+  color: rgba(255, 255, 255, 0.45);
+  font-weight: 400;
+  font-style: italic;
+  margin-top: 1px;
 }
 
 .subscription-dialog .current-plan h4,
