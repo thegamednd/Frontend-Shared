@@ -104,9 +104,12 @@ export const useSubscriptionStore = defineStore('subscription', {
         /**
          * Format cost for display
          */
-        formatCost(costInCents) {
+        formatCost(costInCents, interval = 'monthly') {
             if (costInCents === 0) {
                 return 'Free';
+            }
+            if (interval === 'annual') {
+                return `$${(costInCents / 100).toFixed(2)}/year`;
             }
             return `$${(costInCents / 100).toFixed(2)}/month`;
         },
