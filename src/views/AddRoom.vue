@@ -21,7 +21,7 @@
         </div>
         <div class="warning-content">
           <h3>Archived Room Limit Reached</h3>
-          <p>You've reached your realm's archived room limit ({{ roomLimit }} room{{ roomLimit > 1 ? 's' : '' }}). New rooms are created as archived by default. To create additional rooms, delete some archived rooms first.</p>
+          <p>You've reached your realm's archived room limit ({{ roomLimit }} room{{ roomLimit > 1 ? 's' : '' }}). New rooms are created as archived by default. To create additional rooms, {{ roomLimitMessage }} first.</p>
           <button @click="cancel" class="btn btn-primary">
             <span class="material-symbols-outlined">arrow_back</span>
             Return to Previous Page
@@ -148,8 +148,19 @@ const currentRoomCount = computed(() => {
   return contentStore.arRooms.filter(room => room.IsActive === false).length;
 });
 
+const activeRoomCount = computed(() => {
+  return contentStore.arRooms.filter(room => room.IsActive !== false).length;
+});
+
 const hasReachedRoomLimit = computed(() => {
   return currentRoomCount.value >= roomLimit.value;
+});
+
+const roomLimitMessage = computed(() => {
+  if (activeRoomCount.value >= roomLimit.value) {
+    return 'delete an archived room';
+  }
+  return 'activate one of your archived rooms';
 });
 
 // Methods
