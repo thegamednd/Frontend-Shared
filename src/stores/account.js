@@ -302,15 +302,20 @@ export const useAccountStore = defineStore('account', {
                     break;
 
                 case 'Maps':
-                    if (ID && !accessMap[gamingSystemId].Maps.includes(ID)) {
-                        accessMap[gamingSystemId].Maps.push(ID);
-                    }
-                    if (IDs && IDs.length > 0) {
-                        IDs.forEach(id => {
-                            if (!accessMap[gamingSystemId].Maps.includes(id)) {
-                                accessMap[gamingSystemId].Maps.push(id);
-                            }
-                        });
+                    if (!ID && (!IDs || IDs.length === 0)) {
+                        // No specific IDs = full access to all maps
+                        accessMap[gamingSystemId].Maps = true;
+                    } else if (accessMap[gamingSystemId].Maps !== true) {
+                        if (ID && !accessMap[gamingSystemId].Maps.includes(ID)) {
+                            accessMap[gamingSystemId].Maps.push(ID);
+                        }
+                        if (IDs && IDs.length > 0) {
+                            IDs.forEach(id => {
+                                if (!accessMap[gamingSystemId].Maps.includes(id)) {
+                                    accessMap[gamingSystemId].Maps.push(id);
+                                }
+                            });
+                        }
                     }
                     break;
 
