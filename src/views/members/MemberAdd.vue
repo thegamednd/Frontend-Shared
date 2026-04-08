@@ -7,8 +7,9 @@
                     <button @click="cancel" class="btn-cancel" title="Cancel">
                         <span class="material-symbols-outlined">cancel</span>
                     </button>
-                    <button @click="save" ref="btnSave" class="btn-save" title="Save Character">
-                        <span class="material-symbols-outlined">save</span>
+                    <button @click="save" ref="btnSave" class="btn-save" :disabled="isSaving" title="Save Character">
+                        <span v-if="isSaving" class="material-symbols-outlined spinning">hourglass_empty</span>
+                        <span v-else class="material-symbols-outlined">save</span>
                     </button>
                 </span>
             </h2>
@@ -132,24 +133,33 @@
                     <div class="form-grid">
                         <div class="form-field">
                             <label for="born">Born</label>
-                            <input
-                                autocomplete="off"
-                                type="text"
-                                id="born"
-                                v-model="characterData.Born"
-                                maxlength="64"
-                            />
+                            <div class="year-field-row">
+                                <input
+                                    autocomplete="off"
+                                    type="number"
+                                    id="born"
+                                    v-model.number="characterData.Born"
+                                    min="0"
+                                    max="99999"
+                                />
+                                <span class="date-suffix-label">{{ realmStore.activeRealm?.DateSuffix?.Abbr || 'SF' }}</span>
+                            </div>
                         </div>
 
                         <div class="form-field">
                             <label for="died">Died</label>
-                            <input
-                                autocomplete="off"
-                                type="text"
-                                id="died"
-                                v-model="characterData.Died"
-                                maxlength="64"
-                            />
+                            <div class="year-field-row">
+                                <input
+                                    autocomplete="off"
+                                    type="number"
+                                    id="died"
+                                    v-model.number="characterData.Died"
+                                    min="0"
+                                    max="99999"
+                                    placeholder="Alive when unset"
+                                />
+                                <span class="date-suffix-label">{{ realmStore.activeRealm?.DateSuffix?.Abbr || 'SF' }}</span>
+                            </div>
                         </div>
 
                         <div class="form-field">
@@ -340,6 +350,7 @@ let accountStore = null;
 const storesReady = ref(false);
 
 const btnSave = ref(null);
+const isSaving = ref(false);
 const editor = ref(null);
 const elFileUploader = ref(null);
 const elMemberImage = ref(null);
@@ -590,6 +601,8 @@ const removeImage = () => {
 
 // Form actions
 const save = async () => {
+    if (isSaving.value) return;
+
     try {
         // Validate required fields
         const errors = [];
@@ -603,7 +616,7 @@ const save = async () => {
         if (features.hasClasses && (!characterData.value.Classes || !characterData.value.Classes.length)) {
             errors.push('classes');
         }
-        if (features.hasClasses && !characterData.value.Born?.trim()) {
+        if (features.hasClasses && !characterData.value.Born) {
             errors.push('born');
         }
         if (!characterData.value.Group?.trim()) {
@@ -645,6 +658,8 @@ const save = async () => {
 
         console.log('Saving character...', payload);
 
+        isSaving.value = true;
+
         // Use existing postMember method
         const result = await characterStore.postMember(payload);
 
@@ -652,9 +667,11 @@ const save = async () => {
             console.log('Character saved successfully');
             router.push('/gallery');
         } else {
+            isSaving.value = false;
             alert('Failed to create character. Please try again.');
         }
     } catch (error) {
+        isSaving.value = false;
         console.error('Error saving character:', error);
         alert('An error occurred while saving the character. Please try again.');
     }
@@ -760,6 +777,14 @@ const cancel = () => {
   transform: none;
 }
 
+.btn-save .material-symbols-outlined.spinning {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
 .btn-save .material-symbols-outlined,
 .btn-cancel .material-symbols-outlined {
   font-size: 18px;
@@ -835,6 +860,23 @@ const cancel = () => {
     outline: none;
     border-color: var(--theme-accent);
     box-shadow: 0 0 0 2px color-mix(in srgb, var(--theme-accent) 30%, transparent);
+}
+
+.year-field-row {
+    display: flex;
+    align-items: center;
+    gap: 0.5em;
+}
+
+.year-field-row input {
+    flex: 1;
+}
+
+.date-suffix-label {
+    color: #888;
+    font-size: 0.9em;
+    font-style: italic;
+    white-space: nowrap;
 }
 
 .weight-field {

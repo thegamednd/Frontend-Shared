@@ -30,6 +30,7 @@ export function useAIWeather() {
   const weather = ref(null);
   const loading = ref(false);
   const error = ref('');
+  const conditionsHighlight = ref(false);
 
   const availableEnvironments = computed(() => {
     const absLat = Math.abs(latitude.value);
@@ -43,7 +44,27 @@ export function useAIWeather() {
     }
   });
 
+  /**
+   * Load history entries from localStorage without overwriting current UI state.
+   */
   function loadHistory() {
+    try {
+      const stored = localStorage.getItem(STORAGE_KEY);
+      if (stored) {
+        const data = JSON.parse(stored);
+        return data.history || [];
+      }
+    } catch (e) {
+      console.error('Failed to load AI weather history:', e);
+    }
+    return [];
+  }
+
+  /**
+   * Restore UI state (environment, latitude, additionalConditions) from localStorage.
+   * Called once on initialization only.
+   */
+  function restoreUIState() {
     try {
       const stored = localStorage.getItem(STORAGE_KEY);
       if (stored) {
@@ -51,12 +72,10 @@ export function useAIWeather() {
         environment.value = data.environment || 'temperate forest';
         latitude.value = data.latitude ?? 45;
         additionalConditions.value = data.additionalConditions || '';
-        return data.history || [];
       }
     } catch (e) {
-      console.error('Failed to load AI weather history:', e);
+      console.error('Failed to restore AI weather UI state:', e);
     }
-    return [];
   }
 
   function saveHistory(history) {
@@ -183,6 +202,12 @@ export function useAIWeather() {
     const { date: providedDate, autoGenerate = false, canGenerate = false } = options;
     const date = providedDate || dateStore.date;
     if (date) {
+      // Flash the additional conditions textarea if it has content
+      if (additionalConditions.value.trim()) {
+        conditionsHighlight.value = true;
+        setTimeout(() => { conditionsHighlight.value = false; }, 1200);
+      }
+
       const cached = getWeatherForDate(date.y, date.m, date.d);
       if (cached) {
         weather.value = cached.weather;
@@ -195,12 +220,14 @@ export function useAIWeather() {
     }
   }
 
+  restoreUIState();
   loadCachedWeather();
 
   return {
     environment,
     latitude,
     additionalConditions,
+    conditionsHighlight,
     weather,
     loading,
     error,

@@ -164,24 +164,33 @@
           <div class="form-grid">
             <div class="form-field">
               <label for="born">Born</label>
-              <input
-                id="born"
-                v-model="character.Born"
-                type="text"
-                :disabled="loading"
-                maxlength="64"
-              />
+              <div class="year-field-row">
+                <input
+                  id="born"
+                  v-model.number="character.Born"
+                  type="number"
+                  :disabled="loading"
+                  min="0"
+                  max="99999"
+                />
+                <span class="date-suffix-label">{{ realmStore.activeRealm?.DateSuffix?.Abbr || 'SF' }}</span>
+              </div>
             </div>
 
             <div class="form-field">
               <label for="died">Died</label>
-              <input
-                id="died"
-                v-model="character.Died"
-                type="text"
-                :disabled="loading"
-                maxlength="64"
-              />
+              <div class="year-field-row">
+                <input
+                  id="died"
+                  v-model.number="character.Died"
+                  type="number"
+                  :disabled="loading"
+                  min="0"
+                  max="99999"
+                  placeholder="Alive when unset"
+                />
+                <span class="date-suffix-label">{{ realmStore.activeRealm?.DateSuffix?.Abbr || 'SF' }}</span>
+              </div>
             </div>
 
             <div class="form-field">
@@ -1325,6 +1334,23 @@ const cancelEdit = () => {
     opacity: 0.6;
     cursor: not-allowed;
     background: rgba(255, 255, 255, 0.1);
+}
+
+.year-field-row {
+    display: flex;
+    align-items: center;
+    gap: 0.5em;
+}
+
+.year-field-row input {
+    flex: 1;
+}
+
+.date-suffix-label {
+    color: #888;
+    font-size: 0.9em;
+    font-style: italic;
+    white-space: nowrap;
 }
 
 .weight-field {
