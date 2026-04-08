@@ -750,13 +750,9 @@
             <div class="customization-header">
               <p>Customize your realm's calendar. Edit month names, abbreviations, and days, or start from a preset.</p>
               <div class="calendar-preset-buttons">
-                <button @click="resetToCustom" class="reset-btn custom-btn">
-                  <span class="material-symbols-outlined">edit_note</span>
-                  Create Custom
-                </button>
                 <button @click="resetToTheGameDnD" class="reset-btn thegamednd-btn">
                   <span class="material-symbols-outlined">casino</span>
-                  TheGameDnD
+                  The Game
                 </button>
                 <button @click="resetToGregorian" class="reset-btn gregorian-btn">
                   <span class="material-symbols-outlined">calendar_month</span>
@@ -765,6 +761,26 @@
                 <button @click="resetToGreyhawk" class="reset-btn greyhawk-btn">
                   <span class="material-symbols-outlined">brightness_7</span>
                   Greyhawk
+                </button>
+                <button @click="resetToHarptos" class="reset-btn harptos-btn">
+                  <span class="material-symbols-outlined">auto_stories</span>
+                  Harptos
+                </button>
+                <button @click="resetToEberron" class="reset-btn eberron-btn">
+                  <span class="material-symbols-outlined">shield</span>
+                  Eberron
+                </button>
+                <button @click="resetToShire" class="reset-btn shire-btn">
+                  <span class="material-symbols-outlined">park</span>
+                  Shire
+                </button>
+                <button @click="resetToGolarion" class="reset-btn golarion-btn">
+                  <span class="material-symbols-outlined">explore</span>
+                  Golarion
+                </button>
+                <button @click="resetToCustom" class="reset-btn custom-btn">
+                  <span class="material-symbols-outlined">edit_note</span>
+                  Custom
                 </button>
               </div>
             </div>
@@ -782,7 +798,7 @@
                   <button
                     @click="removeMonth(index)"
                     class="remove-month-btn"
-                    :disabled="editableCalendar.Months.length <= 3"
+                    :disabled="editableCalendar.Months.length <= 1"
                     title="Remove month"
                   >
                     <span class="material-symbols-outlined">close</span>
@@ -807,10 +823,10 @@
                   <input
                     type="number"
                     v-model.number="month.Days"
-                    min="7"
-                    max="99"
+                    min="1"
+                    max="999"
                     class="month-days-input"
-                    title="Days in month (min 7)"
+                    title="Days in month"
                   />
                 </div>
               </div>
@@ -825,6 +841,36 @@
                 <span class="material-symbols-outlined">add</span>
                 Add Month
               </button>
+            </div>
+
+            <!-- Date Suffix Configuration -->
+            <div class="date-suffix-section">
+              <h4>Date Suffix / Era</h4>
+              <p class="date-suffix-hint">The abbreviation and full text appended to years (e.g., 1300<strong>SF</strong> = 1300 <em>Since Foundation</em>).</p>
+              <div class="date-suffix-fields">
+                <div class="date-suffix-field">
+                  <label for="edit-suffix-abbr">Abbreviation</label>
+                  <input
+                    id="edit-suffix-abbr"
+                    type="text"
+                    v-model="editableDateSuffix.Abbr"
+                    maxlength="5"
+                    placeholder="e.g., SF"
+                    class="suffix-abbr-input"
+                  />
+                </div>
+                <div class="date-suffix-field full-width">
+                  <label for="edit-suffix-text">Full Text</label>
+                  <input
+                    id="edit-suffix-text"
+                    type="text"
+                    v-model="editableDateSuffix.Text"
+                    maxlength="64"
+                    placeholder="e.g., Since Foundation"
+                    class="suffix-text-input"
+                  />
+                </div>
+              </div>
             </div>
 
             <!-- Zodiac Configuration -->
@@ -1497,7 +1543,8 @@ const editableCalendar = ref({
   Months: [],
   Zodiac: []
 });
-const originalCalendarJson = ref(''); // Store original calendar for change detection
+const editableDateSuffix = ref({ Abbr: '', Text: '' });
+const originalCalendarJson = ref(''); // Store original calendar + suffix for change detection
 const showCalendarConfirmDialog = ref(false);
 const calendarConfirmAcknowledged = ref(false);
 const showZodiacConfig = ref(false);
@@ -1507,9 +1554,10 @@ const totalCalendarDays = computed(() => {
   return editableCalendar.value.Months.reduce((sum, month) => sum + (month.Days || 0), 0);
 });
 
-// Computed property to detect if calendar has changed
+// Computed property to detect if calendar or date suffix has changed
 const hasCalendarChanged = computed(() => {
-  return JSON.stringify(editableCalendar.value) !== originalCalendarJson.value;
+  const current = JSON.stringify({ calendar: editableCalendar.value, suffix: editableDateSuffix.value });
+  return current !== originalCalendarJson.value;
 });
 
 // Helper function to get formatted player name
@@ -1994,10 +2042,16 @@ const openCalendarEditor = async () => {
       Zodiac: JSON.parse(JSON.stringify(dateStore.defaultZodiac))
     };
   }
+  // Initialize date suffix from realm
+  const realmSuffix = realmStore.activeRealm?.DateSuffix;
+  editableDateSuffix.value = {
+    Abbr: realmSuffix?.Abbr || 'SF',
+    Text: realmSuffix?.Text || 'Since Foundation'
+  };
   showCalendarEditor.value = true;
   // Wait for watchers to settle, then store original for change detection
   await nextTick();
-  originalCalendarJson.value = JSON.stringify(editableCalendar.value);
+  originalCalendarJson.value = JSON.stringify({ calendar: editableCalendar.value, suffix: editableDateSuffix.value });
 };
 
 const closeCalendarEditor = () => {
@@ -2014,7 +2068,6 @@ const closeCalendarEditor = () => {
 };
 
 const resetToTheGameDnD = () => {
-  // TheGameDnD default calendar months (seasonal calendar)
   editableCalendar.value.Months = [
     { Name: 'Midspring', Abbr: 'MSP', Days: 30 },
     { Name: 'Springwane', Abbr: 'SPW', Days: 31 },
@@ -2029,6 +2082,7 @@ const resetToTheGameDnD = () => {
     { Name: 'Winterwane', Abbr: 'WRW', Days: 28 },
     { Name: 'Spring', Abbr: 'SPR', Days: 31 }
   ];
+  editableDateSuffix.value = { Abbr: 'SF', Text: 'Since Foundation' };
   recalculateZodiacs();
 };
 
@@ -2047,13 +2101,12 @@ const resetToGregorian = () => {
     { Name: 'November', Abbr: 'Nov', Days: 30 },
     { Name: 'December', Abbr: 'Dec', Days: 31 }
   ];
+  editableDateSuffix.value = { Abbr: 'CE', Text: 'Common Era' };
   recalculateZodiacs();
 };
 
 const resetToGreyhawk = () => {
-  // Greyhawk calendar: 16 months, 364 days/year
-  // 4 festival weeks (7 days each) + 12 regular months (28 days each)
-  const greyhawkMonths = [
+  editableCalendar.value.Months = [
     { Name: 'Needfest', Abbr: 'NFT', Days: 7 },
     { Name: 'Fireseek', Abbr: 'FIR', Days: 28 },
     { Name: 'Readying', Abbr: 'REA', Days: 28 },
@@ -2071,14 +2124,95 @@ const resetToGreyhawk = () => {
     { Name: "Ready'reat", Abbr: 'RDY', Days: 28 },
     { Name: 'Sunsebb', Abbr: 'SUN', Days: 28 }
   ];
+  editableDateSuffix.value = { Abbr: 'CY', Text: 'Common Year' };
+  recalculateZodiacs();
+};
 
-  // Replace entire months array (different count than other calendars)
-  editableCalendar.value.Months = greyhawkMonths;
+const resetToHarptos = () => {
+  editableCalendar.value.Months = [
+    { Name: 'Hammer', Abbr: 'HAM', Days: 30 },
+    { Name: 'Midwinter', Abbr: 'MID', Days: 1 },
+    { Name: 'Alturiak', Abbr: 'ALT', Days: 30 },
+    { Name: 'Ches', Abbr: 'CHE', Days: 30 },
+    { Name: 'Tarsakh', Abbr: 'TAR', Days: 30 },
+    { Name: 'Greengrass', Abbr: 'GRG', Days: 1 },
+    { Name: 'Mirtul', Abbr: 'MIR', Days: 30 },
+    { Name: 'Kythorn', Abbr: 'KYT', Days: 30 },
+    { Name: 'Flamerule', Abbr: 'FLA', Days: 30 },
+    { Name: 'Midsummer', Abbr: 'MSM', Days: 1 },
+    { Name: 'Eleasis', Abbr: 'ELE', Days: 30 },
+    { Name: 'Eleint', Abbr: 'ELI', Days: 30 },
+    { Name: 'Highharvestide', Abbr: 'HHT', Days: 1 },
+    { Name: 'Marpenoth', Abbr: 'MAR', Days: 30 },
+    { Name: 'Uktar', Abbr: 'UKT', Days: 30 },
+    { Name: 'Feast of the Moon', Abbr: 'FOM', Days: 1 },
+    { Name: 'Nightal', Abbr: 'NIG', Days: 30 }
+  ];
+  editableDateSuffix.value = { Abbr: 'DR', Text: 'Dalereckoning' };
+  recalculateZodiacs();
+};
+
+const resetToEberron = () => {
+  editableCalendar.value.Months = [
+    { Name: 'Zarantyr', Abbr: 'ZAR', Days: 28 },
+    { Name: 'Olarune', Abbr: 'OLA', Days: 28 },
+    { Name: 'Therendor', Abbr: 'THE', Days: 28 },
+    { Name: 'Eyre', Abbr: 'EYR', Days: 28 },
+    { Name: 'Dravago', Abbr: 'DRA', Days: 28 },
+    { Name: 'Nymm', Abbr: 'NYM', Days: 28 },
+    { Name: 'Lharvion', Abbr: 'LHA', Days: 28 },
+    { Name: 'Barrakas', Abbr: 'BAR', Days: 28 },
+    { Name: 'Rhaan', Abbr: 'RHA', Days: 28 },
+    { Name: 'Sypheros', Abbr: 'SYP', Days: 28 },
+    { Name: 'Aryth', Abbr: 'ARY', Days: 28 },
+    { Name: 'Vult', Abbr: 'VUL', Days: 28 }
+  ];
+  editableDateSuffix.value = { Abbr: 'YK', Text: 'Year of the Kingdom' };
+  recalculateZodiacs();
+};
+
+const resetToShire = () => {
+  editableCalendar.value.Months = [
+    { Name: 'Yule', Abbr: 'YUL', Days: 2 },
+    { Name: 'Afteryule', Abbr: 'AFY', Days: 30 },
+    { Name: 'Solmath', Abbr: 'SOL', Days: 30 },
+    { Name: 'Rethe', Abbr: 'RET', Days: 30 },
+    { Name: 'Astron', Abbr: 'AST', Days: 30 },
+    { Name: 'Thrimidge', Abbr: 'THR', Days: 30 },
+    { Name: 'Forelithe', Abbr: 'FRL', Days: 30 },
+    { Name: 'Lithedays', Abbr: 'LIT', Days: 2 },
+    { Name: "Midyear's Day", Abbr: 'MYD', Days: 1 },
+    { Name: 'Afterlithe', Abbr: 'AFL', Days: 30 },
+    { Name: 'Wedmath', Abbr: 'WED', Days: 30 },
+    { Name: 'Halimath', Abbr: 'HAL', Days: 30 },
+    { Name: 'Winterfilth', Abbr: 'WIN', Days: 30 },
+    { Name: 'Blotmath', Abbr: 'BLO', Days: 30 },
+    { Name: 'Foreyule', Abbr: 'FRY', Days: 30 }
+  ];
+  editableDateSuffix.value = { Abbr: 'SR', Text: 'Shire Reckoning' };
+  recalculateZodiacs();
+};
+
+const resetToGolarion = () => {
+  editableCalendar.value.Months = [
+    { Name: 'Abadius', Abbr: 'ABA', Days: 31 },
+    { Name: 'Calistril', Abbr: 'CAL', Days: 28 },
+    { Name: 'Pharast', Abbr: 'PHA', Days: 31 },
+    { Name: 'Gozran', Abbr: 'GOZ', Days: 30 },
+    { Name: 'Desnus', Abbr: 'DES', Days: 31 },
+    { Name: 'Sarenith', Abbr: 'SAR', Days: 30 },
+    { Name: 'Erastus', Abbr: 'ERA', Days: 31 },
+    { Name: 'Arodus', Abbr: 'ARO', Days: 31 },
+    { Name: 'Rova', Abbr: 'ROV', Days: 30 },
+    { Name: 'Lamashan', Abbr: 'LAM', Days: 31 },
+    { Name: 'Neth', Abbr: 'NET', Days: 30 },
+    { Name: 'Kuthona', Abbr: 'KUT', Days: 31 }
+  ];
+  editableDateSuffix.value = { Abbr: 'AR', Text: 'Absalom Reckoning' };
   recalculateZodiacs();
 };
 
 const resetToCustom = () => {
-  // Start with a minimal custom calendar (3 months minimum)
   editableCalendar.value.Months = [
     { Name: 'Month 1', Abbr: 'M1', Days: 30 },
     { Name: 'Month 2', Abbr: 'M2', Days: 30 },
@@ -2100,7 +2234,7 @@ const addMonth = () => {
 };
 
 const removeMonth = (index) => {
-  if (editableCalendar.value.Months.length <= 3) return;
+  if (editableCalendar.value.Months.length <= 1) return;
   editableCalendar.value.Months.splice(index, 1);
   recalculateZodiacs();
 };
@@ -2154,7 +2288,8 @@ const confirmSaveCalendar = async () => {
   try {
     const updateData = {
       Calendar: editableCalendar.value,
-      OldCalendar: realmStore.activeRealm?.Calendar || null  // Send old calendar for report date conversion
+      OldCalendar: realmStore.activeRealm?.Calendar || null,  // Send old calendar for report date conversion
+      DateSuffix: editableDateSuffix.value
     };
 
     const response = await axios.put(
@@ -2169,8 +2304,9 @@ const confirmSaveCalendar = async () => {
     );
 
     if (response.status === 200) {
-      // Update the local realm store with the new calendar
+      // Update the local realm store with the new calendar and date suffix
       realmStore.activeRealm.Calendar = editableCalendar.value;
+      realmStore.activeRealm.DateSuffix = editableDateSuffix.value;
 
       showToast('Calendar updated successfully!', 'success');
       closeCalendarEditor();
@@ -4578,6 +4714,131 @@ onMounted(async () => {
   box-shadow: 0 2px 8px rgba(76, 175, 80, 0.2);
 }
 
+.harptos-btn {
+  background: rgba(220, 120, 50, 0.15);
+  border-color: rgba(220, 120, 50, 0.3);
+  color: #dc7832;
+}
+
+.harptos-btn:hover {
+  background: rgba(220, 120, 50, 0.25);
+  border-color: #dc7832;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(220, 120, 50, 0.2);
+}
+
+.eberron-btn {
+  background: rgba(234, 179, 8, 0.15);
+  border-color: rgba(234, 179, 8, 0.3);
+  color: #eab308;
+}
+
+.eberron-btn:hover {
+  background: rgba(234, 179, 8, 0.25);
+  border-color: #eab308;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(234, 179, 8, 0.2);
+}
+
+.shire-btn {
+  background: rgba(101, 163, 13, 0.15);
+  border-color: rgba(101, 163, 13, 0.3);
+  color: #84cc16;
+}
+
+.shire-btn:hover {
+  background: rgba(101, 163, 13, 0.25);
+  border-color: #84cc16;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(101, 163, 13, 0.2);
+}
+
+.golarion-btn {
+  background: rgba(244, 63, 94, 0.15);
+  border-color: rgba(244, 63, 94, 0.3);
+  color: #f43f5e;
+}
+
+.golarion-btn:hover {
+  background: rgba(244, 63, 94, 0.25);
+  border-color: #f43f5e;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(244, 63, 94, 0.2);
+}
+
+/* Date Suffix Section */
+.date-suffix-section {
+  margin-bottom: 1.5rem;
+  padding-bottom: 1.5rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.date-suffix-section h4 {
+  color: var(--theme-accent);
+  margin: 0 0 0.25rem 0;
+  font-size: 1.05rem;
+}
+
+.date-suffix-hint {
+  color: #999;
+  font-size: 0.85rem;
+  margin: 0 0 0.75rem 0;
+  line-height: 1.5;
+}
+
+.date-suffix-hint strong {
+  color: var(--theme-accent);
+}
+
+.date-suffix-hint em {
+  color: #bbb;
+}
+
+.date-suffix-fields {
+  display: flex;
+  gap: 1rem;
+  align-items: flex-end;
+}
+
+.date-suffix-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+
+.date-suffix-field.full-width {
+  flex: 1;
+}
+
+.date-suffix-field label {
+  font-size: 0.8rem;
+  color: #aaa;
+}
+
+.suffix-abbr-input,
+.suffix-text-input {
+  padding: 0.5rem 0.75rem;
+  background: #0a0e1a;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 0.4rem;
+  color: #fff;
+  font-size: 0.9rem;
+  transition: border-color 0.2s ease;
+}
+
+.suffix-abbr-input {
+  width: 80px;
+  text-align: center;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+}
+
+.suffix-abbr-input:focus,
+.suffix-text-input:focus {
+  outline: none;
+  border-color: var(--theme-accent);
+}
+
 .calendar-summary {
   display: flex;
   align-items: center;
@@ -5128,13 +5389,18 @@ onMounted(async () => {
   }
   
   .calendar-preset-buttons {
-    flex-direction: column;
-    align-items: stretch;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.5rem;
   }
-  
+
   .reset-btn {
     justify-content: center;
     width: 100%;
+  }
+
+  .date-suffix-fields {
+    flex-direction: column;
   }
 }
 

@@ -161,6 +161,7 @@
                                 <label>Additional Conditions</label>
                                 <textarea
                                     v-model="aiConditions"
+                                    :class="{ 'conditions-highlight': aiConditionsHighlight }"
                                     placeholder="e.g., magical storm approaching, eclipse effects..."
                                     rows="2"
                                 ></textarea>
@@ -261,6 +262,7 @@ const {
     environment: aiEnvironment,
     latitude: aiLatitude,
     additionalConditions: aiConditions,
+    conditionsHighlight: aiConditionsHighlight,
     weather: aiWeather,
     loading: aiLoading,
     error: aiError,
@@ -1296,6 +1298,16 @@ const aiWeatherAlerts = computed(() => {
 
 .weather-control-row textarea::placeholder {
   color: #666;
+}
+
+.weather-control-row textarea.conditions-highlight {
+  animation: conditions-flash 1.2s ease;
+}
+
+@keyframes conditions-flash {
+  0% { background: #0a0e1a; }
+  25% { background: color-mix(in srgb, var(--theme-accent) 25%, #0a0e1a); border-color: var(--theme-accent); }
+  100% { background: #0a0e1a; }
 }
 
 .weather-generate-btn {
