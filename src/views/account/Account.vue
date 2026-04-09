@@ -1160,6 +1160,10 @@ onMounted(async () => {
 
 /* Responsive Design */
 @media (max-width: 768px) {
+  .create-realm-btn {
+    display: none;
+  }
+
   .account-dashboard {
     padding: 1rem;
     gap: 1.5rem;
