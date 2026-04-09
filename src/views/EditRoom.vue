@@ -44,8 +44,8 @@
               <div class="form-field">
                 <label for="roomStatus">Status</label>
                 <select id="roomStatus" v-model="roomData.isActive">
-                  <option :value="true">Active</option>
-                  <option :value="false">Archived</option>
+                  <option :value="true">Enabled</option>
+                  <option :value="false">Disabled</option>
                 </select>
               </div>
               
@@ -325,7 +325,8 @@ const save = async () => {
   const reservedNames = ['edit', 'add'];
   const roomName = roomData.value.name.trim().toLowerCase();
   if (reservedNames.includes(roomName)) {
-    alert(`Room name "${roomData.value.name.trim()}" is reserved. Please choose a different name.`);
+    errorMessage.value = `Room name "${roomData.value.name.trim()}" is reserved. Please choose a different name.`;
+    showErrorModal.value = true;
     elName.value?.focus();
     return;
   }
@@ -357,12 +358,14 @@ const save = async () => {
       router.back();
     } else {
       console.error('❌ Failed to update room:', result.error);
-      alert(`Failed to update room: ${result.error}`);
+      errorMessage.value = result.error;
+      showErrorModal.value = true;
     }
-    
+
   } catch (error) {
     console.error('Error updating room:', error);
-    alert('An unexpected error occurred while updating the room. Please try again.');
+    errorMessage.value = 'An unexpected error occurred while updating the room. Please try again.';
+    showErrorModal.value = true;
   } finally {
     isSaving.value = false;
   }
@@ -444,12 +447,16 @@ const confirmDelete = async () => {
       router.push('/');
     } else {
       console.error('❌ Failed to delete room:', result.error);
-      alert(`Failed to delete room: ${result.error}`);
+      closeDeleteDialog();
+      errorMessage.value = result.error;
+      showErrorModal.value = true;
     }
-    
+
   } catch (error) {
     console.error('Error deleting room:', error);
-    alert('An unexpected error occurred while deleting the room. Please try again.');
+    closeDeleteDialog();
+    errorMessage.value = 'An unexpected error occurred while deleting the room. Please try again.';
+    showErrorModal.value = true;
   } finally {
     isDeleting.value = false;
   }

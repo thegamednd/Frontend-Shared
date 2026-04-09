@@ -28,6 +28,14 @@
                   @click="openExternalLink(content); sidebarOpen = false"
                 >
                   <div class="child-info">
+                    <button
+                      v-if="canEditRoom"
+                      @click.prevent.stop="editContent(content, $event)"
+                      class="child-edit-btn child-edit-left"
+                      title="Edit"
+                    >
+                      <span class="material-symbols-outlined">edit</span>
+                    </button>
                     <span class="child-name">{{ content.Name }}</span>
                   </div>
                   <span class="material-symbols-outlined child-external-icon">open_in_new</span>
@@ -42,16 +50,16 @@
                   @click="sidebarOpen = false"
                 >
                   <div class="child-info">
+                    <button
+                      v-if="canEditRoom"
+                      @click.prevent.stop="editContent(content, $event)"
+                      class="child-edit-btn child-edit-left"
+                      title="Edit"
+                    >
+                      <span class="material-symbols-outlined">edit</span>
+                    </button>
                     <span class="child-name">{{ content.Name }}</span>
                   </div>
-                  <button
-                    v-if="canEditRoom"
-                    @click.prevent.stop="editContent(content, $event)"
-                    class="child-edit-btn"
-                    title="Edit"
-                  >
-                    <span class="material-symbols-outlined">edit</span>
-                  </button>
                 </router-link>
               </template>
             </nav>
@@ -487,9 +495,9 @@ watch(room, (newRoom) => {
 
 .child-info {
   display: flex;
-  flex-direction: column;
+  align-items: center;
   gap: 1px;
-  overflow: hidden;
+  overflow: visible;
   min-width: 0;
   flex: 1;
 }
@@ -523,6 +531,7 @@ watch(room, (newRoom) => {
   flex-shrink: 0;
   opacity: 0;
   transition: all 0.15s;
+  margin-left: -12px;
 }
 
 .child-link:hover .child-edit-btn {
