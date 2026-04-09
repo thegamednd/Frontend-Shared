@@ -2,66 +2,61 @@
   <div class="oauth-callback">
     <div class="callback-container">
       <!-- Loading State -->
-      <div v-if="processing" class="callback-state loading">
-        <div class="state-icon">
-          <span class="material-symbols-outlined spinning">hourglass_empty</span>
+      <div v-if="processing" class="callback-card">
+        <div class="card-glow loading-glow"></div>
+        <div class="icon-ring loading-ring">
+          <span class="material-symbols-outlined icon-spin">sync</span>
         </div>
-        <h1>Connecting Your Patreon Account</h1>
-        <p>Please wait while we complete the connection...</p>
-        <div class="progress-bar">
-          <div class="progress-fill"></div>
+        <h1 class="card-title">Connecting Patreon</h1>
+        <p class="card-subtitle">Completing the handshake...</p>
+        <div class="loading-track">
+          <div class="loading-bar"></div>
         </div>
       </div>
 
       <!-- Success State -->
-      <div v-else-if="success" class="callback-state success">
-        <div class="state-icon success-icon">
-          <span class="material-symbols-outlined">check_circle</span>
+      <div v-else-if="success" class="callback-card appear">
+        <div class="card-glow success-glow"></div>
+        <div class="icon-ring success-ring">
+          <span class="material-symbols-outlined">check</span>
         </div>
-        <h1>Patreon Connected Successfully!</h1>
-        <p class="success-message">{{ message }}</p>
+        <h1 class="card-title">Connected</h1>
+        <p class="card-subtitle">{{ message }}</p>
 
-        <div v-if="creditIssued" class="credit-notification">
-          <div class="credit-icon">
-            <span class="material-symbols-outlined">account_balance_wallet</span>
-          </div>
-          <div class="credit-info">
-            <h3>Credit Issued!</h3>
-            <p>You've received {{ formattedCreditAmount }} in account credits.</p>
-          </div>
+        <div v-if="creditIssued" class="credit-badge">
+          <span class="material-symbols-outlined credit-icon">toll</span>
+          <span class="credit-text">{{ formattedCreditAmount }} credit added</span>
         </div>
 
-        <div class="actions">
-          <button @click="goToAccount" class="btn-primary">
+        <div class="card-actions">
+          <button @click="goToAccount" class="btn-accent">
             <span class="material-symbols-outlined">dashboard</span>
-            Go to Account Dashboard
+            Account Dashboard
           </button>
-          <button @click="goToSettings" class="btn-secondary">
-            <span class="material-symbols-outlined">settings</span>
-            View Patreon Settings
+          <button @click="goToSettings" class="btn-ghost">
+            <span class="material-symbols-outlined">tune</span>
+            Patreon Settings
           </button>
         </div>
       </div>
 
       <!-- Error State -->
-      <div v-else-if="error" class="callback-state error">
-        <div class="state-icon error-icon">
-          <span class="material-symbols-outlined">error</span>
+      <div v-else-if="error" class="callback-card appear">
+        <div class="card-glow error-glow"></div>
+        <div class="icon-ring error-ring">
+          <span class="material-symbols-outlined">close</span>
         </div>
-        <h1>Connection Failed</h1>
-        <p class="error-message">{{ message }}</p>
+        <h1 class="card-title">Connection Failed</h1>
+        <p class="card-subtitle">{{ message }}</p>
 
-        <div class="error-details" v-if="errorDetails">
-          <p class="details-label">Error Details:</p>
-          <code>{{ errorDetails }}</code>
-        </div>
+        <code v-if="errorDetails" class="error-code">{{ errorDetails }}</code>
 
-        <div class="actions">
-          <button @click="retryConnection" class="btn-primary">
+        <div class="card-actions">
+          <button @click="retryConnection" class="btn-accent">
             <span class="material-symbols-outlined">refresh</span>
             Try Again
           </button>
-          <button @click="goToSettings" class="btn-secondary">
+          <button @click="goToSettings" class="btn-ghost">
             <span class="material-symbols-outlined">arrow_back</span>
             Back to Settings
           </button>
@@ -95,21 +90,19 @@ const formattedCreditAmount = computed(() => {
   return `$${dollars}`;
 });
 
-// Methods
 const goToAccount = () => {
   router.push('/account');
 };
 
 const goToSettings = () => {
-  router.push('/account/settings');
+  router.push({ path: '/account', query: { tab: 'settings' } });
 };
 
 const retryConnection = () => {
-  router.push('/account/settings');
+  router.push({ path: '/account', query: { tab: 'settings' } });
 };
 
 const processCallback = async () => {
-  // Check for error in query params (Patreon sends error if user cancels)
   const errorParam = route.query.error;
   const errorDescription = route.query.error_description;
 
@@ -130,14 +123,11 @@ const processCallback = async () => {
     return;
   }
 
-  // Check for success indicator (the backend handles the OAuth callback)
-  // We're just showing a success/error page based on URL params
   const successParam = route.query.success;
   const messageParam = route.query.message;
   const creditIssuedParam = route.query.credit_issued;
   const creditAmountParam = route.query.credit_amount;
 
-  // Simulate processing delay for better UX
   await new Promise(resolve => setTimeout(resolve, 1500));
 
   processing.value = false;
@@ -152,7 +142,6 @@ const processCallback = async () => {
       creditAmount.value = parseInt(creditAmountParam);
     }
 
-    // Refresh account data to get updated credit balance
     await accountStore.getAccount(true);
     await accountStore.fetchPatreonSubscription();
 
@@ -165,7 +154,6 @@ const processCallback = async () => {
 
     notifyError(message.value);
   } else {
-    // No clear success/error indicator, assume error
     success.value = false;
     error.value = true;
     message.value = 'Invalid callback response from Patreon.';
@@ -175,7 +163,6 @@ const processCallback = async () => {
   }
 };
 
-// Lifecycle
 onMounted(() => {
   processCallback();
 });
@@ -184,202 +171,206 @@ onMounted(() => {
 <style scoped>
 .oauth-callback {
   min-height: 100vh;
-  background: linear-gradient(135deg, #0a0e1a 0%, #1a1f2e 100%);
-  color: #ffffff;
+  background: var(--theme-bg-primary, #161D26);
+  color: var(--theme-text-primary, #e1e1ed);
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 2rem;
+  padding: 1.5rem;
 }
 
 .callback-container {
-  max-width: 600px;
+  max-width: 420px;
   width: 100%;
 }
 
-.callback-state {
-  background: linear-gradient(135deg, var(--theme-bg-surface) 0%, #2a3a5a 100%);
-  border: 1px solid var(--theme-border);
-  border-radius: 1rem;
-  padding: 3rem 2rem;
+/* ── Card ── */
+.callback-card {
+  position: relative;
+  background: var(--theme-bg-surface, #182036);
+  border: 1px solid var(--theme-border, #343434);
+  border-radius: 0.75rem;
+  padding: 2.5rem 2rem 2rem;
   text-align: center;
+  overflow: hidden;
 }
 
-.state-icon {
-  font-size: 5rem;
+.card-glow {
+  position: absolute;
+  top: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 60%;
+  height: 3px;
+  border-radius: 0 0 4px 4px;
+}
+
+.success-glow { background: var(--theme-success, #2ecc71); box-shadow: 0 0 24px var(--theme-success, #2ecc71); }
+.error-glow   { background: var(--theme-danger, #ff4444);  box-shadow: 0 0 24px var(--theme-danger, #ff4444); }
+.loading-glow { background: var(--theme-accent, #ffc581);  box-shadow: 0 0 24px var(--theme-accent, #ffc581); }
+
+/* ── Icon ring ── */
+.icon-ring {
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 1.25rem;
+}
+
+.icon-ring .material-symbols-outlined {
+  font-size: 32px;
+  font-weight: 600;
+}
+
+.success-ring {
+  background: color-mix(in srgb, var(--theme-success, #2ecc71) 15%, transparent);
+  border: 2px solid var(--theme-success, #2ecc71);
+  color: var(--theme-success, #2ecc71);
+}
+
+.error-ring {
+  background: color-mix(in srgb, var(--theme-danger, #ff4444) 15%, transparent);
+  border: 2px solid var(--theme-danger, #ff4444);
+  color: var(--theme-danger, #ff4444);
+}
+
+.loading-ring {
+  background: color-mix(in srgb, var(--theme-accent, #ffc581) 12%, transparent);
+  border: 2px solid var(--theme-accent, #ffc581);
+  color: var(--theme-accent, #ffc581);
+}
+
+/* ── Typography ── */
+.card-title {
+  font-family: var(--theme-font-display, 'Lobster', cursive);
+  color: var(--theme-accent, #ffc581);
+  font-size: 1.6rem;
+  margin: 0 0 0.4rem;
+  font-weight: 400;
+}
+
+.card-subtitle {
+  color: var(--theme-text-secondary, #a6a1da);
+  font-size: 0.9rem;
+  line-height: 1.5;
+  margin: 0 0 1.5rem;
+}
+
+/* ── Loading track ── */
+.loading-track {
+  height: 3px;
+  background: var(--theme-border, #343434);
+  border-radius: 2px;
+  overflow: hidden;
+  margin-top: 0.5rem;
+}
+
+.loading-bar {
+  height: 100%;
+  width: 40%;
+  background: var(--theme-accent, #ffc581);
+  border-radius: 2px;
+  animation: slide 1.4s ease-in-out infinite;
+}
+
+@keyframes slide {
+  0%   { transform: translateX(-100%); }
+  100% { transform: translateX(350%); }
+}
+
+/* ── Credit badge ── */
+.credit-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: color-mix(in srgb, var(--theme-success, #2ecc71) 12%, transparent);
+  border: 1px solid color-mix(in srgb, var(--theme-success, #2ecc71) 40%, transparent);
+  border-radius: 2rem;
+  padding: 0.5rem 1rem;
   margin-bottom: 1.5rem;
 }
 
-.state-icon.success-icon {
-  color: #28a745;
-}
-
-.state-icon.error-icon {
-  color: #dc3545;
-}
-
-.callback-state h1 {
-  color: var(--theme-accent);
-  font-size: 2rem;
-  margin: 0 0 1rem 0;
-}
-
-.callback-state p {
-  color: #ccc;
-  font-size: 1rem;
-  line-height: 1.6;
-  margin: 0 0 1.5rem 0;
-}
-
-.success-message {
-  color: #28a745;
-  font-weight: 500;
-}
-
-.error-message {
-  color: #dc3545;
-  font-weight: 500;
-}
-
-/* Loading State */
-.loading .state-icon {
-  color: var(--theme-accent);
-}
-
-.progress-bar {
-  width: 100%;
-  height: 4px;
-  background: #333;
-  border-radius: 2px;
-  overflow: hidden;
-  margin-top: 2rem;
-}
-
-.progress-fill {
-  height: 100%;
-  width: 60%;
-  background: linear-gradient(90deg, var(--theme-accent) 0%, #e6b373 100%);
-  animation: progress 2s ease-in-out infinite;
-}
-
-@keyframes progress {
-  0% { transform: translateX(-100%); }
-  50% { transform: translateX(100%); }
-  100% { transform: translateX(-100%); }
-}
-
-/* Credit Notification */
-.credit-notification {
-  background: rgba(40, 167, 69, 0.1);
-  border: 2px solid #28a745;
-  border-radius: 0.75rem;
-  padding: 1.5rem;
-  margin: 2rem 0;
-  display: flex;
-  align-items: center;
-  gap: 1rem;
-}
-
 .credit-icon {
-  font-size: 2.5rem;
-  color: #28a745;
-}
-
-.credit-info {
-  text-align: left;
-  flex: 1;
-}
-
-.credit-info h3 {
-  color: #28a745;
   font-size: 1.2rem;
-  margin: 0 0 0.5rem 0;
+  color: var(--theme-success, #2ecc71);
 }
 
-.credit-info p {
-  color: #ffffff;
-  margin: 0;
-  font-size: 1rem;
+.credit-text {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--theme-success, #2ecc71);
 }
 
-/* Error Details */
-.error-details {
-  background: rgba(220, 53, 69, 0.1);
-  border: 1px solid rgba(220, 53, 69, 0.3);
-  border-radius: 0.5rem;
-  padding: 1rem;
-  margin: 1.5rem 0;
+/* ── Error code ── */
+.error-code {
+  display: block;
+  background: color-mix(in srgb, var(--theme-danger, #ff4444) 8%, transparent);
+  border: 1px solid color-mix(in srgb, var(--theme-danger, #ff4444) 25%, transparent);
+  border-radius: 0.4rem;
+  padding: 0.6rem 0.8rem;
+  margin-bottom: 1.5rem;
+  font-family: monospace;
+  font-size: 0.8rem;
+  color: var(--theme-danger, #ff4444);
+  word-break: break-word;
   text-align: left;
 }
 
-.details-label {
-  color: #dc3545;
-  font-weight: 600;
-  font-size: 0.9rem;
-  margin: 0 0 0.5rem 0;
-}
-
-.error-details code {
-  display: block;
-  background: rgba(0, 0, 0, 0.3);
-  padding: 0.75rem;
-  border-radius: 0.25rem;
-  color: #ff6b6b;
-  font-family: monospace;
-  font-size: 0.85rem;
-  word-break: break-word;
-}
-
-/* Actions */
-.actions {
+/* ── Actions ── */
+.card-actions {
   display: flex;
   flex-direction: column;
-  gap: 1rem;
-  margin-top: 2rem;
+  gap: 0.6rem;
 }
 
-.btn-primary,
-.btn-secondary {
-  padding: 1rem 2rem;
-  border-radius: 0.5rem;
+.btn-accent,
+.btn-ghost {
+  padding: 0.7rem 1.2rem;
+  border-radius: 0.4rem;
   font-weight: 600;
-  font-size: 1rem;
+  font-size: 0.85rem;
   cursor: pointer;
   transition: all 0.2s ease;
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 0.5rem;
+  gap: 0.4rem;
   border: none;
-  text-decoration: none;
 }
 
-.btn-primary {
-  background: linear-gradient(135deg, var(--theme-accent) 0%, #e6b373 100%);
-  color: var(--theme-bg-surface);
+.btn-accent .material-symbols-outlined,
+.btn-ghost .material-symbols-outlined {
+  font-size: 1.1rem;
 }
 
-.btn-primary:hover {
-  background: linear-gradient(135deg, #e6b373 0%, #d4a366 100%);
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px color-mix(in srgb, var(--theme-accent) 30%, transparent);
+.btn-accent {
+  background: var(--theme-accent, #ffc581);
+  color: var(--theme-bg-surface, #182036);
 }
 
-.btn-secondary {
+.btn-accent:hover {
+  background: var(--theme-accent-hover, #ffd9a6);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 16px color-mix(in srgb, var(--theme-accent, #ffc581) 25%, transparent);
+}
+
+.btn-ghost {
   background: transparent;
-  border: 1px solid #666;
-  color: #ccc;
+  border: 1px solid var(--theme-border, #343434);
+  color: var(--theme-text-secondary, #a6a1da);
 }
 
-.btn-secondary:hover {
-  border-color: var(--theme-accent);
-  color: var(--theme-accent);
-  transform: translateY(-2px);
+.btn-ghost:hover {
+  border-color: var(--theme-accent, #ffc581);
+  color: var(--theme-accent, #ffc581);
 }
 
-/* Spinning Animation */
-.spinning {
-  animation: spin 1s linear infinite;
+/* ── Animations ── */
+.icon-spin {
+  animation: spin 1.2s linear infinite;
 }
 
 @keyframes spin {
@@ -387,31 +378,32 @@ onMounted(() => {
   to { transform: rotate(360deg); }
 }
 
-/* Responsive */
-@media (max-width: 768px) {
-  .oauth-callback {
-    padding: 1rem;
+.appear {
+  animation: fadeUp 0.4s ease-out;
+}
+
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(12px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* ── Mobile ── */
+@media (max-width: 480px) {
+  .callback-card {
+    padding: 2rem 1.25rem 1.5rem;
   }
 
-  .callback-state {
-    padding: 2rem 1.5rem;
+  .card-title {
+    font-size: 1.35rem;
   }
 
-  .callback-state h1 {
-    font-size: 1.5rem;
+  .icon-ring {
+    width: 56px;
+    height: 56px;
   }
 
-  .state-icon {
-    font-size: 4rem;
-  }
-
-  .credit-notification {
-    flex-direction: column;
-    text-align: center;
-  }
-
-  .credit-info {
-    text-align: center;
+  .icon-ring .material-symbols-outlined {
+    font-size: 28px;
   }
 }
 </style>
