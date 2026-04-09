@@ -163,6 +163,12 @@ export const sharedRoutes = [
  * Call this from each app's router.beforeEach.
  */
 export function createRealmGuard(router) {
+    // Track page views in Google Analytics after each navigation
+    router.afterEach((to) => {
+        import('@shared/composables/useGoogleAnalytics').then(({ trackPageView }) => {
+            trackPageView(to.fullPath, to.meta?.title || document.title);
+        });
+    });
     let realmDeepLinkHandled = false;
 
     router.beforeEach(async (to, from, next) => {
