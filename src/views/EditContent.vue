@@ -43,8 +43,8 @@
             <div class="form-field">
               <label for="contentStatus">Status</label>
               <select id="contentStatus" v-model="contentData.isActive">
-                <option :value="true">Active</option>
-                <option :value="false">Inactive</option>
+                <option :value="true">Enabled</option>
+                <option :value="false">Disabled</option>
               </select>
             </div>
             
