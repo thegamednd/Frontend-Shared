@@ -3,7 +3,7 @@
     <div v-if="visible" class="cookie-consent">
       <p class="consent-text">
         We use cookies for authentication and
-        <router-link to="/privacy" class="consent-link" @click.stop>analytics</router-link>.
+        <a href="https://realmforge.io/privacy" target="_blank" rel="noopener" class="consent-link">analytics</a>.
       </p>
       <div class="consent-actions">
         <button @click="accept" class="consent-btn consent-accept">Accept</button>
