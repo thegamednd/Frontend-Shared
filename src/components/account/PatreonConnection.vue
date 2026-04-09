@@ -35,9 +35,8 @@
                 v-for="campaign in supportedCampaigns"
                 :key="campaign.CampaignID"
                 class="campaign-card"
-                @click="openCampaignDetails(campaign)"
               >
-                <div class="campaign-info">
+                <div class="campaign-info" @click="openCampaignDetails(campaign)">
                   <a
                     v-if="campaign.PatreonURL"
                     :href="campaign.PatreonURL"
@@ -48,13 +47,26 @@
                   >{{ campaign.CampaignName }} <span class="material-symbols-outlined" style="font-size: 0.85rem; vertical-align: middle;">open_in_new</span></a>
                   <div v-else class="campaign-name">{{ campaign.CampaignName }}</div>
                   <div class="campaign-creator">by {{ campaign.CreatorName }}</div>
+                  <div class="campaign-status">
+                    <span class="material-symbols-outlined campaign-status-icon connected">check_circle</span>
+                    <span class="campaign-tier" v-if="campaign.TierName">{{ campaign.TierName }}</span>
+                    <span class="campaign-tier" v-else>Connected</span>
+                  </div>
                   <div v-if="getAppliedRealmForCampaign(campaign.CampaignID)" class="campaign-realm">
                     <span class="material-symbols-outlined">castle</span>
                     {{ getAppliedRealmForCampaign(campaign.CampaignID) }}
                   </div>
                 </div>
                 <div class="campaign-actions">
-                  <span class="campaign-view-benefits material-symbols-outlined">chevron_right</span>
+                  <button
+                    class="btn-campaign-disconnect"
+                    :disabled="disconnecting || campaignHasAppliedBenefits(campaign.CampaignID)"
+                    :title="campaignHasAppliedBenefits(campaign.CampaignID) ? 'Remove benefits before disconnecting' : 'Disconnect this campaign'"
+                    @click.stop="handleDisconnectCampaign(campaign)"
+                  >
+                    <span class="material-symbols-outlined">link_off</span>
+                  </button>
+                  <span class="campaign-view-benefits material-symbols-outlined" @click="openCampaignDetails(campaign)">chevron_right</span>
                 </div>
               </div>
             </div>
@@ -70,7 +82,7 @@
           >
             <span v-if="disconnecting" class="material-symbols-outlined spinning">hourglass_empty</span>
             <span v-else class="material-symbols-outlined">link_off</span>
-            {{ disconnecting ? 'Disconnecting...' : 'Disconnect Patreon' }}
+            {{ disconnecting ? 'Disconnecting...' : 'Disconnect All Campaigns' }}
           </button>
           <p v-if="hasAppliedBenefits" class="disconnect-blocked-message">
             <span class="material-symbols-outlined">info</span>
@@ -128,10 +140,12 @@
         <div class="dialog-body">
           <p class="warning-message">
             <span class="material-symbols-outlined">warning</span>
-            Are you sure you want to disconnect your Patreon account?
+            {{ disconnectCampaign
+              ? `Are you sure you want to disconnect from ${disconnectCampaign.CampaignName}?`
+              : 'Are you sure you want to disconnect all Patreon campaigns?' }}
           </p>
           <p class="info-message">
-            Your existing credits will remain, but you will not receive new monthly credits.
+            Your existing credits will remain, but you will not receive new monthly credits{{ disconnectCampaign ? ' from this campaign' : '' }}.
           </p>
         </div>
         <div class="dialog-footer">
@@ -527,15 +541,18 @@ const newSubscriptionData = ref(null);
 
 // Computed properties
 const isConnected = computed(() => {
-  return accountStore.patreonSubscription !== null;
+  return Object.keys(accountStore.patreonSubscriptions).length > 0;
 });
 
 const patreonEmail = computed(() => {
-  return accountStore.patreonSubscription?.PatreonEmail || 'Unknown';
+  // Use email from any subscription (they all share the same Patreon account)
+  const subs = Object.values(accountStore.patreonSubscriptions);
+  return subs[0]?.PatreonEmail || 'Unknown';
 });
 
 const supportedCampaigns = computed(() => {
-  return accountStore.patreonSubscription?.Metadata?.supportedCampaigns || [];
+  // Each subscription record IS a per-campaign entry with CampaignID, CampaignName, CreatorName, etc.
+  return Object.values(accountStore.patreonSubscriptions);
 });
 
 // Get all owned realms from the realm store, sorted alphabetically by name
@@ -563,6 +580,14 @@ const hasAppliedBenefits = computed(() => {
   return Object.keys(campaignAppliedRealms.value).length > 0;
 });
 
+// Track which campaign is being disconnected (null = disconnect all)
+const disconnectCampaign = ref(null);
+
+// Check if a specific campaign has applied benefits
+const campaignHasAppliedBenefits = (campaignId) => {
+  return !!campaignAppliedRealms.value[campaignId];
+};
+
 // Methods
 const handleConnect = async () => {
   connecting.value = true;
@@ -578,27 +603,39 @@ const handleConnect = async () => {
 };
 
 const handleDisconnect = () => {
-  // Show confirmation dialog instead of browser confirm
+  // Disconnect all campaigns
+  disconnectCampaign.value = null;
+  confirmDialogRef.value?.showModal();
+};
+
+const handleDisconnectCampaign = (campaign) => {
+  // Disconnect a specific campaign
+  disconnectCampaign.value = campaign;
   confirmDialogRef.value?.showModal();
 };
 
 const closeConfirmDialog = () => {
   confirmDialogRef.value?.close();
+  disconnectCampaign.value = null;
 };
 
 const confirmDisconnect = async () => {
   disconnecting.value = true;
+  const campaignId = disconnectCampaign.value?.CampaignID || undefined;
   try {
-    const success = await accountStore.disconnectPatreon();
+    const success = await accountStore.disconnectPatreon(campaignId);
     if (success) {
-      notifySuccess('Patreon account disconnected successfully');
+      const msg = campaignId
+        ? `Disconnected from ${disconnectCampaign.value.CampaignName}`
+        : 'All Patreon campaigns disconnected';
+      notifySuccess(msg);
       closeConfirmDialog();
     } else {
-      notifyError('Failed to disconnect Patreon account');
+      notifyError('Failed to disconnect Patreon');
     }
   } catch (error) {
     console.error('Error disconnecting Patreon:', error);
-    notifyError('Failed to disconnect Patreon account');
+    notifyError('Failed to disconnect Patreon');
   } finally {
     disconnecting.value = false;
   }
@@ -914,12 +951,12 @@ const getAppliedRealmForCampaign = (campaignId) => {
 onMounted(async () => {
   try {
     await accountStore.fetchPatreonSubscription();
-    // Load applied realms for all campaigns after subscription is loaded
-    if (accountStore.patreonSubscription) {
+    // Load applied realms for all campaigns after subscriptions are loaded
+    if (Object.keys(accountStore.patreonSubscriptions).length > 0) {
       await loadAllCampaignRealms();
     }
   } catch (error) {
-    console.error('Error loading Patreon subscription:', error);
+    console.error('Error loading Patreon subscriptions:', error);
   } finally {
     loading.value = false;
   }
@@ -1163,9 +1200,58 @@ onMounted(async () => {
   font-size: 1.2rem;
 }
 
+.campaign-status {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  margin-top: 0.25rem;
+  font-size: 0.8rem;
+}
+
+.campaign-status-icon.connected {
+  color: #4caf50;
+  font-size: 0.9rem;
+}
+
+.campaign-tier {
+  color: #ccc;
+  font-weight: 500;
+}
+
+.btn-campaign-disconnect {
+  background: transparent;
+  border: 1px solid transparent;
+  color: #999;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  transition: all 0.2s ease;
+  padding: 0;
+}
+
+.btn-campaign-disconnect:hover:not(:disabled) {
+  background: color-mix(in srgb, #dc3545 15%, transparent);
+  border-color: #dc3545;
+  color: #dc3545;
+}
+
+.btn-campaign-disconnect:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+
+.btn-campaign-disconnect .material-symbols-outlined {
+  font-size: 1.1rem;
+}
+
 .campaign-view-benefits {
   color: var(--theme-accent);
   font-size: 1.5rem;
+  cursor: pointer;
 }
 
 /* Connection Actions */

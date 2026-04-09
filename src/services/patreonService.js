@@ -57,34 +57,43 @@ export const patreonService = {
   },
 
   /**
-   * Gets the current Patreon subscription for the user
-   * @returns {Promise<Object|null>} Patreon subscription data or null
+   * Gets the current Patreon subscriptions for the user
+   * API now returns an array of per-campaign subscriptions
+   * @returns {Promise<Array>} Array of Patreon subscription objects (empty if none)
    */
-  async getSubscription() {
+  async getSubscriptions() {
     try {
       const response = await patreonClient.get('/patreon/subscription');
-      // Unwrap the response: { success: true, data: subscription }
+      // Unwrap the response: { success: true, data: subscriptions[] }
       if (response.data?.success && response.data?.data !== undefined) {
-        return response.data.data; // Return the actual subscription data (could be null)
+        const data = response.data.data;
+        // Handle array response (new) or wrap single object (backward compat)
+        if (Array.isArray(data)) {
+          return data;
+        }
+        // Single object fallback for backward compatibility during rollout
+        return data ? [data] : [];
       }
-      return null;
+      return [];
     } catch (error) {
       // If 404, user doesn't have Patreon connected
       if (error.response?.status === 404) {
-        return null;
+        return [];
       }
-      console.error('Error fetching Patreon subscription:', error);
+      console.error('Error fetching Patreon subscriptions:', error);
       throw error;
     }
   },
 
   /**
-   * Disconnects the Patreon account from the user's RealmForge account
+   * Disconnects a Patreon campaign (or all campaigns) from the user's RealmForge account
+   * @param {string} [campaignId] - If provided, only disconnect this campaign. Otherwise disconnect all.
    * @returns {Promise<void>}
    */
-  async disconnectPatreon() {
+  async disconnectPatreon(campaignId) {
     try {
-      await patreonClient.delete('/patreon/disconnect');
+      const params = campaignId ? { campaignId } : {};
+      await patreonClient.delete('/patreon/disconnect', { params });
     } catch (error) {
       console.error('Error disconnecting Patreon:', error);
       throw error;

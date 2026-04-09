@@ -14,6 +14,7 @@ export const useAccountStore = defineStore('account', {
         account: null,
         loaded: false,
         creditBalance: 0,
+        patreonSubscriptions: {},
         patreonSubscription: null,
     }),
     getters: {
@@ -352,29 +353,52 @@ export const useAccountStore = defineStore('account', {
         },
 
         /**
-         * Fetches the Patreon subscription for the current user
-         * @returns {Promise<Object|null>} Patreon subscription data or null
+         * Fetches all Patreon subscriptions for the current user.
+         * Stores them keyed by CampaignID for per-campaign UI display.
+         * Also maintains backward-compatible patreonSubscription (first subscription or null).
+         * @returns {Promise<Object>} Map of CampaignID → subscription
          */
         async fetchPatreonSubscription() {
             try {
-                const subscription = await patreonService.getSubscription();
-                this.patreonSubscription = subscription;
-                return subscription;
+                const subscriptions = await patreonService.getSubscriptions();
+                const byId = {};
+                for (const sub of subscriptions) {
+                    if (sub.CampaignID) {
+                        byId[sub.CampaignID] = sub;
+                    }
+                }
+                this.patreonSubscriptions = byId;
+                // Backward compat: keep patreonSubscription as first item or null
+                this.patreonSubscription = subscriptions.length > 0 ? subscriptions[0] : null;
+                return byId;
             } catch (error) {
-                console.error('Error fetching Patreon subscription:', error);
+                console.error('Error fetching Patreon subscriptions:', error);
+                this.patreonSubscriptions = {};
                 this.patreonSubscription = null;
-                return null;
+                return {};
             }
         },
 
         /**
-         * Disconnects the Patreon account
+         * Disconnects a Patreon campaign (or all campaigns)
+         * @param {string} [campaignId] - If provided, only disconnect this campaign. Otherwise disconnect all.
          * @returns {Promise<boolean>} Success status
          */
-        async disconnectPatreon() {
+        async disconnectPatreon(campaignId) {
             try {
-                await patreonService.disconnectPatreon();
-                this.patreonSubscription = null;
+                await patreonService.disconnectPatreon(campaignId);
+                if (campaignId) {
+                    // Remove only the specified campaign
+                    const { [campaignId]: _, ...rest } = this.patreonSubscriptions;
+                    this.patreonSubscriptions = rest;
+                    // Update backward-compat field
+                    const remaining = Object.values(rest);
+                    this.patreonSubscription = remaining.length > 0 ? remaining[0] : null;
+                } else {
+                    // Disconnect all
+                    this.patreonSubscriptions = {};
+                    this.patreonSubscription = null;
+                }
                 // Refresh account to update credit balance if needed
                 await this.getAccount(true);
                 return true;
