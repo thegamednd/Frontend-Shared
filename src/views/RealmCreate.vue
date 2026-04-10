@@ -17,7 +17,7 @@
         </div>
         <div class="warning-content">
           <h3>Realm Limit Reached</h3>
-          <p>You've reached your realm limit for this gaming system ({{ gamingSystemFreeRealms }} realm{{ gamingSystemFreeRealms > 1 ? 's' : '' }}). To create additional realms, please upgrade your account.</p>
+          <p>You've reached your realm limit for this gaming system ({{ gamingSystemFreeRealms }} realm{{ gamingSystemFreeRealms > 1 ? 's' : '' }}). To create additional realms, upgrade your account or delete one of your free realms.</p>
           <button @click="cancel" class="btn btn-primary">
             <span class="material-symbols-outlined">arrow_back</span>
             Return to Account
