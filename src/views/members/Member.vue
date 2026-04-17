@@ -209,33 +209,22 @@ const ownerName = computed(() => {
     return owner.NameFirst || owner.Name || null;
 });
 
-/**
- * Get display names for character classes
- * Handles three formats:
- * 1. Array of UUIDs (new format) - look up in characterStore.classes
- * 2. Array of objects with ClassName (intermediate format)
- * 3. Array of class name strings (legacy format)
- */
 const classDisplayNames = computed(() => {
     if (!member.value || !member.value.Classes || !member.value.Classes.length) {
         return [];
     }
 
     return member.value.Classes.map(c => {
-        // Case 1: c is a UUID string - look it up in the pre-resolved cache
         if (typeof c === 'string' && characterStore.isUUID(c)) {
             return classesLookup.value[c] || c;
         }
-        // Case 2: c is an object with ClassName property
-        else if (c && typeof c === 'object' && c.ClassName) {
-            return c.ClassName;
+        if (c && typeof c === 'object') {
+            return c.name || c.ClassName || null;
         }
-        // Case 3: c is a plain string (class name)
-        else if (typeof c === 'string') {
+        if (typeof c === 'string') {
             return c;
         }
-
-        return 'Unknown';
+        return null;
     }).filter(Boolean);
 });
 
