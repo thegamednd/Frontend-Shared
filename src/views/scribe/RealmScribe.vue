@@ -363,32 +363,99 @@
                 <ScribeAddFunds @close="closeAddFundsModal" />
             </div>
 
-            <!-- Mic Selection Dialog -->
+            <!-- Mic Selection / Start Recording Dialog -->
             <dialog ref="micDialogRef" class="mic-modal" @close="onMicDialogClose">
                 <div class="mic-modal-header">
-                    <h4>{{ micDialogMode === 'switch' ? 'Switch Microphone' : 'Select Microphone' }}</h4>
+                    <h4>{{ micDialogMode === 'switch' ? 'Switch Microphone' : 'Start Recording' }}</h4>
                     <button class="btn-close" @click="micDialogRef?.close()">&times;</button>
                 </div>
                 <div class="mic-modal-body">
-                    <label
-                        v-for="(mic, index) in availableMics"
-                        :key="mic.deviceId"
-                        class="mic-option"
-                    >
+                    <div v-if="micDialogMode === 'start'" class="duration-section">
+                        <label class="duration-label">
+                            Recording length: <strong>{{ formatHm(recordingDurationMinutes) }}</strong>
+                        </label>
                         <input
-                            type="radio"
-                            name="mic"
-                            :value="mic.deviceId"
-                            v-model="selectedMicId"
+                            type="range"
+                            min="30"
+                            max="240"
+                            step="15"
+                            v-model.number="recordingDurationMinutes"
+                            class="duration-slider"
                         />
-                        {{ mic.label || `Microphone ${index + 1}` }}
-                    </label>
+                        <div class="duration-scale">
+                            <span>30m</span>
+                            <span>2h</span>
+                            <span>4h</span>
+                        </div>
+                        <p class="duration-hint">When this elapses, you'll be prompted to extend or stop.</p>
+                    </div>
+                    <div v-if="availableMics.length > 1" class="mic-section">
+                        <p v-if="micDialogMode === 'start'" class="mic-section-label">Microphone</p>
+                        <label
+                            v-for="(mic, index) in availableMics"
+                            :key="mic.deviceId"
+                            class="mic-option"
+                        >
+                            <input
+                                type="radio"
+                                name="mic"
+                                :value="mic.deviceId"
+                                v-model="selectedMicId"
+                            />
+                            {{ mic.label || `Microphone ${index + 1}` }}
+                        </label>
+                    </div>
                 </div>
                 <div class="mic-modal-actions">
                     <button class="btn-primary" @click="micDialogRef?.close()">Cancel</button>
                     <button class="btn-primary" @click="confirmMicSelection">
                         <span class="material-symbols-outlined">mic</span>
                         {{ micDialogMode === 'switch' ? 'Switch Mic' : 'Start Recording' }}
+                    </button>
+                </div>
+            </dialog>
+
+            <!-- Extend Recording Dialog -->
+            <dialog ref="extendDialogRef" class="guard-modal extend-modal" @close="onExtendDialogClose">
+                <div class="guard-modal-header">
+                    <h4>Recording Time Reached</h4>
+                </div>
+                <div class="guard-modal-body">
+                    <p>
+                        You've been recording for <strong>{{ formatHm(lastChosenDurationMinutes) }}</strong>.
+                        Extend or stop?
+                    </p>
+                    <div class="duration-section">
+                        <label class="duration-label">
+                            Extend by: <strong>{{ formatHm(extendDurationMinutes) }}</strong>
+                        </label>
+                        <input
+                            type="range"
+                            min="30"
+                            max="240"
+                            step="15"
+                            v-model.number="extendDurationMinutes"
+                            class="duration-slider"
+                        />
+                        <div class="duration-scale">
+                            <span>30m</span>
+                            <span>2h</span>
+                            <span>4h</span>
+                        </div>
+                    </div>
+                    <p class="extend-grace">
+                        Recording will stop automatically in
+                        <strong>{{ formatMss(extendGraceRemaining) }}</strong> if you don't respond.
+                    </p>
+                </div>
+                <div class="guard-modal-actions">
+                    <button class="btn-danger" @click="stopFromExtendDialog">
+                        <span class="material-symbols-outlined">stop</span>
+                        Stop Recording
+                    </button>
+                    <button class="btn-primary" @click="confirmExtend">
+                        <span class="material-symbols-outlined">schedule</span>
+                        Extend
                     </button>
                 </div>
             </dialog>
@@ -588,6 +655,30 @@ const availableMics = ref([]);
 const selectedMicId = ref(localStorage.getItem('preferredMicId') || '');
 const micDialogMode = ref('start'); // 'start' | 'switch'
 
+// --- Recording duration / extend prompt ---
+const DURATION_MIN = 30;
+const DURATION_MAX = 240;
+const DURATION_DEFAULT = 120;
+const EXTEND_GRACE_SECONDS = 120;
+
+function loadSavedDurationMinutes() {
+    const saved = parseInt(localStorage.getItem('preferredScribeDurationMinutes') || '', 10);
+    if (Number.isFinite(saved) && saved >= DURATION_MIN && saved <= DURATION_MAX) {
+        return saved;
+    }
+    return DURATION_DEFAULT;
+}
+
+const recordingDurationMinutes = ref(loadSavedDurationMinutes());
+const extendDurationMinutes = ref(loadSavedDurationMinutes());
+const lastChosenDurationMinutes = ref(loadSavedDurationMinutes());
+const extendDialogRef = ref(null);
+const extendGraceRemaining = ref(EXTEND_GRACE_SECONDS);
+const recordingTargetSeconds = ref(0); // total target across extensions; 0 = no target
+let extendGraceTimer = null;
+let extendGraceInterval = null;
+let extendDialogOpen = false;
+
 const currentMicLabel = computed(() => {
     if (!selectedMicId.value || !availableMics.value.length) return '';
     const mic = availableMics.value.find(m => m.deviceId === selectedMicId.value);
@@ -678,6 +769,7 @@ onMounted(async () => {
 onUnmounted(() => {
     stopSessionPolling();
     stopListPolling();
+    clearExtendGrace();
     navigator.mediaDevices.removeEventListener('devicechange', handleDeviceChange);
 });
 
@@ -794,6 +886,7 @@ function populateReviewForm() {
 
 async function beginSession() {
     micDialogMode.value = 'start';
+    recordingDurationMinutes.value = loadSavedDurationMinutes();
     try {
         // Request temporary permission so enumerateDevices returns labels
         const tempStream = await navigator.mediaDevices.getUserMedia({ audio: true });
@@ -811,13 +904,8 @@ async function beginSession() {
             selectedMicId.value = mics[0].deviceId;
         }
 
-        if (mics.length <= 1) {
-            // Single mic (or none) — skip dialog, start directly
-            await startRecordingWithMic(mics[0]?.deviceId || null);
-        } else {
-            // Multiple mics — show selection dialog
-            micDialogRef.value?.showModal();
-        }
+        // Always show the start dialog — it's where the user picks the recording duration.
+        micDialogRef.value?.showModal();
     } catch (err) {
         console.error('Failed to start session:', err);
     }
@@ -825,7 +913,9 @@ async function beginSession() {
 
 async function confirmMicSelection() {
     micDialogRef.value?.close();
-    localStorage.setItem('preferredMicId', selectedMicId.value);
+    if (selectedMicId.value) {
+        localStorage.setItem('preferredMicId', selectedMicId.value);
+    }
     if (micDialogMode.value === 'switch') {
         try {
             await recorder.switchMicrophone(selectedMicId.value);
@@ -833,6 +923,10 @@ async function confirmMicSelection() {
             console.error('Failed to switch microphone:', err);
         }
     } else {
+        const minutes = recordingDurationMinutes.value;
+        localStorage.setItem('preferredScribeDurationMinutes', String(minutes));
+        lastChosenDurationMinutes.value = minutes;
+        recordingTargetSeconds.value = minutes * 60;
         await startRecordingWithMic(selectedMicId.value);
     }
 }
@@ -871,6 +965,10 @@ async function startRecordingWithMic(deviceId) {
 }
 
 async function endSession() {
+    clearExtendGrace();
+    closeExtendDialog();
+    recordingTargetSeconds.value = 0;
+
     const sessionId = scribeStore.currentSession?.sessionId;
 
     // stopRecording resolves after the final dataavailable event fires,
@@ -888,6 +986,103 @@ async function endSession() {
         await scribeStore.getSession(sessionId);
     }
 }
+
+// --- Recording duration / extend prompt handlers ---
+
+function playExtendAlertSound() {
+    try {
+        const ctx = new AudioContext();
+        const gain = ctx.createGain();
+        gain.gain.value = 0.3;
+        gain.connect(ctx.destination);
+
+        const osc1 = ctx.createOscillator();
+        osc1.frequency.value = 660;
+        osc1.type = 'sine';
+        osc1.connect(gain);
+        osc1.start(ctx.currentTime);
+        osc1.stop(ctx.currentTime + 0.2);
+
+        const osc2 = ctx.createOscillator();
+        osc2.frequency.value = 880;
+        osc2.type = 'sine';
+        osc2.connect(gain);
+        osc2.start(ctx.currentTime + 0.35);
+        osc2.stop(ctx.currentTime + 0.55);
+
+        osc2.onended = () => ctx.close();
+    } catch {
+        // Web Audio not available — silently skip
+    }
+}
+
+function openExtendDialog() {
+    if (extendDialogOpen) return;
+    extendDialogOpen = true;
+    extendDurationMinutes.value = loadSavedDurationMinutes();
+    extendGraceRemaining.value = EXTEND_GRACE_SECONDS;
+    playExtendAlertSound();
+    extendDialogRef.value?.showModal();
+    extendGraceInterval = setInterval(() => {
+        if (extendGraceRemaining.value > 0) {
+            extendGraceRemaining.value -= 1;
+        }
+    }, 1000);
+    extendGraceTimer = setTimeout(() => {
+        // No response — auto-stop the session
+        closeExtendDialog();
+        endSession();
+    }, EXTEND_GRACE_SECONDS * 1000);
+}
+
+function clearExtendGrace() {
+    if (extendGraceTimer) {
+        clearTimeout(extendGraceTimer);
+        extendGraceTimer = null;
+    }
+    if (extendGraceInterval) {
+        clearInterval(extendGraceInterval);
+        extendGraceInterval = null;
+    }
+}
+
+function closeExtendDialog() {
+    clearExtendGrace();
+    if (extendDialogOpen) {
+        extendDialogRef.value?.close();
+        extendDialogOpen = false;
+    }
+}
+
+function onExtendDialogClose() {
+    // Native close (e.g. Esc key) — treat as "no response" path
+    if (extendDialogOpen) {
+        extendDialogOpen = false;
+        clearExtendGrace();
+    }
+}
+
+function confirmExtend() {
+    const minutes = extendDurationMinutes.value;
+    localStorage.setItem('preferredScribeDurationMinutes', String(minutes));
+    lastChosenDurationMinutes.value = minutes;
+    recordingTargetSeconds.value = recorder.duration.value + minutes * 60;
+    closeExtendDialog();
+}
+
+function stopFromExtendDialog() {
+    closeExtendDialog();
+    endSession();
+}
+
+// Watch recorded duration; when target is reached, prompt to extend.
+watch(() => recorder.duration.value, (current) => {
+    if (extendDialogOpen) return;
+    if (recordingTargetSeconds.value <= 0) return;
+    if (current >= recordingTargetSeconds.value) {
+        openExtendDialog();
+    }
+});
 
 function pauseSession() {
     recorder.pauseRecording();
@@ -1203,6 +1398,14 @@ function formatMss(totalSeconds) {
     const m = Math.floor(totalSeconds / 60);
     const s = totalSeconds % 60;
     return `${m}:${String(s).padStart(2, '0')}`;
+}
+
+function formatHm(totalMinutes) {
+    const h = Math.floor(totalMinutes / 60);
+    const m = totalMinutes % 60;
+    if (h === 0) return `${m}m`;
+    if (m === 0) return `${h}h`;
+    return `${h}h ${m}m`;
 }
 </script>
 
@@ -1887,6 +2090,84 @@ details.tipsSection[open] .tipsSummary {
 
 .mic-modal-actions .btn-primary {
     justify-content: center;
+}
+
+/* Recording duration slider (start dialog + extend dialog) */
+.duration-section {
+    display: flex;
+    flex-direction: column;
+    gap: 0.4em;
+    padding: 0.6em 0.2em 0.4em;
+}
+
+.duration-label {
+    font-size: 0.95rem;
+    color: bisque;
+}
+
+.duration-label strong {
+    color: gold;
+    font-weight: 700;
+    margin-left: 0.3em;
+}
+
+.duration-slider {
+    width: 100%;
+    accent-color: gold;
+    cursor: pointer;
+}
+
+.duration-scale {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.75rem;
+    color: color-mix(in srgb, bisque 60%, transparent);
+    font-family: 'Cinzel', serif;
+    letter-spacing: 0.05em;
+    margin-top: -0.2em;
+}
+
+.duration-hint {
+    margin: 0.2em 0 0 0;
+    font-size: 0.8rem;
+    color: color-mix(in srgb, bisque 70%, transparent);
+    font-style: italic;
+}
+
+.mic-section {
+    display: flex;
+    flex-direction: column;
+    gap: 0.6em;
+    padding-top: 0.4em;
+    border-top: 1px solid color-mix(in srgb, var(--theme-accent) 15%, transparent);
+}
+
+.mic-section-label {
+    margin: 0;
+    font-size: 0.85rem;
+    font-family: 'Cinzel', serif;
+    letter-spacing: 0.08em;
+    color: color-mix(in srgb, gold 80%, transparent);
+    text-transform: uppercase;
+}
+
+/* Extend Recording Dialog */
+.extend-modal .duration-section {
+    padding: 0.6em 0;
+}
+
+.extend-grace {
+    margin: 0.4em 0 0 0;
+    font-size: 0.85rem;
+    color: color-mix(in srgb, bisque 75%, transparent);
+    font-style: italic;
+    text-align: center;
+}
+
+.extend-grace strong {
+    color: gold;
+    font-style: normal;
+    font-variant-numeric: tabular-nums;
 }
 
 /* Delete Confirmation Dialog */
