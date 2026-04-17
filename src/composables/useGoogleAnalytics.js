@@ -5,6 +5,8 @@
  * Consent is stored in a cookie on .realmforge.io so it carries across subdomains.
  */
 
+import { ref } from 'vue';
+
 const CONSENT_COOKIE = 'rf-analytics-consent';
 const MEASUREMENT_ID = import.meta.env.VITE_GA_MEASUREMENT_ID;
 
@@ -13,8 +15,12 @@ let initialized = false;
 /** Read the consent cookie. Returns 'accepted', 'declined', or null. */
 export function getConsent() {
   const match = document.cookie.match(new RegExp(`(?:^|; )${CONSENT_COOKIE}=([^;]*)`));
-  return match ? decodeURIComponent(match[1]) : null;
+  const value = match ? decodeURIComponent(match[1]) : null;
+  return value || null;
 }
+
+/** Reactive consent state — shared so banner/UI can react to changes. */
+export const consentState = ref(getConsent());
 
 /** Write the consent cookie on .realmforge.io (365 days, same as auth cookies). */
 export function setConsent(value) {
@@ -51,12 +57,14 @@ export function initGoogleAnalytics() {
 /** Accept consent, persist cookie, and load GA. */
 export function acceptAnalytics() {
   setConsent('accepted');
+  consentState.value = 'accepted';
   loadGtag();
 }
 
 /** Decline consent, persist cookie. GA is never loaded. */
 export function declineAnalytics() {
   setConsent('declined');
+  consentState.value = 'declined';
 }
 
 /** Send a page_view event. No-op if GA is not loaded. */

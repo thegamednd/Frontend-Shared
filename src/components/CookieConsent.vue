@@ -14,25 +14,17 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
-import { getConsent, acceptAnalytics, declineAnalytics } from '@shared/composables/useGoogleAnalytics'
+import { computed } from 'vue'
+import { consentState, acceptAnalytics, declineAnalytics } from '@shared/composables/useGoogleAnalytics'
 
-const visible = ref(false)
-
-onMounted(() => {
-  if (!getConsent()) {
-    visible.value = true
-  }
-})
+const visible = computed(() => !consentState.value)
 
 function accept() {
   acceptAnalytics()
-  visible.value = false
 }
 
 function decline() {
   declineAnalytics()
-  visible.value = false
 }
 </script>
 
