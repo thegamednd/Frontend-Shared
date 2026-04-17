@@ -558,6 +558,41 @@
         </div>
       </div>
     </dialog>
+
+    <!-- Too Many Players Warning Dialog -->
+    <dialog ref="tooManyPlayersDialog" class="delete-dialog too-many-players-dialog">
+      <div class="dialog-header">
+        <h2>Too Many Players</h2>
+        <button @click="closeTooManyPlayersDialog" class="btn-close" type="button">
+          <span class="material-symbols-outlined">close</span>
+        </button>
+      </div>
+
+      <div class="dialog-body">
+        <p>
+          Your realm has <strong>{{ availablePlayers.length }}</strong> players,
+          but only <strong>{{ maxInvitations }}</strong> invitation slots are available for this session.
+        </p>
+        <p class="info-text">
+          Select players individually, or upgrade your realm for more invitation slots.
+        </p>
+
+        <div class="dialog-footer">
+          <router-link
+            to="/account/active-realm"
+            class="btn-secondary"
+            @click="closeTooManyPlayersDialog"
+          >
+            <span class="material-symbols-outlined">upgrade</span>
+            Upgrade Realm
+          </router-link>
+          <button @click="switchToSelectPlayers" class="btn-primary" type="button">
+            <span class="material-symbols-outlined">person_search</span>
+            Select Players
+          </button>
+        </div>
+      </div>
+    </dialog>
   </div>
 </template>
 
@@ -578,6 +613,7 @@ const createDialog = ref(null);
 const playerSelectorDialog = ref(null);
 const deleteDialog = ref(null);
 const lockDialog = ref(null);
+const tooManyPlayersDialog = ref(null);
 
 // Dialog states
 const editingSession = ref(null);
@@ -761,9 +797,20 @@ const editSession = (session) => {
 };
 
 const selectAllPlayers = () => {
-  sessionForm.value.selectedPlayers = availablePlayers.value
-    .slice(0, maxInvitations.value)
-    .map(p => p.UserID);
+  if (availablePlayers.value.length > maxInvitations.value) {
+    tooManyPlayersDialog.value?.showModal();
+    return;
+  }
+  sessionForm.value.selectedPlayers = availablePlayers.value.map(p => p.UserID);
+};
+
+const closeTooManyPlayersDialog = () => {
+  tooManyPlayersDialog.value?.close();
+};
+
+const switchToSelectPlayers = () => {
+  closeTooManyPlayersDialog();
+  openPlayerSelector();
 };
 
 const openPlayerSelector = () => {
