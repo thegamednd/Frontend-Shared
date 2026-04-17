@@ -37,12 +37,12 @@
             @blur="onPaypalBlur"
           />
         </label>
-        <button @click="confirmPaypalAmount" :disabled="!paypalAmount || paypalAmount < 1 || !paypalReady" class="btn-admin">
+        <button @click="confirmPaypalAmount" :disabled="!paypalAmount || paypalAmount < 3 || !paypalReady" class="btn-admin">
           Continue
         </button>
       </div>
-      <div v-if="!paypalConfirmed && (!paypalAmount || paypalAmount < 1)">
-        <p class="hint">Enter an amount ($1.00 minimum) to add funds.</p>
+      <div v-if="!paypalConfirmed && (!paypalAmount || paypalAmount < 3)">
+        <p class="hint">Enter an amount ($3.00 minimum) to add funds.</p>
       </div>
       <div v-if="paypalConfirmed" class="selected-summary">
         <p>Add: <strong>${{ paypalAmount.toFixed(2) }} USD</strong> to Scribe wallet</p>
@@ -248,7 +248,7 @@ function renderPayPalButton() {
 }
 
 function confirmPaypalAmount() {
-  if (!paypalAmount.value || paypalAmount.value < 1) return;
+  if (!paypalAmount.value || paypalAmount.value < 3) return;
   paypalConfirmed.value = true;
   nextTick(renderPayPalButton);
 }

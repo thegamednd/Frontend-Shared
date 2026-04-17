@@ -387,7 +387,7 @@
                             <span>2h</span>
                             <span>4h</span>
                         </div>
-                        <p class="duration-hint">When this elapses, you'll be prompted to extend or stop.</p>
+                        <p class="duration-hint">When this elapses, you'll be prompted to extend or stop. If you do not respond the recording will stop automatically.</p>
                     </div>
                     <div v-if="availableMics.length > 1" class="mic-section">
                         <p v-if="micDialogMode === 'start'" class="mic-section-label">Microphone</p>
@@ -2118,13 +2118,32 @@ details.tipsSection[open] .tipsSummary {
 }
 
 .duration-scale {
-    display: flex;
-    justify-content: space-between;
+    position: relative;
+    height: 1em;
     font-size: 0.75rem;
     color: color-mix(in srgb, bisque 60%, transparent);
     font-family: 'Cinzel', serif;
     letter-spacing: 0.05em;
     margin-top: -0.2em;
+}
+
+.duration-scale span {
+    position: absolute;
+    white-space: nowrap;
+}
+
+.duration-scale span:nth-child(1) {
+    left: 0;
+}
+
+/* 2h = 120 min, scale = 30..240 → (120-30)/(240-30) ≈ 42.86% */
+.duration-scale span:nth-child(2) {
+    left: 42.86%;
+    transform: translateX(-50%);
+}
+
+.duration-scale span:nth-child(3) {
+    right: 0;
 }
 
 .duration-hint {
