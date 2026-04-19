@@ -96,6 +96,15 @@ export const useCharacterStore = defineStore('characters', {
             const userStore = useUserStore();
             return this.characterList.filter((char) => char.UserID === userStore.userSub);
         },
+        canViewCharacter() {
+            const userStore = useUserStore();
+            return (character) => {
+                if (!character) return false;
+                if (userStore.isOwner) return true;
+                if (userStore.isDM) return true;
+                return character.UserID && character.UserID === userStore.userSub;
+            };
+        },
         activeCharacter(state) {
             if (!state.active) return null;
             return state.characters[state.active] || null;

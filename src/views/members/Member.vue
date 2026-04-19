@@ -8,7 +8,7 @@
                 <h2>{{ member.Name }}</h2>
             </div>
             <div class="header-actions">
-                <template v-if="features.hasCharacterSheets">
+                <template v-if="features.hasCharacterSheets && canViewSheet">
                     <button
                         @click="openCharacterSheet"
                         class="header-action-btn"
@@ -180,6 +180,10 @@ const loading = ref(true);
 
 const canEdit = computed(() => {
     return userStore.isCharacterEditor;
+});
+
+const canViewSheet = computed(() => {
+    return characterStore.canViewCharacter(member.value);
 });
 
 const hasPhysicalInfo = computed(() => {
