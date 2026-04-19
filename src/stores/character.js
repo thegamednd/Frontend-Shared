@@ -96,21 +96,26 @@ export const useCharacterStore = defineStore('characters', {
             const userStore = useUserStore();
             return this.characterList.filter((char) => char.UserID === userStore.userSub);
         },
-        canViewCharacter() {
-            const userStore = useUserStore();
-            return (character) => {
-                if (!character) return false;
-                if (userStore.isOwner) return true;
-                if (userStore.isDM) return true;
-                return character.UserID && character.UserID === userStore.userSub;
-            };
-        },
         activeCharacter(state) {
             if (!state.active) return null;
             return state.characters[state.active] || null;
         }
     },
     actions: {
+        /**
+         * Whether the current user may view the full character sheet
+         * (mechanical fields). Returns true for the realm owner, any DM,
+         * and the character's owner. Used to gate the sheet view, the
+         * print view, and the "Sheet" button on the Member page.
+         */
+        canViewCharacter(character) {
+            if (!character) return false;
+            const userStore = useUserStore();
+            if (userStore.isOwner) return true;
+            if (userStore.isDM) return true;
+            return !!(character.UserID && character.UserID === userStore.userSub);
+        },
+
         /**
          * Check if a string is a UUID format
          */
