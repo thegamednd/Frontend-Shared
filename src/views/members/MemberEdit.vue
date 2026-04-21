@@ -743,7 +743,9 @@ const loadCharacter = async (characterId) => {
       return value;
     };
 
-    // Handle classes (stored as array of class IDs or names)
+    // Handle classes (stored as array of class IDs or names).
+    // Canonical shape is { name, lvl?, xp?, xpNext? } (lowercase name); we also
+    // accept legacy strings, { ID }, or { ClassName } objects.
     if (features.hasClasses && loadedClasses.value.length) {
       const classesData = characterData.Classes || characterData.classes || [];
       if (Array.isArray(classesData)) {
@@ -752,18 +754,21 @@ const loadCharacter = async (characterId) => {
             const parsed = parseDynamoDBValue(classItem);
 
             if (typeof parsed === 'string') {
-              // Try to find by ID first, then by name
               let classObj = loadedClasses.value.find(cls => cls.ID === parsed);
               if (!classObj) {
                 classObj = loadedClasses.value.find(cls => cls.ClassName === parsed);
               }
               return classObj || { ID: parsed, ClassName: parsed };
-            } else if (parsed && typeof parsed === 'object' && parsed.ID) {
-              const classObj = loadedClasses.value.find(cls => cls.ID === parsed.ID);
-              return classObj || parsed;
-            } else if (parsed && typeof parsed === 'object' && parsed.ClassName) {
-              const classObj = loadedClasses.value.find(cls => cls.ClassName === parsed.ClassName);
-              return classObj || parsed;
+            } else if (parsed && typeof parsed === 'object') {
+              if (parsed.ID) {
+                const classObj = loadedClasses.value.find(cls => cls.ID === parsed.ID);
+                return classObj || parsed;
+              }
+              const className = parsed.ClassName || parsed.name;
+              if (className) {
+                const classObj = loadedClasses.value.find(cls => cls.ClassName === className);
+                return classObj || { ID: className, ClassName: className };
+              }
             }
 
             return null;
