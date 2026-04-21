@@ -1,5 +1,6 @@
 import { ref, onUnmounted } from 'vue';
 import { fetchAuthSession } from 'aws-amplify/auth';
+import { Hub } from 'aws-amplify/utils';
 
 const WEBSOCKET_URL = import.meta.env.VITE_WEBSOCKET_URL;
 
@@ -13,6 +14,7 @@ export function useWebSocket() {
   let reconnectTimer = null;
   let currentCharacterId = null;
   let messageHandler = null;
+  let unsubscribeAuth = null;
 
   async function getAuthToken() {
     try {
@@ -82,6 +84,19 @@ export function useWebSocket() {
       console.error('WebSocket connection failed:', error);
       attemptReconnect();
     }
+
+    // Subscribe to Amplify auth events so we can reconnect after a token refresh.
+    if (!unsubscribeAuth) {
+      unsubscribeAuth = Hub.listen('auth', ({ payload }) => {
+        if (payload?.event === 'tokenRefresh' && currentCharacterId) {
+          // Reset attempts after a token refresh, and if currently disconnected, reconnect.
+          reconnectAttempts.value = 0;
+          if (!isConnected.value && messageHandler) {
+            connect(currentCharacterId, messageHandler);
+          }
+        }
+      });
+    }
   }
 
   function attemptReconnect() {
@@ -112,6 +127,11 @@ export function useWebSocket() {
     if (socket.value) {
       socket.value.close(1000, 'User navigated away');
       socket.value = null;
+    }
+
+    if (unsubscribeAuth) {
+      unsubscribeAuth();
+      unsubscribeAuth = null;
     }
 
     isConnected.value = false;

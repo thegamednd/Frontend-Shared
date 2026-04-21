@@ -332,6 +332,34 @@ export const useCharacterStore = defineStore('characters', {
             }
         },
         
+        /**
+         * Fetch a single character by ID, bypassing the local cache.
+         * Used to reliably pull fresh state after remote WebSocket updates.
+         */
+        async fetchCharacter(characterId) {
+            if (!characterId) return null;
+            try {
+                const response = await apiClient.get('/characters/character', {
+                    params: { id: characterId }
+                });
+
+                if (response.status < 200 || response.status >= 300) {
+                    console.error('Failed to fetch character', characterId);
+                    return null;
+                }
+
+                const char = response.data;
+                if (char) {
+                    const id = char.ID || char.id || characterId;
+                    this.characters[id] = char;
+                }
+                return char;
+            } catch (error) {
+                console.error('Error fetching character:', error);
+                return null;
+            }
+        },
+
         async patchCharacter(characterId, updates, requestId) {
             try {
                 const payload = { ...updates };
