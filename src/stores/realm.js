@@ -231,6 +231,13 @@ export const useRealmStore = defineStore('realm', {
             // Default to empty array
             return [];
         },
+        // True when the active realm is on the free subscription tier (or has no tier set).
+        // Drives free-tier UI gating across the app.
+        isFreeTier(state) {
+            const realm = this.activeRealm;
+            if (!realm) return false;
+            return !realm.SubscriptionPlan || realm.SubscriptionPlan === 'free';
+        },
         arRealms(state) {
             return Object.values(state.realms);
         },
