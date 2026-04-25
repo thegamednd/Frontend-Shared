@@ -36,7 +36,7 @@
           You're viewing <em>RealmForgia</em> — the sample map bound to every free realm. Upgrade to unlock custom uploads, marker lore, and the full cartographer's library.
         </p>
       </div>
-      <router-link to="/account/manage-realm" class="banner-cta">
+      <router-link :to="{ path: '/account/active-realm', query: { subscribe: 1 } }" class="banner-cta">
         <span class="cta-label">Upgrade Realm</span>
         <span class="material-symbols-outlined cta-arrow">arrow_forward</span>
       </router-link>
