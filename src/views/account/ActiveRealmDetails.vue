@@ -3039,6 +3039,9 @@ onMounted(async () => {
     if (targetPlan) {
       selectPlan(targetPlan);
     }
+  } else if (route.query.subscribe) {
+    router.replace({ path: route.path, query: {} });
+    await openSubscriptionDialog();
   }
 });
 </script>
