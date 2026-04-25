@@ -338,7 +338,7 @@ onMounted(async () => {
     const gsId = import.meta.env.VITE_GAMING_SYSTEM_ID;
     if (gsId) {
         try {
-            const mod = await import('@/stores/gamingSystems');
+            const mod = await import(/* @vite-ignore */ '@/stores/gamingSystems');
             if (typeof mod.useGamingSystemsStore !== 'function') throw new Error('Store not available');
             const gamingSystemsStore = mod.useGamingSystemsStore();
             if (!gamingSystemsStore.isLoaded) {
