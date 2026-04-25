@@ -1,3 +1,5 @@
+import { features } from '@shared/config/features';
+
 export const sharedRoutes = [
     {
         path: '/account',
@@ -156,6 +158,20 @@ export const sharedRoutes = [
         props: true,
         meta: { requiresActiveRealm: true }
     },
+    ...(features.hasMaps ? [
+        {
+            path: '/maps',
+            name: 'Maps',
+            component: () => import('@shared/views/Maps.vue'),
+            meta: { requiresActiveRealm: true }
+        },
+        {
+            path: '/account/manage-maps',
+            name: 'ManageMaps',
+            component: () => import('@shared/views/account/ManageMaps.vue'),
+            meta: { requiresActiveRealm: true }
+        },
+    ] : []),
 ];
 
 /**
