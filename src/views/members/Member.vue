@@ -75,11 +75,11 @@
                         </template>
                         <div class="info-item" v-if="member.Born">
                             <label>Born:</label>
-                            <span>{{ member.Born }}</span>
+                            <span>{{ member.Born }}{{ dateSuffixAbbr }}<template v-if="age != null"> (Age: {{ age }})</template></span>
                         </div>
                         <div class="info-item" v-if="member.Died">
                             <label>Died:</label>
-                            <span>{{ member.Died }}</span>
+                            <span>{{ member.Died }}{{ dateSuffixAbbr }}</span>
                         </div>
                         <template v-if="features.hasClasses">
                             <div class="info-item" v-if="member.Level">
@@ -156,6 +156,7 @@ import { useRoute, useRouter } from 'vue-router';
 import { useCharacterStore } from '@shared/stores/character';
 import { useUserStore } from '@shared/stores/user';
 import { useRealmStore } from '@shared/stores/realm';
+import { useDateStore } from '@shared/stores/date';
 import { features } from '@shared/config/features';
 import apiClient from '@shared/utils/api';
 
@@ -171,6 +172,19 @@ const router = useRouter();
 const characterStore = useCharacterStore();
 const userStore = useUserStore();
 const realmStore = useRealmStore();
+const dateStore = useDateStore();
+
+const dateSuffixAbbr = computed(() => realmStore.activeRealm?.DateSuffix?.Abbr || 'SF');
+
+const age = computed(() => {
+    const born = member.value?.Born;
+    if (!born) return null;
+    const died = member.value?.Died;
+    if (died) return died - born;
+    const currentYear = dateStore.date?.y;
+    if (currentYear == null) return null;
+    return currentYear - born;
+});
 const imagesCdnUrl = import.meta.env.VITE_IMAGES_CDN_URL;
 
 const classesLookup = ref({});
