@@ -101,10 +101,14 @@ export const useAccountStore = defineStore('account', {
             }
 
             const accessMap = {};
+            const scopedGamingSystemId = import.meta.env.VITE_GAMING_SYSTEM_ID || null;
 
             try {
                 // Process each gaming system in the Access map
                 for (const [gamingSystemId, shopItemIds] of Object.entries(this.account.Access)) {
+                    if (scopedGamingSystemId && gamingSystemId !== scopedGamingSystemId) {
+                        continue;
+                    }
                     if (!Array.isArray(shopItemIds)) {
                         console.warn(`Invalid shop item IDs for gaming system ${gamingSystemId}`);
                         continue;

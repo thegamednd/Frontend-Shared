@@ -78,6 +78,7 @@
 <script setup>
 import { ref, onMounted, computed } from 'vue';
 import { useRouter } from 'vue-router';
+import { getActivePinia } from 'pinia';
 import { useUserStore } from '@shared/stores/user.js';
 import { useRealmStore } from '@shared/stores/realm.js';
 import { useAccountStore } from '@shared/stores/account.js';
@@ -93,8 +94,18 @@ const error = ref(null);
 const invitations = ref([]);
 const userRealms = ref([]);
 
-// Free realm limit from gaming system (falls back to account.Realms)
-const freeRealmLimit = ref(accountStore.account?.Realms || 3);
+// Free realm limit — prefer per-gaming-system FreeRealms (set by app's gamingSystems store at init).
+// Falls back to account.Realms in apps that don't register a gamingSystems store.
+const freeRealmLimit = computed(() => {
+  const gsId = import.meta.env.VITE_GAMING_SYSTEM_ID;
+  if (gsId) {
+    const pinia = getActivePinia();
+    const gsStore = pinia?._s?.get('gamingSystems');
+    const gs = gsStore?.getSystemById?.(gsId);
+    if (gs?.FreeRealms !== undefined) return gs.FreeRealms;
+  }
+  return accountStore.account?.Realms || 3;
+});
 
 // Check if user can create more realms based on gaming system limit
 const canCreateMoreRealms = computed(() => {
@@ -228,21 +239,15 @@ const requestAccess = () => {
 };
 
 onMounted(async () => {
-  // Load gaming system's FreeRealms limit
+  // Lazy-load gamingSystems store if the app exposes one but hasn't preloaded it.
   const gsId = import.meta.env.VITE_GAMING_SYSTEM_ID;
   if (gsId) {
     try {
-      const { useGamingSystemsStore } = await import(/* @vite-ignore */ '@/stores/gamingSystems');
-      const gamingSystemsStore = useGamingSystemsStore();
-      if (!gamingSystemsStore.isLoaded) {
-        await gamingSystemsStore.fetchGamingSystems();
-      }
-      const gs = gamingSystemsStore.getSystemById(gsId);
-      if (gs?.FreeRealms !== undefined) {
-        freeRealmLimit.value = gs.FreeRealms;
-      }
-    } catch (err) {
-      console.warn('Failed to load gaming system free realm limit:', err);
+      const mod = await import(/* @vite-ignore */ '@/stores/gamingSystems');
+      const store = mod.useGamingSystemsStore?.();
+      if (store && !store.isLoaded) await store.fetchGamingSystems();
+    } catch {
+      // App doesn't expose a gamingSystems store — fall back to account.Realms.
     }
   }
 

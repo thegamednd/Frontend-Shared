@@ -355,7 +355,7 @@
     </div>
 
     <!-- Gaming System Section -->
-    <template v-if="features.hasGamingSystems">
+    <template v-if="features.hasGamingSystems && hasGamingSystemRoute">
       <div class="gaming-system-section">
         <div class="section-header">
           <h2>
@@ -1351,6 +1351,7 @@ const sessionStore = useSessionStore();
 const configStore = useConfigStore();
 const router = useRouter();
 const route = useRoute();
+const hasGamingSystemRoute = router.hasRoute('GamingSystem');
 
 // Delete realm state
 const showDeleteRealmDialog = ref(false);
