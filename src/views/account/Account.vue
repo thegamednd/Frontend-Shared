@@ -311,6 +311,8 @@ import AccountCreate from '@shared/components/account/Create.vue';
 import ActiveRealm from '@shared/components/account/ActiveRealm.vue';
 import CreditBalance from '@shared/components/account/CreditBalance.vue';
 
+import { getActivePinia } from 'pinia';
+
 import { useAccountStore } from '@shared/stores/account';
 import { useRealmStore } from '@shared/stores/realm';
 import { useUserStore } from '@shared/stores/user';
@@ -328,28 +330,32 @@ const realmforgeSettingsUrl = computed(() => {
 // Emit events
 const emits = defineEmits(['set-room']);
 
-// Free realm limit from gaming system (falls back to account.Realms)
-const freeRealmLimit = ref(accountStore.account?.Realms || 3);
+// Free realm limit — prefer per-gaming-system FreeRealms (set by app's gamingSystems store at init).
+// Falls back to account.Realms in apps that don't register a gamingSystems store.
+const freeRealmLimit = computed(() => {
+    const gsId = import.meta.env.VITE_GAMING_SYSTEM_ID;
+    if (gsId) {
+        const pinia = getActivePinia();
+        const gsStore = pinia?._s?.get('gamingSystems');
+        const gs = gsStore?.getSystemById?.(gsId);
+        if (gs?.FreeRealms !== undefined) return gs.FreeRealms;
+    }
+    return accountStore.account?.Realms || 3;
+});
 
 onMounted(async () => {
     emits('set-room', 'hrth');
 
-    // Load gaming system's FreeRealms limit
+    // Lazy-load gamingSystems store if the app exposes one but hasn't preloaded it.
+    // The computed freeRealmLimit above will pick up the data reactively once loaded.
     const gsId = import.meta.env.VITE_GAMING_SYSTEM_ID;
     if (gsId) {
         try {
             const mod = await import(/* @vite-ignore */ '@/stores/gamingSystems');
-            if (typeof mod.useGamingSystemsStore !== 'function') throw new Error('Store not available');
-            const gamingSystemsStore = mod.useGamingSystemsStore();
-            if (!gamingSystemsStore.isLoaded) {
-                await gamingSystemsStore.fetchGamingSystems();
-            }
-            const gs = gamingSystemsStore.getSystemById(gsId);
-            if (gs?.FreeRealms !== undefined) {
-                freeRealmLimit.value = gs.FreeRealms;
-            }
+            const store = mod.useGamingSystemsStore?.();
+            if (store && !store.isLoaded) await store.fetchGamingSystems();
         } catch {
-            // Gaming systems store not available in this app — use default limit
+            // App doesn't expose a gamingSystems store — fall back to account.Realms.
         }
     }
 });

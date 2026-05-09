@@ -64,6 +64,7 @@ export function useAIStream() {
               break;
 
             case 'ai_token':
+              if (!isStreaming.value) break;
               if (tokenCallback) tokenCallback(message.text);
               break;
 
