@@ -85,6 +85,32 @@
               <span class="message-label">{{ aiName }}</span>
               <div class="message-bubble">
                 <div v-html="entry.answer"></div>
+
+                <!-- Inline "Proposal created" card (DM-only, AI tool use) -->
+                <div
+                  v-if="entry.proposal"
+                  class="proposal-inline-card"
+                  :class="`proposal-action-${entry.proposal.action || 'edit'}`"
+                >
+                  <div class="proposal-card-icon">
+                    <span class="material-symbols-outlined">{{ proposalIcon(entry.proposal.action) }}</span>
+                  </div>
+                  <div class="proposal-card-body">
+                    <span class="proposal-card-eyebrow">Proposal created</span>
+                    <p class="proposal-card-text">
+                      {{ proposalLabel(entry.proposal.action) }} drafted — review it before applying.
+                    </p>
+                    <button
+                      class="proposal-card-btn"
+                      type="button"
+                      @click="openProposal(entry.proposal.proposalId)"
+                    >
+                      <span class="material-symbols-outlined">open_in_new</span>
+                      Review proposal
+                    </button>
+                  </div>
+                </div>
+
                 <div v-if="entry.requiresConfirmation" class="confirmation-actions">
                   <button @click="confirmBroadQuery(index)" class="confirm-btn">Yes, proceed</button>
                   <button @click="cancelBroadQuery(index)" class="cancel-btn">Cancel</button>
@@ -193,8 +219,27 @@ onMounted(() => {
     scrollToBottom();
   });
 
-  onToolUse((toolName) => {
-    toolIndicator.value = 'Consulting the archives...';
+  onToolUse((toolName, details) => {
+    if (toolName === 'propose_rule_change') {
+      // Show a more specific indicator while the model finishes the turn,
+      // then attach an inline card to the most recent AI message so the DM
+      // can deep-link into the review drawer.
+      toolIndicator.value = 'Drafting a rule proposal...';
+      const proposalId = details?.proposalId
+        || details?.toolResult?.proposalId
+        || details?.input?.proposalId
+        || null;
+      const action = details?.action
+        || details?.toolResult?.action
+        || details?.input?.action
+        || null;
+      if (proposalId && conversation.value.length > 0) {
+        const lastEntry = conversation.value[conversation.value.length - 1];
+        lastEntry.proposal = { proposalId, action };
+      }
+    } else {
+      toolIndicator.value = 'Consulting the archives...';
+    }
   });
 
   onComplete((message) => {
@@ -396,6 +441,35 @@ function autoResize(event) {
   const textarea = event.target;
   textarea.style.height = 'auto';
   textarea.style.height = textarea.scrollHeight + 'px';
+}
+
+// ── Proposal inline card helpers ──
+function proposalLabel(action) {
+  return {
+    edit: 'A rule edit',
+    create: 'A new rule',
+    hide: 'A rule hide',
+    reorder: 'A reordering'
+  }[action] || 'A rule change';
+}
+
+function proposalIcon(action) {
+  return {
+    edit: 'edit_note',
+    create: 'note_add',
+    hide: 'visibility_off',
+    reorder: 'swap_vert'
+  }[action] || 'auto_awesome';
+}
+
+function openProposal(proposalId) {
+  if (!proposalId) return;
+  // The host view (RealmForge-Vue ModuleView) exposes a deep-link hook.
+  // Falls back to a no-op when no host is registered (e.g. in TheGame-Vue,
+  // the user can navigate to Study → Rules to find their drafts).
+  if (typeof window !== 'undefined' && typeof window.__rfOpenProposalDrawer === 'function') {
+    window.__rfOpenProposalDrawer(proposalId);
+  }
 }
 
 watch(() => aiStore.credits, (newCredits) => {
@@ -771,6 +845,99 @@ watch(conversation, () => {
   background: color-mix(in srgb, var(--theme-bg-surface) 70%, transparent);
   color: #fff;
 }
+
+/* Inline Proposal Card */
+.proposal-inline-card {
+  display: flex;
+  gap: 10px;
+  margin-top: 12px;
+  padding: 10px 12px;
+  background: linear-gradient(135deg, rgba(60, 35, 25, 0.55) 0%, rgba(26, 15, 10, 0.7) 100%);
+  border: 1px solid var(--theme-accent);
+  border-left: 3px solid var(--theme-accent);
+  border-radius: 8px;
+  align-items: flex-start;
+  animation: proposal-card-in 0.32s cubic-bezier(0.2, 0.7, 0.2, 1);
+}
+
+@keyframes proposal-card-in {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.proposal-card-icon {
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, var(--theme-accent) 0%, #cc9a50 100%);
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.proposal-card-icon .material-symbols-outlined {
+  font-size: 18px;
+  color: var(--theme-bg-primary);
+}
+
+.proposal-card-body {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+  flex: 1;
+}
+
+.proposal-card-eyebrow {
+  font-family: 'Pirata One', cursive;
+  font-size: 0.75em;
+  letter-spacing: 1.6px;
+  text-transform: uppercase;
+  color: var(--theme-accent);
+}
+
+.proposal-card-text {
+  margin: 0;
+  font-size: 0.92em;
+  color: var(--theme-text-primary);
+  line-height: 1.4;
+}
+
+.proposal-card-btn {
+  align-self: flex-start;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 12px;
+  background: color-mix(in srgb, var(--theme-accent) 18%, transparent);
+  border: 1px solid var(--theme-accent);
+  border-radius: 6px;
+  color: var(--theme-accent);
+  font-family: 'Pirata One', cursive;
+  font-size: 0.85em;
+  letter-spacing: 0.5px;
+  cursor: pointer;
+  transition: all 0.18s;
+}
+
+.proposal-card-btn:hover {
+  background: color-mix(in srgb, var(--theme-accent) 32%, transparent);
+  transform: translateY(-1px);
+}
+
+.proposal-card-btn .material-symbols-outlined {
+  font-size: 16px;
+}
+
+.proposal-action-create { border-left-color: #6cd07a; }
+.proposal-action-create .proposal-card-icon { background: linear-gradient(135deg, #6cd07a 0%, #2e7a3a 100%); }
+
+.proposal-action-hide { border-left-color: #d99a9a; }
+.proposal-action-hide .proposal-card-icon { background: linear-gradient(135deg, #d99a9a 0%, #5a2e2e 100%); }
+
+.proposal-action-reorder { border-left-color: #92b9e6; }
+.proposal-action-reorder .proposal-card-icon { background: linear-gradient(135deg, #92b9e6 0%, #2e5a8a 100%); }
 
 /* Tool Indicator */
 .tool-indicator {

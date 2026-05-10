@@ -69,7 +69,10 @@ export function useAIStream() {
               break;
 
             case 'ai_tool_use':
-              if (toolUseCallback) toolUseCallback(message.toolName);
+              // Forward toolName plus full message details so consumers can
+              // react to specific tools (e.g. propose_rule_change carries a
+              // proposalId for deep-linking into the review drawer).
+              if (toolUseCallback) toolUseCallback(message.toolName, message);
               break;
 
             case 'ai_complete':
