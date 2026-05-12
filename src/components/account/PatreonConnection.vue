@@ -24,6 +24,11 @@
           <h4>Patreon Connected</h4>
           <p class="patreon-email">{{ patreonEmail }}</p>
 
+          <!-- No Active Campaigns Section -->
+          <div v-if="supportedCampaigns.length === 0" class="no-active-campaigns">
+            <p>You're not currently supporting any campaigns. If you've recently subscribed on Patreon, disconnect and reconnect to refresh.</p>
+          </div>
+
           <!-- Supported Campaigns Section -->
           <div v-if="supportedCampaigns.length > 0" class="supported-campaigns">
             <h5 class="campaigns-title">
@@ -551,8 +556,11 @@ const patreonEmail = computed(() => {
 });
 
 const supportedCampaigns = computed(() => {
-  // Each subscription record IS a per-campaign entry with CampaignID, CampaignName, CreatorName, etc.
-  return Object.values(accountStore.patreonSubscriptions);
+  // Only include actively supported campaigns. Cancelled/expired/paused entries
+  // stay in the store (refresh token may still be valid for re-sync) but should
+  // not be counted as "supporting".
+  return Object.values(accountStore.patreonSubscriptions)
+    .filter(sub => sub.PatreonStatus === 'active');
 });
 
 // Get all owned realms from the realm store, sorted alphabetically by name
@@ -1092,6 +1100,19 @@ onMounted(async () => {
   margin-top: 1.5rem;
   padding-top: 1.5rem;
   border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.no-active-campaigns {
+  margin-top: 1.5rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  color: rgba(255, 255, 255, 0.65);
+  font-size: 0.9rem;
+  line-height: 1.4;
+}
+
+.no-active-campaigns p {
+  margin: 0;
 }
 
 .campaigns-title {
