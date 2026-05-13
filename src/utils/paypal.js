@@ -116,6 +116,11 @@ export const isPayPalLoaded = () => {
  * @param {Object} config.setupFee - Setup fee for prorated first payment
  * @param {string} config.setupFee.value - Setup fee amount (e.g., "2.50")
  * @param {string} config.setupFee.currency_code - Currency code (default: "USD")
+ * @param {string} config.taxPercentage - Per-subscription tax rate override (e.g. '19.00').
+ *   When provided, sets `plan.taxes.percentage` on actions.subscription.create so every
+ *   recurring cycle is charged at this jurisdiction-specific rate.
+ * @param {string} config.customId - PayPal `custom_id` (max 127 chars). Used to round-trip
+ *   billing location + realm/tier context through to webhooks.
  * @param {Function} config.onApprove - Callback for successful approval
  * @param {Function} config.onError - Callback for errors
  * @param {Function} config.onCancel - Callback for cancellation
@@ -126,6 +131,8 @@ export const createSubscriptionButtonConfig = (config = {}) => {
     planId,
     startTime,
     setupFee,
+    taxPercentage,
+    customId,
     onApprove,
     onError,
     onCancel,
@@ -169,6 +176,23 @@ export const createSubscriptionButtonConfig = (config = {}) => {
         // Note: setup_fee is typically configured in the plan itself
         // For dynamic setup fees, we may need to use a different approach
         console.log('PayPal subscription setup_fee:', setupFee);
+      }
+
+      // Per-subscription tax override. PayPal allows callers to override the plan-level
+      // taxes.percentage on actions.subscription.create — we use this so each user gets
+      // their jurisdiction's rate without mutating the shared plan.
+      if (taxPercentage) {
+        subscriptionParams.plan = {
+          ...subscriptionParams.plan,
+          taxes: {
+            percentage: taxPercentage,
+            inclusive: false
+          }
+        };
+      }
+
+      if (customId) {
+        subscriptionParams.custom_id = customId;
       }
 
       return actions.subscription.create(subscriptionParams);

@@ -1177,6 +1177,63 @@
               </div>
             </div>
           </div>
+
+          <!-- Billing location + tax breakdown (paid tiers, PayPal flow only) -->
+          <div
+            v-if="features.hasPayPal && canUpgrade && selectedPlan && selectedPlan.Tier !== 'free'"
+            class="billing-tax-section"
+          >
+            <h4>Billing location</h4>
+            <p class="billing-tax-help">
+              Used to calculate the applicable tax for your subscription. PayPal will charge this rate on every recurring cycle.
+            </p>
+            <BillingLocationPicker
+              :country="billingCountry"
+              :state="billingState"
+              id-prefix="subscription-billing"
+              required
+              @update:country="billingCountry = $event"
+              @update:state="billingState = $event"
+            />
+
+            <div class="tax-summary">
+              <div class="tax-row">
+                <span class="tax-label">Subtotal</span>
+                <span class="tax-value">{{ formatPrice(selectedPlan.Cost ? (billingInterval === 'annual' ? annualCostFor(selectedPlan) : selectedPlan.Cost) : 0) }}</span>
+              </div>
+
+              <div v-if="!billingLocationComplete" class="tax-row tax-pending">
+                <span class="tax-label">Tax</span>
+                <span class="tax-value">
+                  <template v-if="!billingCountry">Select a country to see tax</template>
+                  <template v-else>Select a {{ billingCountry === 'CA' ? 'province' : 'state' }} to see tax</template>
+                </span>
+              </div>
+              <div v-else-if="isCalculatingTax || !taxBreakdownMatchesSelection" class="tax-row tax-pending">
+                <span class="tax-label">Tax</span>
+                <span class="tax-value">
+                  <span class="material-symbols-outlined spinning small-icon">refresh</span>
+                  Calculating…
+                </span>
+              </div>
+              <div v-else class="tax-row">
+                <span class="tax-label">Tax ({{ taxBreakdown.taxJurisdiction }})</span>
+                <span class="tax-value">{{ formatPrice(taxBreakdown.taxAmountCents) }}</span>
+              </div>
+
+              <div class="tax-row tax-total">
+                <span class="tax-label">Total</span>
+                <span class="tax-value">
+                  <template v-if="taxBreakdownMatchesSelection">
+                    {{ formatPrice(taxBreakdown.totalCents) }}/{{ billingInterval === 'annual' ? 'year' : 'mo' }}
+                  </template>
+                  <template v-else>
+                    —
+                  </template>
+                </span>
+              </div>
+            </div>
+          </div>
         </div>
         <div class="dialog-footer">
           <button @click="closeSubscriptionDialog" class="cancel-btn">Cancel</button>
@@ -1190,11 +1247,18 @@
                   :plan-tier="selectedPlanTier"
                   :billing-interval="billingInterval"
                   :realm-id="realmStore.activeRealmId"
-                  :disabled="!canUpgrade || paypalStore?.isProcessing || isLoadingBillingInfo"
+                  :disabled="!canUpgrade || paypalStore?.isProcessing || isLoadingBillingInfo || !paypalReady"
                   :compact="true"
                   :patreon-sync-enabled="isPatreonUpgradeTier && !!patreonBillingInfo"
                   :start-time="patreonSyncStartTime"
                   :setup-fee="patreonSyncSetupFee"
+                  :tax-percentage="paypalTaxPercentage"
+                  :custom-id="paypalCustomId"
+                  :billing-country="billingCountry"
+                  :billing-state="billingState"
+                  :tax-jurisdiction="taxBreakdown?.taxJurisdiction || ''"
+                  :tax-rate="taxBreakdown?.taxRate ?? null"
+                  :tax-amount-cents="taxBreakdown?.taxAmountCents ?? null"
                   @success="handlePayPalSuccess"
                   @error="handlePayPalError"
                   @cancel="handlePayPalCancel"
@@ -1306,6 +1370,7 @@ import { useSessionStore } from '@shared/stores/session';
 import { useConfigStore } from '@shared/stores/config';
 import { patreonService } from '@shared/services/patreonService';
 import { features } from '@shared/config/features';
+import BillingLocationPicker from '@shared/components/billing/BillingLocationPicker.vue';
 
 // Conditionally import PayPal store and component
 const PayPalSubscriptionButton = shallowRef(null);
@@ -1377,6 +1442,20 @@ const selectedPlan = ref(null);
 const billingInterval = ref('monthly');
 const prorationPreview = ref(null);
 const isLoadingProration = ref(false);
+
+// Billing location + server-calculated tax breakdown for the selected plan.
+// `taxBreakdown` is cleared whenever country/state/tier/interval change, then
+// repopulated after the debounced /subscriptions/calculate-tax round-trip. The
+// PayPal button is disabled while it's null so the user can never subscribe at
+// a stale (or unverified) rate.
+const billingCountry = ref('');
+const billingState = ref('');
+const taxBreakdown = ref(null);
+const isCalculatingTax = ref(false);
+let taxCalcTimer = null;
+let taxCalcSeq = 0;
+
+const formatPrice = (cents) => `$${((cents ?? 0) / 100).toFixed(2)}`;
 
 function annualCostFor(subscription) {
   return subscription.AnnualCost || Math.round(subscription.Cost * 12 * 0.80);
@@ -2600,12 +2679,30 @@ const openSubscriptionDialog = async () => {
   selectedPlan.value = subscriptionStore.allSubscriptions.find(
     sub => sub.Tier.toLowerCase() === realmTier.value.toLowerCase()
   ) || null;
+
+  // Prefill billing location: prefer realm's stored country (post-tax-PR realms),
+  // then fall back to the user's saved shop billing address.
+  const activeRealm = realmStore.activeRealm;
+  billingCountry.value =
+    activeRealm?.BillingCountry ||
+    userStore.user?.Address?.country ||
+    '';
+  billingState.value =
+    activeRealm?.BillingState ||
+    userStore.user?.Address?.state ||
+    '';
+  taxBreakdown.value = null;
 };
 
 const closeSubscriptionDialog = () => {
   showSubscriptionDialog.value = false;
   selectedPlanTier.value = '';
   selectedPlan.value = null;
+  taxBreakdown.value = null;
+  if (taxCalcTimer) {
+    clearTimeout(taxCalcTimer);
+    taxCalcTimer = null;
+  }
 };
 
 // Reload dialog functions
@@ -2652,6 +2749,116 @@ watch(billingInterval, () => {
     fetchProrationPreview(selectedPlan.value.Tier);
   }
 });
+
+// --- Subscription tax calculation -----------------------------------------
+
+const calculateSubscriptionTax = async () => {
+  if (!showSubscriptionDialog.value) return;
+  const plan = selectedPlan.value;
+  if (!plan || plan.Tier === 'free' || !plan.Cost) {
+    taxBreakdown.value = null;
+    return;
+  }
+  if (!billingCountry.value) {
+    taxBreakdown.value = null;
+    return;
+  }
+  // US and CA require a subdivision for an accurate rate.
+  if ((billingCountry.value === 'US' || billingCountry.value === 'CA') && !billingState.value) {
+    taxBreakdown.value = null;
+    return;
+  }
+
+  const tier = plan.Tier;
+  const interval = billingInterval.value;
+  const country = billingCountry.value;
+  const state = billingState.value || '';
+  const seq = ++taxCalcSeq;
+  isCalculatingTax.value = true;
+
+  try {
+    const response = await apiClient.post('/subscriptions/calculate-tax', {
+      tier,
+      billingInterval: interval,
+      country,
+      state
+    });
+    if (seq !== taxCalcSeq) return; // a newer request superseded us
+    const payload = response.data?.data ?? response.data;
+    // Stamp the tuple onto the breakdown so the disabled-guard can verify it
+    // matches the user's current selection.
+    taxBreakdown.value = {
+      ...payload,
+      _country: country,
+      _state: state
+    };
+  } catch (error) {
+    if (seq !== taxCalcSeq) return;
+    console.error('Failed to calculate subscription tax:', error);
+    taxBreakdown.value = null;
+  } finally {
+    if (seq === taxCalcSeq) {
+      isCalculatingTax.value = false;
+    }
+  }
+};
+
+// Any change to country, state, tier, or billing interval invalidates the
+// existing breakdown and schedules a fresh calculation. Clearing immediately
+// keeps the PayPal button disabled in the gap so we never charge a stale rate.
+watch(
+  [billingCountry, billingState, () => selectedPlan.value?.Tier, billingInterval],
+  () => {
+    taxBreakdown.value = null;
+    if (taxCalcTimer) clearTimeout(taxCalcTimer);
+    taxCalcTimer = setTimeout(() => {
+      taxCalcTimer = null;
+      calculateSubscriptionTax();
+    }, 350);
+  }
+);
+
+const isPaidSelection = computed(() =>
+  !!(selectedPlan.value && selectedPlan.value.Tier !== 'free' && selectedPlan.value.Cost)
+);
+
+const requiresBillingState = computed(() =>
+  billingCountry.value === 'US' || billingCountry.value === 'CA'
+);
+
+const billingLocationComplete = computed(() => {
+  if (!billingCountry.value) return false;
+  if (requiresBillingState.value && !billingState.value) return false;
+  return true;
+});
+
+const taxBreakdownMatchesSelection = computed(() => {
+  const b = taxBreakdown.value;
+  if (!b || !selectedPlan.value) return false;
+  return (
+    b.tier === selectedPlan.value.Tier &&
+    b.billingInterval === billingInterval.value &&
+    b._country === billingCountry.value &&
+    (b._state || '') === (billingState.value || '')
+  );
+});
+
+const paypalTaxPercentage = computed(() => taxBreakdown.value?.paypalTaxPercentage || null);
+
+const paypalCustomId = computed(() => {
+  const accountId = userStore.userSub || '';
+  const country = billingCountry.value || '';
+  const state = billingState.value || '';
+  const realmId = realmStore.activeRealmId || '';
+  const tier = selectedPlan.value?.Tier || '';
+  const interval = billingInterval.value || '';
+  return `${accountId}|${country}|${state}|${realmId}|${tier}|${interval}`;
+});
+
+const paypalReady = computed(() =>
+  !isPaidSelection.value ||
+  (billingLocationComplete.value && taxBreakdownMatchesSelection.value && !isCalculatingTax.value)
+);
 
 const fetchProrationPreview = async (newTier) => {
   // Only fetch for paid plans when there's an active subscription to prorate from
@@ -5844,6 +6051,78 @@ onMounted(async () => {
   border-top: 1px solid color-mix(in srgb, var(--theme-accent) 10%, transparent);
   font-style: italic;
   color: color-mix(in srgb, var(--theme-accent) 80%, transparent) !important;
+}
+
+/* Billing location + tax breakdown */
+.subscription-dialog .billing-tax-section {
+  margin-top: 1.25rem;
+  padding: 1rem;
+  background: color-mix(in srgb, var(--theme-accent) 4%, transparent);
+  border: 1px solid color-mix(in srgb, var(--theme-accent) 18%, transparent);
+  border-radius: 0.5rem;
+}
+
+.subscription-dialog .billing-tax-section h4 {
+  margin: 0 0 0.5rem 0;
+  font-size: 0.95rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--theme-accent);
+}
+
+.subscription-dialog .billing-tax-help {
+  margin: 0 0 0.85rem 0;
+  font-size: 0.85rem;
+  line-height: 1.45;
+  color: var(--theme-text-secondary, rgba(255, 255, 255, 0.7));
+}
+
+.subscription-dialog .tax-summary {
+  margin-top: 1rem;
+  padding-top: 0.85rem;
+  border-top: 1px solid color-mix(in srgb, var(--theme-accent) 14%, transparent);
+  display: grid;
+  gap: 0.4rem;
+}
+
+.subscription-dialog .tax-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.9rem;
+  color: var(--theme-text-primary);
+}
+
+.subscription-dialog .tax-row .tax-label {
+  opacity: 0.85;
+}
+
+.subscription-dialog .tax-row .tax-value {
+  font-variant-numeric: tabular-nums;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.subscription-dialog .tax-row.tax-pending .tax-value {
+  color: var(--theme-text-secondary, rgba(255, 255, 255, 0.7));
+  font-style: italic;
+}
+
+.subscription-dialog .tax-row.tax-total {
+  margin-top: 0.4rem;
+  padding-top: 0.55rem;
+  border-top: 1px solid color-mix(in srgb, var(--theme-accent) 14%, transparent);
+  font-weight: 600;
+  font-size: 1rem;
+}
+
+.subscription-dialog .tax-row.tax-total .tax-value {
+  color: var(--theme-accent);
+}
+
+.subscription-dialog .small-icon {
+  font-size: 1rem !important;
 }
 
 /* Patreon Billing Sync Styles */
