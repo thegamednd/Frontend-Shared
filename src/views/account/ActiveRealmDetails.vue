@@ -1181,6 +1181,7 @@
           <!-- Billing location + tax breakdown (paid tiers, PayPal flow only) -->
           <div
             v-if="features.hasPayPal && canUpgrade && selectedPlan && selectedPlan.Tier !== 'free'"
+            ref="billingSectionEl"
             class="billing-tax-section"
           >
             <h4>Billing location</h4>
@@ -1241,13 +1242,31 @@
           <!-- Payment options for non-free tiers (PayPal) -->
           <template v-if="features.hasPayPal">
             <div v-if="canUpgrade && selectedPlan?.Tier !== 'free'" class="payment-options">
-              <!-- PayPal Subscription Button -->
-              <div class="paypal-button-wrapper">
+              <!-- Billing-location prompt: PayPal button is gated until tax is calculated -->
+              <button
+                v-if="!paypalReady"
+                type="button"
+                @click="scrollToBillingSection"
+                class="paypal-locked-notice"
+              >
+                <span class="material-symbols-outlined">lock</span>
+                <span class="locked-text">
+                  <template v-if="!billingCountry">Select your billing country to continue</template>
+                  <template v-else-if="requiresBillingState && !billingState">
+                    Select your {{ billingCountry === 'CA' ? 'province' : 'state' }} to continue
+                  </template>
+                  <template v-else-if="isCalculatingTax || !taxBreakdownMatchesSelection">Calculating tax…</template>
+                  <template v-else>Fill billing location to continue</template>
+                </span>
+              </button>
+
+              <!-- PayPal Subscription Button — only rendered once tax is ready -->
+              <div v-else class="paypal-button-wrapper">
                 <PayPalSubscriptionButton
                   :plan-tier="selectedPlanTier"
                   :billing-interval="billingInterval"
                   :realm-id="realmStore.activeRealmId"
-                  :disabled="!canUpgrade || paypalStore?.isProcessing || isLoadingBillingInfo || !paypalReady"
+                  :disabled="!canUpgrade || paypalStore?.isProcessing || isLoadingBillingInfo"
                   :compact="true"
                   :patreon-sync-enabled="isPatreonUpgradeTier && !!patreonBillingInfo"
                   :start-time="patreonSyncStartTime"
@@ -1452,8 +1471,17 @@ const billingCountry = ref('');
 const billingState = ref('');
 const taxBreakdown = ref(null);
 const isCalculatingTax = ref(false);
+const billingSectionEl = ref(null);
 let taxCalcTimer = null;
 let taxCalcSeq = 0;
+
+const scrollToBillingSection = () => {
+  const el = billingSectionEl.value;
+  if (!el) return;
+  el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  const focusable = el.querySelector('select, input');
+  if (focusable) focusable.focus({ preventScroll: true });
+};
 
 const formatPrice = (cents) => `$${((cents ?? 0) / 100).toFixed(2)}`;
 
@@ -2847,11 +2875,14 @@ const paypalTaxPercentage = computed(() => taxBreakdown.value?.paypalTaxPercenta
 
 const paypalCustomId = computed(() => {
   const accountId = userStore.userSub || '';
-  const country = billingCountry.value || '';
-  const state = billingState.value || '';
   const realmId = realmStore.activeRealmId || '';
   const tier = selectedPlan.value?.Tier || '';
   const interval = billingInterval.value || '';
+  // Skip custom_id entirely when essentials aren't loaded yet — sending a malformed
+  // string ("||||fellowship|monthly") can trip up PayPal's subscription create.
+  if (!accountId || !realmId || !tier || !interval) return null;
+  const country = billingCountry.value || '';
+  const state = billingState.value || '';
   return `${accountId}|${country}|${state}|${realmId}|${tier}|${interval}`;
 });
 
@@ -6051,6 +6082,32 @@ onMounted(async () => {
   border-top: 1px solid color-mix(in srgb, var(--theme-accent) 10%, transparent);
   font-style: italic;
   color: color-mix(in srgb, var(--theme-accent) 80%, transparent) !important;
+}
+
+/* Locked-state notice in the footer when billing location isn't filled */
+.subscription-dialog .paypal-locked-notice {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.6rem 1rem;
+  border: 1px dashed color-mix(in srgb, var(--theme-accent) 40%, transparent);
+  border-radius: 0.5rem;
+  background: color-mix(in srgb, var(--theme-accent) 6%, transparent);
+  color: var(--theme-accent);
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: inherit;
+  transition: background 0.2s ease, border-color 0.2s ease;
+}
+
+.subscription-dialog .paypal-locked-notice:hover {
+  background: color-mix(in srgb, var(--theme-accent) 12%, transparent);
+  border-color: color-mix(in srgb, var(--theme-accent) 60%, transparent);
+}
+
+.subscription-dialog .paypal-locked-notice .material-symbols-outlined {
+  font-size: 1.15rem;
 }
 
 /* Billing location + tax breakdown */
