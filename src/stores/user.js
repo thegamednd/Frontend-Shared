@@ -53,28 +53,31 @@ export const useUserStore = defineStore('user', {
             return state.user?.userId || null;
         },
         isAdministrator(state) {
-            return state.groups.includes('Administrator');
+            return state.groups.includes('Administrators');
+        },
+        isAdmin(state) {
+            return state.groups.includes('Administrators');
         },
         isCharacterEditor(state) {
-            return state.groups.includes('Deity') || state.groups.includes('Administrator') || this.isDM || this.isOwner;
+            return state.groups.includes('Deity') || state.groups.includes('Administrators') || this.isDM || this.isOwner;
         },
         isContentEditor(state) {
-            return state.groups.includes('Deity') || state.groups.includes('Administrator') || state.groups.includes('ContentEditors');
+            return state.groups.includes('Deity') || state.groups.includes('Administrators') || state.groups.includes('ContentEditors');
         },
         isDeity(state) {
-            return state.groups.includes('Deity') || state.groups.includes('Administrator');
+            return state.groups.includes('Deity') || state.groups.includes('Administrators');
         },
         isPsiEditor(state) {
-            return state.groups.includes('Deity') || state.groups.includes('Administrator') || state.groups.includes('PsiEditors');
+            return state.groups.includes('Deity') || state.groups.includes('Administrators') || state.groups.includes('PsiEditors');
         },
         isRealmEditor(state) {
-            return state.groups.includes('Deity') || state.groups.includes('Administrator') || this.isDM || this.isOwner;
+            return state.groups.includes('Deity') || state.groups.includes('Administrators') || this.isDM || this.isOwner;
         },
         isReportEditor(state) {
-            return state.groups.includes('Deity') || state.groups.includes('Administrator') || state.groups.includes('ReportEditors');
+            return state.groups.includes('Deity') || state.groups.includes('Administrators') || state.groups.includes('ReportEditors');
         },
         isSpellEditor(state) {
-            return state.groups.includes('Deity') || state.groups.includes('Administrator') || state.groups.includes('SpellEditors');
+            return state.groups.includes('Deity') || state.groups.includes('Administrators') || state.groups.includes('SpellEditors');
         },
         isDM(state) {
             const realmStore = useRealmStore();
