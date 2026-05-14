@@ -28,71 +28,78 @@ const isLayoutReady = ref(false);
 
 const editor = ClassicEditor;
 
-const config = computed(() => ({
-    toolbar: {
-        items: [
-            'heading', '|', 'bulletedList', 'numberedList', 'outdent',
-            '|', 'fontSize', 'fontFamily', 'fontColor',
-            'fontBackgroundColor', '|', 'bold', 'italic', 'underline',
-            'subscript', 'superscript', '|', 'horizontalLine', 'link',
-            'insertTable', 'blockQuote', '|', 'alignment',
-            'indent'
+const config = computed(() => {
+    // Per-instance override: callers that need a different toolbar/plugin
+    // set (e.g. the character sheet equipment editor) pass their own config.
+    if (props.editorConfig) {
+        return props.editorConfig;
+    }
+    return {
+        toolbar: {
+            items: [
+                'heading', '|', 'bulletedList', 'numberedList', 'outdent',
+                '|', 'fontSize', 'fontFamily', 'fontColor',
+                'fontBackgroundColor', '|', 'bold', 'italic', 'underline',
+                'subscript', 'superscript', '|', 'horizontalLine', 'link',
+                'insertTable', 'blockQuote', '|', 'alignment',
+                'indent'
+            ],
+            shouldNotGroupWhenFull: false
+        },
+        plugins: [
+            Alignment, Autosave, BlockQuote, Bold, Essentials,
+            FontBackgroundColor, FontColor, FontFamily, FontSize, Heading,
+            HorizontalLine, Indent, IndentBlock, Italic, Link,
+            List, ListProperties, Paragraph, PasteFromOffice,
+            Subscript, Superscript, Table, TableCaption,
+            TableCellProperties, TableColumnResize, TableProperties, TableToolbar,
+            Underline
         ],
-        shouldNotGroupWhenFull: false
-    },
-    plugins: [
-        Alignment, Autosave, BlockQuote, Bold, Essentials,
-        FontBackgroundColor, FontColor, FontFamily, FontSize, Heading,
-        HorizontalLine, Indent, IndentBlock, Italic, Link,
-        List, ListProperties, Paragraph, PasteFromOffice,
-        Subscript, Superscript, Table, TableCaption,
-        TableCellProperties, TableColumnResize, TableProperties, TableToolbar,
-        Underline
-    ],
-    licenseKey: 'GPL',
-    fontFamily: {
-        supportAllValues: true
-    },
-    fontSize: {
-        options: [10, 12, 14, 'default', 18, 20, 22],
-        supportAllValues: true
-    },
-    heading: {
-        options: [
-            { model: 'paragraph', title: 'Paragraph', class: 'ck-heading_paragraph' },
-            { model: 'heading1', view: 'h1', title: 'Heading 1', class: 'ck-heading_heading1' },
-            { model: 'heading2', view: 'h2', title: 'Heading 2', class: 'ck-heading_heading2' },
-            { model: 'heading3', view: 'h3', title: 'Heading 3', class: 'ck-heading_heading3' },
-            { model: 'heading4', view: 'h4', title: 'Heading 4', class: 'ck-heading_heading4' },
-            { model: 'heading5', view: 'h5', title: 'Heading 5', class: 'ck-heading_heading5' },
-            { model: 'heading6', view: 'h6', title: 'Heading 6', class: 'ck-heading_heading6' }
-        ]
-    },
-    link: {
-        addTargetToExternalLinks: true,
-        defaultProtocol: 'https://',
-        decorators: {
-            toggleDownloadable: {
-                mode: 'manual',
-                label: 'Downloadable',
-                attributes: {
-                    download: 'file'
+        licenseKey: 'GPL',
+        fontFamily: {
+            supportAllValues: true
+        },
+        fontSize: {
+            options: [10, 12, 14, 'default', 18, 20, 22],
+            supportAllValues: true
+        },
+        heading: {
+            options: [
+                { model: 'paragraph', title: 'Paragraph', class: 'ck-heading_paragraph' },
+                { model: 'heading1', view: 'h1', title: 'Heading 1', class: 'ck-heading_heading1' },
+                { model: 'heading2', view: 'h2', title: 'Heading 2', class: 'ck-heading_heading2' },
+                { model: 'heading3', view: 'h3', title: 'Heading 3', class: 'ck-heading_heading3' },
+                { model: 'heading4', view: 'h4', title: 'Heading 4', class: 'ck-heading_heading4' },
+                { model: 'heading5', view: 'h5', title: 'Heading 5', class: 'ck-heading_heading5' },
+                { model: 'heading6', view: 'h6', title: 'Heading 6', class: 'ck-heading_heading6' }
+            ]
+        },
+        link: {
+            addTargetToExternalLinks: true,
+            defaultProtocol: 'https://',
+            decorators: {
+                toggleDownloadable: {
+                    mode: 'manual',
+                    label: 'Downloadable',
+                    attributes: {
+                        download: 'file'
+                    }
                 }
             }
+        },
+        list: {
+            properties: {
+                styles: true,
+                startIndex: true,
+                reversed: true
+            }
+        },
+        placeholder: props.placeholder,
+        table: {
+            contentToolbar: ['tableColumn', 'tableRow', 'mergeTableCells', 'tableProperties', 'tableCellProperties']
         }
-    },
-    list: {
-        properties: {
-            styles: true,
-            startIndex: true,
-            reversed: true
-        }
-    },
-    placeholder: props.placeholder,
-    table: {
-        contentToolbar: ['tableColumn', 'tableRow', 'mergeTableCells', 'tableProperties', 'tableCellProperties']
-    }
-}));
+    };
+});
 
 onMounted(() => {
 	isLayoutReady.value = true;
@@ -107,6 +114,13 @@ const props = defineProps({
   placeholder: {
     type: String,
     default: 'Type or paste your content here!',
+  },
+  // Optional per-instance CKEditor config. When provided, overrides the
+  // default config entirely — the caller is responsible for declaring all
+  // plugins and toolbar items it needs.
+  editorConfig: {
+    type: Object,
+    default: null,
   },
 });
 
