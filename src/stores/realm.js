@@ -1,6 +1,7 @@
 import { defineStore } from 'pinia';
 import { useUserStore } from '@shared/stores/user';
 import { useAccountStore } from '@shared/stores/account';
+import { useCharacterStore } from '@shared/stores/character';
 import { useDateStore } from '@shared/stores/date';
 import { useSubscriptionStore } from '@shared/stores/subscription';
 import { watch } from 'vue';
@@ -448,7 +449,6 @@ export const useRealmStore = defineStore('realm', {
                         // Load characters when active realm changes (for initial setup)
                         if (newActiveRealmId !== oldActiveRealmId && newActiveRealmId) {
                             try {
-                                const { useCharacterStore } = await import('@shared/stores/character');
                                 const characterStore = useCharacterStore();
                                 await characterStore.loadCharactersForActiveRealm();
                                 console.log('✅ Characters loaded for realm:', newActiveRealmId);
@@ -565,7 +565,6 @@ export const useRealmStore = defineStore('realm', {
             
             // Load characters for the newly active realm
             try {
-                const { useCharacterStore } = await import('@shared/stores/character');
                 const characterStore = useCharacterStore();
                 await characterStore.loadCharactersForActiveRealm();
                 console.log('✅ Characters loaded for realm:', realmId);

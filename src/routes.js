@@ -1,4 +1,7 @@
 import { features } from '@shared/config/features';
+import { trackPageView } from '@shared/composables/useGoogleAnalytics';
+import { useRealmStore } from '@shared/stores/realm';
+import { useUserStore } from '@shared/stores/user';
 
 export const sharedRoutes = [
     {
@@ -181,16 +184,11 @@ export const sharedRoutes = [
 export function createRealmGuard(router) {
     // Track page views in Google Analytics after each navigation
     router.afterEach((to) => {
-        import('@shared/composables/useGoogleAnalytics').then(({ trackPageView }) => {
-            trackPageView(to.fullPath, to.meta?.title || document.title);
-        });
+        trackPageView(to.fullPath, to.meta?.title || document.title);
     });
     let realmDeepLinkHandled = false;
 
     router.beforeEach(async (to, from, next) => {
-        const { useRealmStore } = await import('@shared/stores/realm');
-        const { useUserStore } = await import('@shared/stores/user');
-
         // Handle ?realm=<realmId> deep-link
         if (!realmDeepLinkHandled && to.query.realm) {
             realmDeepLinkHandled = true;
