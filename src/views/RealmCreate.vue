@@ -889,26 +889,27 @@ const loadPurchasedShopItems = async (systemId) => {
     // Fetch products from the shop store
     await shopStore.fetchSystemProducts(systemId, false, { source: 'realm-create' });
 
-    // Get products from store
-    let items = shopStore.getProductsBySystemId(systemId);
+    const allItems = shopStore.getProductsBySystemId(systemId);
 
-    // Find system product (e.g., RealmForge Essentials) - auto-selected and locked
-    const essentialsItem = items.find(item => item.IsSystemProduct === true);
+    // IDs the account has access to for this gaming system
+    const accessIds = new Set(accountStore.account?.Access?.[systemId] || []);
+
+    // Always include the system product (e.g. RealmForge Essentials) so it can be
+    // auto-activated and locked, even if account.Access hasn't propagated yet.
+    const essentialsItem = allItems.find(item => item.IsSystemProduct === true);
     if (essentialsItem) {
       realmForgeEssentialsId.value = essentialsItem.ID;
-      purchasedShopItems.value = items;
-      activatedShopItemIds.value = [essentialsItem.ID];
-      return;
+      accessIds.add(essentialsItem.ID);
     }
 
-    // Fallback: show purchased items
-    const shopItemIds = accountStore.account?.Access?.[systemId] || [];
-    if (shopItemIds.length > 0) {
-      items = items.filter(item => shopItemIds.includes(item.ID));
-    }
-
+    // Show only items the account owns (system product + any purchased items)
+    const items = allItems.filter(item => accessIds.has(item.ID));
     purchasedShopItems.value = items;
-    activatedShopItemIds.value = items.map(item => item.ID);
+
+    // Auto-activate the system product if present; otherwise activate all purchased items.
+    activatedShopItemIds.value = essentialsItem
+      ? [essentialsItem.ID]
+      : items.map(item => item.ID);
   } catch (error) {
     console.error('Error loading purchased shop items:', error);
     purchasedShopItems.value = [];
