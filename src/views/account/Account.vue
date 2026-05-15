@@ -54,8 +54,6 @@
                 </div>
             </div>
 
-            <CreditBalance />
-
             <template v-if="features.hasShop">
                 <router-link to="/account/purchased-items" class="stat-card stat-card-link">
                     <div class="stat-icon">
@@ -309,7 +307,6 @@ import { features } from '@shared/config/features';
 
 import AccountCreate from '@shared/components/account/Create.vue';
 import ActiveRealm from '@shared/components/account/ActiveRealm.vue';
-import CreditBalance from '@shared/components/account/CreditBalance.vue';
 
 import { getActivePinia } from 'pinia';
 
