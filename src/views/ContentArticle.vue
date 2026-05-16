@@ -218,7 +218,7 @@ const content = computed(() => {
 
 // Check if user can edit this content
 const canEditContent = computed(() => {
-  if (userStore.groups.includes('Administrators')) {
+  if (userStore.isAdmin) {
     return true;
   }
 

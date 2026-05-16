@@ -45,45 +45,71 @@ export const useUserStore = defineStore('user', {
             return state.prefs.ActiveCharacter || null;
         },
         email(state) {
+            if (this.isImpersonating && state.prefs?.Email) {
+                return state.prefs.Email;
+            }
             return state.user?.attributes?.email || null;
         },
         firstName(state) {
+            if (this.isImpersonating && state.prefs?.NameFirst) {
+                return state.prefs.NameFirst;
+            }
             return state.user?.attributes?.given_name || null;
         },
         fullName(state) {
-            let givenName = state.user?.attributes?.given_name || null;
-            let familyName = state.user?.attributes?.family_name || null;
-            return (givenName || familyName) ? `${givenName} ${familyName}`: `UNKNOWN`;
+            if (this.isImpersonating) {
+                const first = state.prefs?.NameFirst;
+                const last = state.prefs?.NameLast;
+                if (first || last) {
+                    return [first, last].filter(Boolean).join(' ');
+                }
+                const urlName = getImpersonatedUserName();
+                if (urlName) return urlName;
+                return 'UNKNOWN';
+            }
+            const givenName = state.user?.attributes?.given_name || null;
+            const familyName = state.user?.attributes?.family_name || null;
+            return (givenName || familyName) ? `${givenName} ${familyName}` : 'UNKNOWN';
         },
         userSub(state) {
+            if (this.isImpersonating) {
+                return getImpersonatedUserId();
+            }
             return state.user?.userId || null;
         },
-        isAdministrator(state) {
-            return state.groups.includes('Administrators');
+        // Group claims swap to an empty array while impersonating so the
+        // admin sees the impersonated user's UI surface (no admin menus,
+        // no role-gated affordances). The backend still honors admin
+        // claims on the JWT, so writes the admin triggers still succeed.
+        effectiveGroups(state) {
+            return this.isImpersonating ? [] : state.groups;
         },
-        isAdmin(state) {
-            return state.groups.includes('Administrators');
+        isAdministrator() {
+            return this.effectiveGroups.includes('Administrators');
         },
-        isCharacterEditor(state) {
-            return state.groups.includes('Deity') || state.groups.includes('Administrators') || this.isDM || this.isOwner;
+        isAdmin() {
+            return this.effectiveGroups.includes('Administrators');
         },
-        isContentEditor(state) {
-            return state.groups.includes('Deity') || state.groups.includes('Administrators') || state.groups.includes('ContentEditors');
+        isCharacterEditor() {
+            return this.effectiveGroups.includes('Deity') || this.effectiveGroups.includes('Administrators') || this.isDM || this.isOwner;
         },
-        isDeity(state) {
-            return state.groups.includes('Deity') || state.groups.includes('Administrators');
+        isContentEditor() {
+            return this.effectiveGroups.includes('Deity') || this.effectiveGroups.includes('Administrators') || this.effectiveGroups.includes('ContentEditors');
         },
-        isPsiEditor(state) {
-            return state.groups.includes('Deity') || state.groups.includes('Administrators') || state.groups.includes('PsiEditors');
+        isDeity() {
+            return this.effectiveGroups.includes('Deity') || this.effectiveGroups.includes('Administrators');
         },
-        isRealmEditor(state) {
-            return state.groups.includes('Deity') || state.groups.includes('Administrators') || this.isDM || this.isOwner;
+        isPsiEditor() {
+            return this.effectiveGroups.includes('Deity') || this.effectiveGroups.includes('Administrators') || this.effectiveGroups.includes('PsiEditors');
         },
-        isReportEditor(state) {
-            return state.groups.includes('Deity') || state.groups.includes('Administrators') || state.groups.includes('ReportEditors');
+        isRealmEditor() {
+            return this.effectiveGroups.includes('Deity') || this.effectiveGroups.includes('Administrators') || this.isDM || this.isOwner;
         },
-        isSpellEditor(state) {
-            return state.groups.includes('Deity') || state.groups.includes('Administrators') || state.groups.includes('SpellEditors');
+        isReportEditor() {
+            return this.effectiveGroups.includes('Deity') || this.effectiveGroups.includes('Administrators') || this.effectiveGroups.includes('ReportEditors');
+        },
+        isSpellEditor() {
+            return this.effectiveGroups.includes('Deity') || this.effectiveGroups.includes('Administrators') || this.effectiveGroups.includes('SpellEditors');
         },
         isDM(state) {
             const realmStore = useRealmStore();
@@ -225,6 +251,7 @@ export const useUserStore = defineStore('user', {
         },
 
         isMemberOf(group) {
+            if (this.isImpersonating) return false;
             return this.groups.includes(group);
         },
 

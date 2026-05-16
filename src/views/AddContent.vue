@@ -133,8 +133,7 @@ const contentData = ref({
 
 // Check if user has write permission
 const canCreate = computed(() => {
-  // Admin (check if user is member of Administrators group)
-  if (userStore.groups.includes('Administrators')) {
+  if (userStore.isAdmin) {
     return true;
   }
   

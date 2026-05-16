@@ -44,19 +44,10 @@ export const useAccountStore = defineStore('account', {
                 this.account = null;
                 return null;
             }
-            const token = userStore.user.auth.idToken;
 
             try {
                 if (!this.account || force) {
-                    const response = await axios.get(
-                        `${BASE_URL}/accounts/account`,
-                        {
-                            headers: {
-                                Accept: '*/*',
-                                Authorization: `Bearer ${token}`,
-                            },
-                        }
-                    );
+                    const response = await apiClient.get('/accounts/account');
                     if (response.status < 200 || response.status >= 300) {
                         console.error(response);
                         throw new Error('Failed to get accounts');
