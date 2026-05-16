@@ -248,8 +248,7 @@ const hasChildContent = computed(() => {
 
 // Check if user can edit this content
 const canEditContent = computed(() => {
-  // Admin (check if user is member of Administrators group)
-  if (userStore.groups.includes('Administrators')) {
+  if (userStore.isAdmin) {
     return true;
   }
   

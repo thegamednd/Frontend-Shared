@@ -345,9 +345,7 @@ export const useRealmStore = defineStore('realm', {
                 }
 
                 // Check if Psionicist is in any enabled class package
-                const userStore = useUserStore();
                 const accountStore = useAccountStore();
-                const token = await userStore.getValidToken();
                 const account = accountStore.account;
                 const gamingSystemId = this.activeRealmClassesSystemId;
 
@@ -371,9 +369,8 @@ export const useRealmStore = defineStore('realm', {
 
                 for (const shopItemId of enabledIds) {
                     try {
-                        const { data: shopProduct } = await axios.get(
-                            `${BASE_URL}/shop/products/product/${shopItemId}`,
-                            { headers: { Authorization: `Bearer ${token}` } }
+                        const { data: shopProduct } = await apiClient.get(
+                            `/shop/products/product/${shopItemId}`
                         );
 
                         for (const item of (shopProduct.Items || [])) {

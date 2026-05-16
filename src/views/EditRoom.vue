@@ -277,8 +277,7 @@ const room = computed(() => {
 
 // Check if user can edit this room
 const canEditRoom = computed(() => {
-  // Admin (check if user is member of Administrators group)
-  if (userStore.groups.includes('Administrators')) {
+  if (userStore.isAdmin) {
     return true;
   }
   
