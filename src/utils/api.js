@@ -1,6 +1,7 @@
 import axios from 'axios';
 import { useUserStore } from '@shared/stores/user';
 import { useNotifications } from '@shared/composables/useNotifications';
+import { getImpersonatedUserId } from '@shared/composables/useImpersonation';
 
 // Create axios instance with base configuration
 const apiClient = axios.create({
@@ -24,6 +25,13 @@ apiClient.interceptors.request.use(
             }
 
             config.headers['X-Gaming-System-ID'] = import.meta.env.VITE_GAMING_SYSTEM_ID;
+
+            // Impersonation header — set when an admin is acting as another user.
+            // Only honored server-side if the caller's JWT belongs to an admin.
+            const impersonatedUserId = getImpersonatedUserId();
+            if (impersonatedUserId) {
+                config.headers['X-Impersonate-User'] = impersonatedUserId;
+            }
 
             return config;
         } catch (error) {

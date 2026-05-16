@@ -4,6 +4,12 @@ import { useRealmStore } from '@shared/stores/realm';
 import { Hub } from 'aws-amplify/utils';
 import axios from 'axios';
 import apiClient from '@shared/utils/api';
+import {
+    getImpersonatedUserId,
+    getImpersonatedUserName,
+    setImpersonation as _setImpersonation,
+    clearImpersonation as _clearImpersonation,
+} from '@shared/composables/useImpersonation';
 
 const BASE_API_URL = `${import.meta.env.VITE_API_BASE_URL}`;
 
@@ -88,8 +94,28 @@ export const useUserStore = defineStore('user', {
             const realmStore = useRealmStore();
             return realmStore.isOwner;
         },
+        /**
+         * Active impersonation target (admin-only feature). Reactive — backed
+         * by the singleton in `useImpersonation`, which mirrors sessionStorage.
+         * When non-null, the API interceptor sends `X-Impersonate-User`.
+         */
+        impersonatedUserId() {
+            return getImpersonatedUserId();
+        },
+        impersonatedUserName() {
+            return getImpersonatedUserName();
+        },
+        isImpersonating() {
+            return !!getImpersonatedUserId();
+        },
     },
     actions: {
+        setImpersonation(userId, name) {
+            _setImpersonation(userId, name);
+        },
+        clearImpersonation() {
+            _clearImpersonation();
+        },
         async init() {
             try {
                 await this.getUser();
