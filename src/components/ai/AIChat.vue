@@ -237,6 +237,12 @@ onMounted(() => {
         const lastEntry = conversation.value[conversation.value.length - 1];
         lastEntry.proposal = { proposalId, action };
       }
+    } else if (toolName === 'propose_module_item_change') {
+      // Parallel indicator for the new ModuleItems proposal tool.
+      // We deliberately do NOT attach an inline chat card here — item
+      // proposals surface via the badge on ModuleItemsView so DMs find them
+      // alongside the items they relate to.
+      toolIndicator.value = 'Drafting an item proposal...';
     } else {
       toolIndicator.value = 'Consulting the archives...';
     }
