@@ -667,6 +667,32 @@ export const useRealmStore = defineStore('realm', {
         },
 
         /**
+         * Persist a realm-scoped UI preference dismissal. Currently only the
+         * map-upload help dialog uses this, but the Preferences object is
+         * generic so new flags can join it without a schema change.
+         */
+        async setMapUploadHelpDismissed(dismissed) {
+            const realm = this.activeRealm;
+            if (!realm?.RealmID) return;
+
+            const nextPreferences = {
+                ...(realm.Preferences || {}),
+                MapUploadHelpDismissed: !!dismissed
+            };
+
+            // Optimistic local update so the upload dialog reflects the new
+            // state instantly; _putRealm syncs the canonical record on success.
+            this.realms[realm.RealmID] = {
+                ...realm,
+                Preferences: nextPreferences
+            };
+
+            const realmOut = JSON.parse(JSON.stringify(this.realms[realm.RealmID]));
+            delete realmOut.Players;
+            await this._putRealm(realmOut);
+        },
+
+        /**
          * Updates the GamingSystem field for the active realm.
          * This ensures proper reactivity when gaming system features are changed.
          * @param {string} feature - The feature to update (classes, races, spells, maps, modules)
