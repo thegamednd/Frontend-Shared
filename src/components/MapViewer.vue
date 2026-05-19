@@ -6,16 +6,71 @@
       <p>{{ error }}</p>
     </div>
 
-    <!-- No Tiles State -->
-    <div v-else-if="mapData && !mapData.TileBaseUrl" class="error-section">
-      <span class="material-symbols-outlined">map</span>
-      <h3>Map Not Processed</h3>
-      <p>This map has not been processed yet. Tiles are not available.</p>
-      <p v-if="mapData.Status === 'pending'">Status: Pending</p>
-      <p v-if="mapData.Status === 'processing'">Status: Processing...</p>
-      <p v-if="mapData.Status === 'failed'" class="error-text">
-        Status: Failed - {{ mapData.ProcessingError }}
-      </p>
+    <!-- Processing State -->
+    <div v-else-if="mapData && !mapData.TileBaseUrl" class="processing-indicator" :data-state="processingState">
+      <div class="cartographer-glyph">
+        <span class="ripple ripple-1" aria-hidden="true"></span>
+        <span class="ripple ripple-2" aria-hidden="true"></span>
+        <span class="ripple ripple-3" aria-hidden="true"></span>
+
+        <svg class="compass" viewBox="0 0 100 100" aria-hidden="true">
+          <circle class="compass-ring" cx="50" cy="50" r="44" />
+          <circle class="compass-inner" cx="50" cy="50" r="28" />
+
+          <g class="compass-marks">
+            <line x1="50" y1="6"  x2="50" y2="13" />
+            <line x1="50" y1="87" x2="50" y2="94" />
+            <line x1="6"  y1="50" x2="13" y2="50" />
+            <line x1="87" y1="50" x2="94" y2="50" />
+            <line x1="22" y1="22" x2="26" y2="26" class="diag" />
+            <line x1="78" y1="22" x2="74" y2="26" class="diag" />
+            <line x1="22" y1="78" x2="26" y2="74" class="diag" />
+            <line x1="78" y1="78" x2="74" y2="74" class="diag" />
+          </g>
+
+          <g class="compass-letters">
+            <text x="50" y="22">N</text>
+            <text x="50" y="83">S</text>
+            <text x="20" y="53">W</text>
+            <text x="80" y="53">E</text>
+          </g>
+
+          <g class="compass-needle">
+            <polygon class="needle-north" points="50,16 54,50 50,52 46,50" />
+            <polygon class="needle-south" points="50,84 54,50 50,48 46,50" />
+            <circle class="needle-pivot" cx="50" cy="50" r="2.6" />
+          </g>
+        </svg>
+
+        <span class="failed-icon material-symbols-outlined" aria-hidden="true">error</span>
+      </div>
+
+      <div class="cartographer-copy">
+        <h3 class="cartographer-heading">
+          <template v-if="processingState === 'failed'">The Cartographer Faltered</template>
+          <template v-else-if="processingState === 'pending'">Awaiting the Cartographer</template>
+          <template v-else>Inking Your Realm</template>
+        </h3>
+        <p class="cartographer-body">
+          <template v-if="processingState === 'failed'">
+            {{ mapData.ProcessingError || 'The map could not be drawn.' }}
+          </template>
+          <template v-else-if="processingState === 'pending'">
+            Your map waits in the cartographer's queue. Tiles will be drawn shortly.
+          </template>
+          <template v-else>
+            Quill on parchment — tiles are being etched and borders gilded. This usually takes a minute or two.
+          </template>
+        </p>
+        <p class="cartographer-status">
+          <span class="status-dot" aria-hidden="true"></span>
+          <span class="status-label">
+            <template v-if="processingState === 'failed'">Failed</template>
+            <template v-else-if="processingState === 'pending'">Pending</template>
+            <template v-else>Processing</template>
+          </span>
+        </p>
+      </div>
     </div>
 
     <!-- Map Viewer -->
@@ -327,7 +382,9 @@ const props = defineProps({
   }
 })
 
-const emit = defineEmits(['scaleUpdated', 'renamed', 'deleted'])
+const emit = defineEmits(['scaleUpdated', 'renamed', 'deleted', 'mapRefreshed'])
+
+const PROCESSING_POLL_INTERVAL_MS = 15000
 
 const userStore = useUserStore()
 const mapsStore = useMapsStore()
@@ -458,6 +515,13 @@ const scaleDisplayNameComputed = computed(() => {
   return props.mapData?.MapDimensions?.scale?.displayName || 'units'
 })
 
+const processingState = computed(() => {
+  const status = props.mapData?.Status
+  if (status === 'failed') return 'failed'
+  if (status === 'processing') return 'processing'
+  return 'pending'
+})
+
 const calculatedDistance = computed(() => {
   if (measurementPoints.value.length < 2 || !hasScale.value) {
     return '0.00'
@@ -475,6 +539,45 @@ const calculatedDistance = computed(() => {
 
   return totalDistance.toFixed(2)
 })
+
+// Processing poll: while a map is queued/processing on the backend, re-fetch it
+// from the API every 15s so the viewer can swap to the real Leaflet view as
+// soon as tiles are ready. The fresh record is bubbled up to the parent so its
+// selectedMap ref updates (which re-triggers our props.mapData watcher).
+let processingPollTimer = null
+
+const stopProcessingPoll = () => {
+  if (processingPollTimer) {
+    clearInterval(processingPollTimer)
+    processingPollTimer = null
+  }
+}
+
+const shouldPollProcessing = (map) =>
+  !!map && !map.TileBaseUrl && map.Status !== 'failed'
+
+const startProcessingPoll = () => {
+  stopProcessingPoll()
+  if (!shouldPollProcessing(props.mapData)) return
+
+  processingPollTimer = setInterval(async () => {
+    const currentId = props.mapData?.ID
+    if (!currentId) {
+      stopProcessingPoll()
+      return
+    }
+    try {
+      const fresh = await mapsStore.getMap(currentId, true)
+      if (!fresh || fresh.ID !== props.mapData?.ID) return
+      emit('mapRefreshed', fresh)
+      if (!shouldPollProcessing(fresh)) {
+        stopProcessingPoll()
+      }
+    } catch (err) {
+      console.error('Error polling map processing status:', err)
+    }
+  }, PROCESSING_POLL_INTERVAL_MS)
+}
 
 // Methods
 const cleanupMap = () => {
@@ -578,10 +681,16 @@ watch(() => props.mapData, async (newMap, oldMap) => {
     markerDialog.value?.close()
 
     if (newMap && newMap.TileBaseUrl && newMap.MapDimensions) {
+      stopProcessingPoll()
       await initLeafletMap()
     } else {
       cleanupMap()
+      startProcessingPoll()
     }
+  } else if (newMap && oldMap && !oldMap.TileBaseUrl && newMap.TileBaseUrl && newMap.MapDimensions) {
+    // Same map record but tiles just finished processing — render the viewer.
+    stopProcessingPoll()
+    await initLeafletMap()
   }
 })
 
@@ -1220,6 +1329,8 @@ onMounted(async () => {
 
   if (props.mapData && props.mapData.TileBaseUrl && props.mapData.MapDimensions) {
     await initLeafletMap()
+  } else if (shouldPollProcessing(props.mapData)) {
+    startProcessingPoll()
   }
 
   // Validate positions after map is initialized
@@ -1234,6 +1345,7 @@ onUnmounted(() => {
   window.removeEventListener('resize', validatePanelPositions)
   document.removeEventListener('mousemove', onDrag)
   document.removeEventListener('mouseup', stopDrag)
+  stopProcessingPoll()
   cleanupMap()
 })
 </script>
@@ -1270,6 +1382,198 @@ onUnmounted(() => {
 
 .error-text {
   color: #ff6b6b;
+}
+
+/* Processing Indicator (cartographer's compass) */
+.processing-indicator {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1.75rem;
+  padding: 2.5rem 2rem;
+  text-align: center;
+  color: rgba(255, 255, 255, 0.85);
+  font-family: 'Cormorant Garamond', 'Iowan Old Style', Palatino, serif;
+}
+
+.cartographer-glyph {
+  position: relative;
+  width: 180px;
+  height: 180px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.ripple {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  border: 1px solid color-mix(in srgb, var(--theme-accent) 55%, transparent);
+  opacity: 0;
+}
+
+.processing-indicator[data-state="processing"] .ripple {
+  animation: ripple-pulse 3.6s cubic-bezier(0.25, 0.6, 0.4, 1) infinite;
+}
+.ripple-1 { animation-delay: 0s; }
+.ripple-2 { animation-delay: 1.2s; }
+.ripple-3 { animation-delay: 2.4s; }
+
+@keyframes ripple-pulse {
+  0%   { transform: scale(0.55); opacity: 0; }
+  18%  { opacity: 0.85; }
+  100% { transform: scale(1.65); opacity: 0; }
+}
+
+.compass {
+  width: 140px;
+  height: 140px;
+  position: relative;
+  z-index: 2;
+  filter: drop-shadow(0 0 18px color-mix(in srgb, var(--theme-accent) 32%, transparent));
+}
+
+.compass-ring {
+  fill: color-mix(in srgb, var(--theme-bg-primary) 85%, transparent);
+  stroke: var(--theme-accent);
+  stroke-width: 0.7;
+}
+.compass-inner {
+  fill: none;
+  stroke: var(--theme-accent);
+  stroke-width: 0.35;
+  stroke-dasharray: 1.5 2;
+  opacity: 0.55;
+}
+.compass-marks line {
+  stroke: var(--theme-accent);
+  stroke-width: 1.2;
+  stroke-linecap: round;
+}
+.compass-marks line.diag {
+  stroke-width: 0.7;
+  opacity: 0.7;
+}
+.compass-letters text {
+  fill: var(--theme-accent);
+  font-family: 'Cinzel', 'Trajan Pro', 'Cormorant Garamond', serif;
+  font-size: 7px;
+  font-weight: 600;
+  letter-spacing: 0.4px;
+  text-anchor: middle;
+  dominant-baseline: middle;
+}
+
+.compass-needle {
+  transform-origin: 50% 50%;
+  transform-box: view-box;
+}
+.needle-north { fill: var(--theme-accent); }
+.needle-south { fill: color-mix(in srgb, var(--theme-accent) 35%, rgba(255,255,255,0.18)); }
+.needle-pivot {
+  fill: var(--theme-bg-primary);
+  stroke: var(--theme-accent);
+  stroke-width: 0.6;
+}
+
+.processing-indicator[data-state="processing"] .compass-needle {
+  animation: needle-spin 4.5s cubic-bezier(0.5, 0.05, 0.5, 0.95) infinite;
+}
+.processing-indicator[data-state="pending"] .compass-needle {
+  animation: needle-waver 3.2s ease-in-out infinite;
+}
+
+@keyframes needle-spin {
+  0%   { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+@keyframes needle-waver {
+  0%, 100% { transform: rotate(-14deg); }
+  50%      { transform: rotate(14deg);  }
+}
+
+.failed-icon { display: none; }
+
+.processing-indicator[data-state="failed"] .compass {
+  opacity: 0.32;
+  filter: grayscale(0.7);
+}
+.processing-indicator[data-state="failed"] .failed-icon {
+  display: block;
+  position: absolute;
+  z-index: 3;
+  font-size: 64px;
+  color: #ef4444;
+  filter: drop-shadow(0 0 18px rgba(239, 68, 68, 0.55));
+}
+
+.cartographer-copy { max-width: 32ch; }
+
+.cartographer-heading {
+  margin: 0 0 0.6rem 0;
+  font-family: 'Cinzel', 'Trajan Pro', 'Cormorant Garamond', serif;
+  font-size: 1.55rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  color: var(--theme-accent);
+}
+
+.cartographer-body {
+  margin: 0 0 1.25rem 0;
+  font-size: 0.95rem;
+  font-style: italic;
+  line-height: 1.55;
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.cartographer-status {
+  margin: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.55rem;
+  padding: 0.35rem 0.95rem;
+  border: 1px solid color-mix(in srgb, var(--theme-accent) 35%, transparent);
+  border-radius: 999px;
+  font-family: 'Cinzel', serif;
+  font-size: 0.7rem;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--theme-accent);
+  background: color-mix(in srgb, var(--theme-accent) 8%, transparent);
+}
+
+.status-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--theme-accent);
+}
+.processing-indicator[data-state="processing"] .status-dot {
+  animation: status-pulse 1.4s ease-in-out infinite;
+}
+.processing-indicator[data-state="pending"] .status-dot { opacity: 0.5; }
+
+.processing-indicator[data-state="failed"] .cartographer-status {
+  border-color: rgba(239, 68, 68, 0.4);
+  color: #ef4444;
+  background: rgba(239, 68, 68, 0.1);
+}
+.processing-indicator[data-state="failed"] .status-dot { background: #ef4444; }
+
+@keyframes status-pulse {
+  0%, 100% { transform: scale(1);   opacity: 1;   }
+  50%      { transform: scale(1.6); opacity: 0.4; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ripple,
+  .compass-needle,
+  .status-dot {
+    animation: none !important;
+  }
 }
 
 .loading-overlay {

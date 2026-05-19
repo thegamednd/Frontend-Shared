@@ -100,6 +100,7 @@
           @scale-updated="onScaleUpdated"
           @renamed="onMapRenamed"
           @deleted="onMapDeleted"
+          @map-refreshed="onMapRefreshed"
         />
         <div v-else class="no-selection">
           <span class="material-symbols-outlined">map</span>
@@ -222,6 +223,13 @@ const onScaleUpdated = (scaleData) => {
 const onMapRenamed = ({ id, name }) => {
   if (selectedMap.value?.ID === id) {
     selectedMap.value = { ...selectedMap.value, Name: name };
+  }
+};
+
+const onMapRefreshed = (freshMap) => {
+  if (!freshMap?.ID) return;
+  if (selectedMap.value?.ID === freshMap.ID) {
+    selectedMap.value = freshMap;
   }
 };
 
