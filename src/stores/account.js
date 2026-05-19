@@ -115,6 +115,9 @@ export const useAccountStore = defineStore('account', {
                             Races: false,       // true = all, string[] = specific IDs
                             Skills: false,      // true = all, string[] = specific IDs
                             Pantheons: false,   // true = all, string[] = specific IDs
+                            Psionics: [],       // specific psionic IDs
+                            FullPsionics: false, // true = full access to all psionics
+                            PsionicsDisciplines: [], // discipline names (e.g. Telepathy, Clairsentience)
                             Maps: [],
                             Modules: []
                         };
@@ -296,6 +299,32 @@ export const useAccountStore = defineStore('account', {
                         accessMap[gamingSystemId].Pantheons = true;
                     }
                     break;
+
+                case 'Psionics': {
+                    const { Disciplines } = item;
+                    const hasIds = IDs && IDs.length > 0;
+                    const hasDisciplines = Disciplines && Disciplines.length > 0;
+                    if (!hasIds && !hasDisciplines) {
+                        accessMap[gamingSystemId].FullPsionics = true;
+                    }
+                    if (hasIds) {
+                        IDs.forEach(id => {
+                            if (!accessMap[gamingSystemId].Psionics.includes(id)) {
+                                accessMap[gamingSystemId].Psionics.push(id);
+                            }
+                        });
+                    }
+                    if (hasDisciplines) {
+                        for (const entry of Disciplines) {
+                            entry.split(',').map(d => d.trim()).filter(Boolean).forEach(d => {
+                                if (!accessMap[gamingSystemId].PsionicsDisciplines.includes(d)) {
+                                    accessMap[gamingSystemId].PsionicsDisciplines.push(d);
+                                }
+                            });
+                        }
+                    }
+                    break;
+                }
 
                 case 'Maps':
                     if (!ID && (!IDs || IDs.length === 0)) {
