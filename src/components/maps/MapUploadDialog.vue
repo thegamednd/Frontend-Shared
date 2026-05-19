@@ -6,10 +6,59 @@
           <span class="material-symbols-outlined header-icon">cloud_upload</span>
           <h2>Upload Map</h2>
         </div>
-        <button @click="close" type="button" class="close-button" aria-label="Close">
-          <span class="material-symbols-outlined">close</span>
-        </button>
+        <div class="header-actions">
+          <button
+            @click="showRequirements = !showRequirements"
+            type="button"
+            class="icon-button"
+            :class="{ 'icon-button--active': showRequirements }"
+            :aria-label="showRequirements ? 'Hide upload requirements' : 'Show upload requirements'"
+            :aria-expanded="showRequirements"
+            aria-controls="map-upload-requirements"
+            title="Upload requirements"
+          >
+            <span class="material-symbols-outlined">help</span>
+          </button>
+          <button @click="close" type="button" class="icon-button" aria-label="Close">
+            <span class="material-symbols-outlined">close</span>
+          </button>
+        </div>
       </header>
+
+      <!-- Upload requirements -->
+      <section
+        v-if="showRequirements"
+        id="map-upload-requirements"
+        class="requirements-panel"
+        role="region"
+        aria-label="Upload requirements"
+      >
+        <h3 class="requirements-title">
+          <span class="material-symbols-outlined">info</span>
+          Upload Requirements
+        </h3>
+        <ul class="requirements-list">
+          <li>
+            <span class="req-label">Formats</span>
+            <span class="req-value">PNG, JPEG, or WebP</span>
+          </li>
+          <li>
+            <span class="req-label">File size</span>
+            <span class="req-value">Up to 50 MB</span>
+          </li>
+          <li>
+            <span class="req-label">Minimum dimensions</span>
+            <span class="req-value">1,024 × 1,024 px</span>
+          </li>
+          <li>
+            <span class="req-label">Maximum dimensions</span>
+            <span class="req-value">20,000 × 20,000 px</span>
+          </li>
+        </ul>
+        <p class="requirements-tip">
+          Tip: square or near-square images render best in the viewer.
+        </p>
+      </section>
 
       <!-- Quota summary -->
       <section
@@ -73,6 +122,7 @@
             <span class="material-symbols-outlined dropzone-icon">add_photo_alternate</span>
             <p class="dropzone-primary">Tap to choose an image</p>
             <p class="dropzone-secondary">PNG, JPEG or WebP · up to 50 MB</p>
+            <p class="dropzone-tertiary">1,024 × 1,024 px min · 20,000 × 20,000 px max</p>
           </template>
           <template v-else>
             <div class="file-preview">
@@ -174,6 +224,7 @@ const fileError = ref('');
 const submitError = ref('');
 const uploading = ref(false);
 const dragging = ref(false);
+const showRequirements = ref(false);
 
 // ---- Quota & tier resolution ----
 const activeTier = computed(() => {
@@ -319,6 +370,7 @@ const reset = () => {
   submitError.value = '';
   uploading.value = false;
   dragging.value = false;
+  showRequirements.value = false;
 };
 
 const open = async () => {
@@ -469,7 +521,13 @@ defineExpose({ open, close });
   font-size: 1.6rem;
 }
 
-.close-button {
+.header-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.icon-button {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -483,10 +541,94 @@ defineExpose({ open, close });
   transition: background 0.2s ease, color 0.2s ease, border-color 0.2s ease;
 }
 
-.close-button:hover {
+.icon-button:hover,
+.icon-button:focus-visible {
   background: rgba(255, 255, 255, 0.06);
   color: #fff;
   border-color: color-mix(in srgb, var(--theme-accent, #c89b5c) 40%, transparent);
+  outline: none;
+}
+
+.icon-button--active {
+  background: color-mix(in srgb, var(--theme-accent, #c89b5c) 18%, transparent);
+  color: var(--theme-accent, #c89b5c);
+  border-color: color-mix(in srgb, var(--theme-accent, #c89b5c) 50%, transparent);
+}
+
+/* ---- Requirements panel ---- */
+.requirements-panel {
+  padding: 0.9rem 1.25rem 1rem;
+  background: rgba(200, 155, 92, 0.06);
+  border-bottom: 1px solid color-mix(in srgb, var(--theme-accent, #c89b5c) 22%, transparent);
+}
+
+.requirements-title {
+  margin: 0 0 0.6rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-family: var(--theme-font-display, inherit);
+  font-size: 0.95rem;
+  color: var(--theme-accent, #c89b5c);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.requirements-title .material-symbols-outlined {
+  font-size: 1.1rem;
+}
+
+.requirements-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 0.3rem 0.75rem;
+}
+
+.requirements-list li {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding: 0.25rem 0;
+  border-bottom: 1px dashed rgba(244, 233, 212, 0.08);
+}
+
+.requirements-list li:last-child {
+  border-bottom: none;
+}
+
+.req-label {
+  color: rgba(210, 180, 140, 0.85);
+  font-size: 0.8rem;
+  letter-spacing: 0.04em;
+}
+
+.req-value {
+  color: #f4e9d4;
+  font-size: 0.85rem;
+  font-weight: 500;
+  text-align: right;
+}
+
+.requirements-tip {
+  margin: 0.65rem 0 0;
+  font-size: 0.78rem;
+  color: rgba(244, 233, 212, 0.65);
+  font-style: italic;
+}
+
+@media (min-width: 480px) {
+  .requirements-list {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .requirements-list li {
+    border-bottom: none;
+    padding: 0.15rem 0;
+  }
 }
 
 /* ---- Quota panel ---- */
@@ -644,6 +786,13 @@ defineExpose({ open, close });
   margin: 0;
   font-size: 0.8rem;
   color: rgba(210, 180, 140, 0.7);
+}
+
+.dropzone-tertiary {
+  margin: 0.1rem 0 0;
+  font-size: 0.72rem;
+  letter-spacing: 0.02em;
+  color: rgba(210, 180, 140, 0.55);
 }
 
 .file-input-hidden {
