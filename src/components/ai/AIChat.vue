@@ -84,7 +84,7 @@
             <div class="message-content">
               <span class="message-label">{{ aiName }}</span>
               <div class="message-bubble">
-                <div v-html="entry.answer"></div>
+                <div v-html="sanitizeAIHtml(entry.answer)"></div>
 
                 <!-- Inline "Proposal created" card (DM-only, AI tool use) -->
                 <div
@@ -128,7 +128,7 @@
           <div class="message-content">
             <span class="message-label">{{ aiName }}</span>
             <div class="message-bubble">
-              <div v-if="streamingText" v-html="streamingText"></div>
+              <div v-if="streamingText" v-html="sanitizeAIHtml(streamingText)"></div>
               <div v-else class="thinking-dots">
                 <span></span>
                 <span></span>
@@ -180,6 +180,7 @@ import { ref, computed, watch, nextTick, onMounted, onUnmounted } from 'vue';
 import { useAIStore } from '@shared/stores/ai';
 import { useRealmStore } from '@shared/stores/realm';
 import { useAIStream } from '@shared/composables/useAIStream';
+import { sanitizeAIHtml } from '@shared/utils/sanitizeAIHtml';
 
 const aiStore = useAIStore();
 const realmStore = useRealmStore();
