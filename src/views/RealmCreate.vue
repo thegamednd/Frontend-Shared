@@ -84,6 +84,11 @@
               <p class="section-description">
                 Select the purchased content to activate on this realm. These are items you've purchased from the shop.
                 You can always purchase and add more content later.
+                <template v-if="systemProductLabel">
+                  {{ systemProductLabel }} {{ systemProductNames.length > 1 ? 'come' : 'comes' }} with every realm and
+                  {{ systemProductNames.length > 1 ? 'are' : 'is' }} always active, so
+                  {{ systemProductNames.length > 1 ? "they're" : "it's" }} shown here locked and can't be switched off.
+                </template>
               </p>
 
               <!-- Loading State -->
@@ -712,6 +717,23 @@ const loadingShopItems = ref(false);
 const purchasedShopItems = ref([]);
 const activatedShopItemIds = ref([]);
 const realmForgeEssentialsId = ref(null); // Track RealmForge Essentials ID to prevent deselection
+
+// Names of the always-active system products (e.g. RealmForge Essentials).
+// These are locked on every new realm and cannot be deactivated.
+const systemProductNames = computed(() =>
+  purchasedShopItems.value
+    .filter(item => item.IsSystemProduct === true)
+    .map(item => item.Name)
+);
+
+// Human-readable list of system product names: "A", "A and B", or "A, B, and C".
+const systemProductLabel = computed(() => {
+  const names = systemProductNames.value;
+  if (names.length === 0) return '';
+  if (names.length === 1) return names[0];
+  if (names.length === 2) return `${names[0]} and ${names[1]}`;
+  return `${names.slice(0, -1).join(', ')}, and ${names[names.length - 1]}`;
+});
 
 // Per-gaming-system free realm limit — looks up the gamingSystems Pinia store by name.
 // Apps that register the store (RF-Vue, TheGame-Vue) get the per-gaming-system FreeRealms;
