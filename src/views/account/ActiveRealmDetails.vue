@@ -14,8 +14,46 @@
     <div class="page-header">
       <div class="header-content">
         <div class="realm-info">
-          <h1 class="realm-name">{{ realmStore.activeRealm?.Name || 'Active Realm' }}</h1>
-          
+          <!-- Editable Name for Realm Owners only (backend rejects name edits from DMs) -->
+          <div v-if="realmStore.isOwner" class="realm-name-container">
+            <!-- Display Mode -->
+            <div v-if="!isEditingName" class="name-display">
+              <h1 class="realm-name">{{ realmStore.activeRealm?.Name || 'Active Realm' }}</h1>
+              <button type="button" class="edit-hint name-edit-hint" @click="startEditingName" title="Edit realm name">
+                <span class="material-symbols-outlined">edit</span>
+              </button>
+            </div>
+
+            <!-- Edit Mode -->
+            <div v-else class="name-edit">
+              <input
+                v-model="editingNameValue"
+                ref="nameInput"
+                type="text"
+                class="name-input"
+                placeholder="Enter a name for your realm..."
+                maxlength="100"
+                @keydown.enter="saveName"
+                @keydown.escape="cancelEditingName"
+              />
+              <div class="edit-actions">
+                <div class="char-count">{{ editingNameValue?.length || 0 }}/100</div>
+                <button @click="cancelEditingName" class="btn-cancel">Cancel</button>
+                <button
+                  @click="saveName"
+                  :disabled="isSavingName || !editingNameValue.trim()"
+                  class="btn-save"
+                >
+                  <span v-if="isSavingName" class="material-symbols-outlined loading">hourglass_empty</span>
+                  {{ isSavingName ? 'Saving...' : 'Save' }}
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Read-only Name for Non-owners -->
+          <h1 v-else class="realm-name">{{ realmStore.activeRealm?.Name || 'Active Realm' }}</h1>
+
           <!-- Editable Description for Realm Owners and DMs -->
           <div v-if="realmStore.isOwner || realmStore.isRealmDM" class="realm-description-container">
             <!-- Display Mode -->
@@ -1625,6 +1663,12 @@ const isEditingDescription = ref(false);
 const editingDescriptionValue = ref('');
 const isSavingDescription = ref(false);
 const descriptionTextarea = ref(null);
+
+// State for name editing (owner-only)
+const isEditingName = ref(false);
+const editingNameValue = ref('');
+const isSavingName = ref(false);
+const nameInput = ref(null);
 const reloadDialog = ref(null);
 const inviteDialog = ref(null);
 const statusDialog = ref(null);
@@ -2068,6 +2112,72 @@ const saveDescription = async () => {
     showToast(errorMessage, 'error');
   } finally {
     isSavingDescription.value = false;
+  }
+};
+
+const startEditingName = () => {
+  editingNameValue.value = realmStore.activeRealm?.Name || '';
+  isEditingName.value = true;
+
+  // Focus the input after Vue updates the DOM
+  nextTick(() => {
+    if (nameInput.value) {
+      nameInput.value.focus();
+      nameInput.value.select();
+    }
+  });
+};
+
+const cancelEditingName = () => {
+  isEditingName.value = false;
+  editingNameValue.value = '';
+};
+
+const saveName = async () => {
+  if (isSavingName.value) return;
+
+  const newName = editingNameValue.value.trim();
+  // Name is required — don't submit a blank name
+  if (!newName) return;
+
+  isSavingName.value = true;
+
+  try {
+    const response = await axios.put(
+      `${import.meta.env.VITE_API_BASE_URL}/realms/realm/${realmStore.activeRealmId}`,
+      {
+        Name: newName
+      },
+      {
+        headers: {
+          'Authorization': `Bearer ${userStore.user.auth.idToken}`,
+          'Content-Type': 'application/json'
+        }
+      }
+    );
+
+    if (response.status === 200) {
+      // Update the local realm store
+      if (realmStore.activeRealm) {
+        realmStore.activeRealm.Name = newName;
+      }
+
+      showToast('Realm name updated successfully', 'success');
+      isEditingName.value = false;
+      editingNameValue.value = '';
+    }
+  } catch (error) {
+    console.error('Error updating realm name:', error);
+
+    let errorMessage = 'Failed to update realm name.';
+    if (error.response?.data?.message) {
+      errorMessage = error.response.data.message;
+    } else if (error.response?.status === 403) {
+      errorMessage = 'You do not have permission to edit this realm.';
+    }
+    showToast(errorMessage, 'error');
+  } finally {
+    isSavingName.value = false;
   }
 };
 
@@ -6520,6 +6630,64 @@ onMounted(async () => {
 
 .btn-save .loading {
   animation: spin 1s linear infinite;
+}
+
+/* Realm Name Editing (owner-only) */
+.realm-name-container {
+  width: 100%;
+}
+
+.name-display {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.name-display .realm-name {
+  margin: 0 0 0.5rem 0;
+}
+
+.name-edit-hint {
+  float: none;
+  margin-left: 0;
+  flex-shrink: 0;
+  /* nudge up so the pencil sits with the cap height of the heading */
+  align-self: flex-start;
+  margin-top: 0.5rem;
+}
+
+.name-edit {
+  margin: 0 0 0.5rem 0;
+  width: 100%;
+}
+
+.name-input {
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid color-mix(in srgb, var(--theme-accent) 30%, transparent);
+  border-radius: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  color: var(--theme-accent);
+  font-size: 2rem;
+  font-weight: 700;
+  font-family: inherit;
+  line-height: 1.2;
+  transition: all 0.3s ease;
+}
+
+.name-input:focus {
+  outline: none;
+  border-color: var(--theme-accent);
+  background: rgba(255, 255, 255, 0.08);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--theme-accent) 20%, transparent);
+}
+
+.name-input::placeholder {
+  color: rgba(225, 225, 237, 0.5);
+  font-weight: 600;
 }
 
 /* Reload Dialog Styles */
