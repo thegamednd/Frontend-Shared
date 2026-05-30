@@ -407,6 +407,16 @@
             </router-link>
           </div>
         </div>
+        <div class="section-body gaming-system-body">
+          <template v-if="gamingSystemDisplayName">
+            <span class="material-symbols-outlined gs-icon">casino</span>
+            <span class="gs-name">{{ gamingSystemDisplayName }}</span>
+          </template>
+          <template v-else>
+            <span class="material-symbols-outlined gs-icon gs-icon-muted">help_outline</span>
+            <span class="gs-empty">No RPG system selected</span>
+          </template>
+        </div>
       </div>
     </template>
 
@@ -1427,6 +1437,7 @@ import { useSessionStore } from '@shared/stores/session';
 import { useConfigStore } from '@shared/stores/config';
 import { patreonService } from '@shared/services/patreonService';
 import { features } from '@shared/config/features';
+import { GAMING_SYSTEMS, DND5E_ID } from '@shared/constants/gamingSystems';
 import BillingLocationPicker from '@shared/components/billing/BillingLocationPicker.vue';
 
 // Conditionally import PayPal store and component
@@ -1586,6 +1597,15 @@ const gamingSystemSpells = computed(() => {
   const gamingSystemId = realmStore.activeRealmSpellsSystemId;
   if (!gamingSystemId) return null;
   return gamingSystemsStore.getSystemById(gamingSystemId);
+});
+
+// Display name for the selected RPG system shown on the active-realm card
+const gamingSystemDisplayName = computed(() => {
+    const id = realmStore.activeSystemId;
+    if (!id) return null;
+    if (id === DND5E_ID) return GAMING_SYSTEMS.DND5E.name;
+    // Fallback: TheGame-Vue or legacy realms — keep current behaviour by leaving label empty.
+    return null;
 });
 
 // Get current plan details for display
@@ -7113,5 +7133,26 @@ onMounted(async () => {
   right: 0.2rem;
   font-size: 1rem;
   color: var(--theme-accent);
+}
+
+.gaming-system-body {
+  display: flex;
+  align-items: center;
+  gap: 0.5em;
+  padding: 0.75em 1em;
+  color: var(--theme-text);
+}
+.gaming-system-body .gs-icon {
+  color: var(--theme-accent);
+}
+.gaming-system-body .gs-icon-muted {
+  color: color-mix(in srgb, var(--theme-text) 60%, transparent);
+}
+.gaming-system-body .gs-name {
+  font-weight: 600;
+}
+.gaming-system-body .gs-empty {
+  font-style: italic;
+  color: color-mix(in srgb, var(--theme-text) 70%, transparent);
 }
 </style>
