@@ -1,12 +1,10 @@
-// Shared constants for known gaming systems.
-// IDs are fixed UUIDs so dev and prod records match.
+// RPG rulesets supported inside the RealmForge platform. Each entry powers
+// a character-sheet schema; the realm stores its choice on `realm.RPGRuleset`.
+// This is distinct from the platform-level GamingSystems concept (RealmForge
+// vs The Game) carried via the X-Gaming-System-ID header.
 
-export const DND5E_ID = '4d61b760-5e00-4a55-b18e-d6e84d5c0001';
+export const DND5E_RULESET = 'dnd5e';
 
-export const GAMING_SYSTEMS = {
-  DND5E: {
-    id: DND5E_ID,
-    name: 'Dungeons & Dragons 5e',
-    slug: 'dnd5e',
-  },
+export const RPG_RULESETS = {
+  DND5E: { value: DND5E_RULESET, name: 'Dungeons & Dragons 5e' },
 };

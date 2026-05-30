@@ -1437,7 +1437,7 @@ import { useSessionStore } from '@shared/stores/session';
 import { useConfigStore } from '@shared/stores/config';
 import { patreonService } from '@shared/services/patreonService';
 import { features } from '@shared/config/features';
-import { GAMING_SYSTEMS, DND5E_ID } from '@shared/constants/gamingSystems';
+import { RPG_RULESETS, DND5E_RULESET } from '@shared/constants/gamingSystems';
 import BillingLocationPicker from '@shared/components/billing/BillingLocationPicker.vue';
 
 // Conditionally import PayPal store and component
@@ -1599,12 +1599,11 @@ const gamingSystemSpells = computed(() => {
   return gamingSystemsStore.getSystemById(gamingSystemId);
 });
 
-// Display name for the selected RPG system shown on the active-realm card
+// Display name for the selected RPG ruleset shown on the active-realm card
 const gamingSystemDisplayName = computed(() => {
-    const id = realmStore.activeSystemId;
-    if (!id) return null;
-    if (id === DND5E_ID) return GAMING_SYSTEMS.DND5E.name;
-    // Fallback: TheGame-Vue or legacy realms — keep current behaviour by leaving label empty.
+    const ruleset = realmStore.activeRPGRuleset;
+    if (!ruleset) return null;
+    if (ruleset === DND5E_RULESET) return RPG_RULESETS.DND5E.name;
     return null;
 });
 

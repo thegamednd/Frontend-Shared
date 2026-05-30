@@ -310,23 +310,12 @@ export const useRealmStore = defineStore('realm', {
             }
             return this.getRealmDMs.some((dm) => dm.UserID === userStore.userSub);
         },
-        // Returns the canonical gaming-system ID for the active realm.
-        // Prefers the explicit GamingSystem.systemId pointer; falls back to
-        // whichever of classes/races/spells.GamingSystemID is set so legacy
-        // TheGame realms keep resolving correctly.
-        activeSystemId: (state) => {
+        // Returns the active realm's RPG ruleset slug (e.g. 'dnd5e'), which
+        // drives the character-sheet schema in RF-Vue. Distinct from the
+        // platform-level GamingSystem.* fields.
+        activeRPGRuleset: (state) => {
             const realm = state.activeRealmId ? state.realms[state.activeRealmId] : null;
-            if (!realm?.GamingSystem) return null;
-            if (realm.GamingSystem.systemId) return realm.GamingSystem.systemId;
-            const fromField = (f) => {
-                if (!f) return null;
-                if (typeof f === 'string') return f;
-                return f.GamingSystemID || null;
-            };
-            return fromField(realm.GamingSystem.classes)
-                || fromField(realm.GamingSystem.races)
-                || fromField(realm.GamingSystem.spells)
-                || null;
+            return realm?.RPGRuleset || null;
         },
     },
     actions: {
@@ -743,29 +732,18 @@ export const useRealmStore = defineStore('realm', {
         },
 
         /**
-         * Sets the active realm's gaming system in one shot.
-         * Writes GamingSystem.systemId plus matching classes/races/spells pointers
-         * so existing TheGame-shape consumers keep working.
-         * @param {string} systemId
+         * Sets the active realm's RPG ruleset (e.g. 'dnd5e'). This is a
+         * RealmForge-platform concept that picks which character-sheet schema
+         * the realm uses; it is independent of realm.GamingSystem.* (which
+         * describes platform-level content access).
+         * @param {string} ruleset
          * @returns {Promise<object>} the updated realm record from the API
          */
-        async setActiveRealmSystem(systemId) {
+        async setActiveRealmRPGRuleset(ruleset) {
             const realm = this.activeRealm;
             if (!realm?.RealmID) throw new Error('No active realm');
 
-            const nextGamingSystem = {
-                ...(realm.GamingSystem || {}),
-                systemId,
-                classes: { GamingSystemID: systemId },
-                races: { GamingSystemID: systemId },
-                spells: { GamingSystemID: systemId },
-            };
-
-            // Optimistic local update for reactivity.
-            this.realms[realm.RealmID] = {
-                ...realm,
-                GamingSystem: nextGamingSystem,
-            };
+            this.realms[realm.RealmID] = { ...realm, RPGRuleset: ruleset };
 
             const realmOut = JSON.parse(JSON.stringify(this.realms[realm.RealmID]));
             delete realmOut.Players;

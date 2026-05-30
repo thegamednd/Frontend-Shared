@@ -158,7 +158,7 @@ import { useUserStore } from '@shared/stores/user';
 import { useRealmStore } from '@shared/stores/realm';
 import { useDateStore } from '@shared/stores/date';
 import { features } from '@shared/config/features';
-import { DND5E_ID } from '@shared/constants/gamingSystems';
+import { DND5E_RULESET } from '@shared/constants/gamingSystems';
 import apiClient from '@shared/utils/api';
 
 const props = defineProps({
@@ -199,8 +199,8 @@ const canEdit = computed(() => {
 
 const canViewSheet = computed(() => {
     if (!characterStore.canViewCharacter(member.value)) return false;
-    // Only show the Sheet button when the active realm has a supported system.
-    return realmStore.activeSystemId === DND5E_ID;
+    // Only show the Sheet button when the active realm has a supported ruleset.
+    return realmStore.activeRPGRuleset === DND5E_RULESET;
 });
 
 const hasPhysicalInfo = computed(() => {
