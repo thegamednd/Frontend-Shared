@@ -309,7 +309,14 @@ export const useRealmStore = defineStore('realm', {
                 return false;
             }
             return this.getRealmDMs.some((dm) => dm.UserID === userStore.userSub);
-        }
+        },
+        // Returns the active realm's RPG ruleset slug (e.g. 'dnd5e'), which
+        // drives the character-sheet schema in RF-Vue. Distinct from the
+        // platform-level GamingSystem.* fields.
+        activeRPGRuleset: (state) => {
+            const realm = state.activeRealmId ? state.realms[state.activeRealmId] : null;
+            return realm?.RPGRuleset || null;
+        },
     },
     actions: {
         setPsionicsEnabled(value) {
@@ -722,6 +729,26 @@ export const useRealmStore = defineStore('realm', {
             this.realms[this.activeRealmId] = { ...realm };
 
             console.log(`Updated GamingSystem.${feature} to:`, value);
+        },
+
+        /**
+         * Sets the active realm's RPG ruleset (e.g. 'dnd5e'). This is a
+         * RealmForge-platform concept that picks which character-sheet schema
+         * the realm uses; it is independent of realm.GamingSystem.* (which
+         * describes platform-level content access).
+         * @param {string} ruleset
+         * @returns {Promise<object>} the updated realm record from the API
+         */
+        async setActiveRealmRPGRuleset(ruleset) {
+            const realm = this.activeRealm;
+            if (!realm?.RealmID) throw new Error('No active realm');
+
+            this.realms[realm.RealmID] = { ...realm, RPGRuleset: ruleset };
+
+            const realmOut = JSON.parse(JSON.stringify(this.realms[realm.RealmID]));
+            delete realmOut.Players;
+            const updated = await this._putRealm(realmOut);
+            return updated;
         },
 
         /**
