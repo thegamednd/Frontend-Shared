@@ -77,6 +77,38 @@
             </div>
           </div>
 
+          <!-- RPG System Step (only when platform gaming system is RealmForge) -->
+          <div v-if="showRpgSystemStep" v-show="currentStep === steps.rpgSystem" class="form-step">
+            <div class="form-section">
+              <h3>RPG System</h3>
+              <p class="section-description">
+                Choose the RPG system for this realm. This sets the rules and content your characters use.
+              </p>
+
+              <div class="rpg-system-cards">
+                <div
+                  v-for="option in rpgRulesetOptions"
+                  :key="option.value"
+                  class="rpg-system-card"
+                  :class="{ selected: selectedRuleset === option.value }"
+                  @click="selectRuleset(option.value)"
+                >
+                  <div class="card-icon">
+                    <span class="material-symbols-outlined">casino</span>
+                  </div>
+                  <div class="card-content">
+                    <h4>{{ option.name }}</h4>
+                  </div>
+                  <div class="card-toggle">
+                    <span class="material-symbols-outlined">{{ selectedRuleset === option.value ? 'radio_button_checked' : 'radio_button_unchecked' }}</span>
+                  </div>
+                </div>
+              </div>
+
+              <p class="field-hint rpg-system-soon">More systems coming soon.</p>
+            </div>
+          </div>
+
           <!-- Content Activation Step (only when hasShop) -->
           <div v-if="features.hasShop" v-show="currentStep === steps.content" class="form-step">
             <div class="form-section">
@@ -620,6 +652,12 @@ import { useUserStore } from '@shared/stores/user';
 import { useDateStore } from '@shared/stores/date';
 import { useShopStore } from '@shared/stores/shop';
 import { features } from '@shared/config/features';
+import {
+  DND5E_RULESET,
+  RPG_RULESETS,
+  REALMFORGE_GAMING_SYSTEM_ID,
+  gamingSystemIdForRuleset
+} from '@shared/constants/gamingSystems';
 import apiClient from '@shared/utils/api';
 import {
   ClassicEditor,
@@ -646,15 +684,29 @@ const shopStore = useShopStore();
 // Gaming system ID auto-assigned from env var for this subdomain
 const gamingSystemId = import.meta.env.VITE_GAMING_SYSTEM_ID;
 
+// Show the RPG-system step only for apps whose platform gaming system is
+// RealmForge (realmforge.io / rf.realmforge.io). TheGame-Vue uses a different
+// platform gaming system and must not see this step.
+const showRpgSystemStep = import.meta.env.VITE_GAMING_SYSTEM_ID === REALMFORGE_GAMING_SYSTEM_ID;
+
 const elName = ref(null);
 const isCreating = ref(false);
 const currentStep = ref(1);
 const showZodiacConfig = ref(false);
 
+// Selected RPG ruleset (drives realm.RPGRuleset + content GamingSystem child ids).
+const selectedRuleset = ref(DND5E_RULESET);
+const rpgRulesetOptions = Object.values(RPG_RULESETS);
+
+const selectRuleset = (value) => {
+  selectedRuleset.value = value;
+};
+
 // Dynamic step map based on features
 const steps = computed(() => {
   const s = { name: 1 };
   let n = 2;
+  if (showRpgSystemStep) s.rpgSystem = n++;
   if (features.hasShop) s.content = n++;
   s.calendar = n++;
   s.date = n++;
@@ -998,6 +1050,7 @@ const getStepLabel = (step) => {
   if (!match) return '';
   const labelMap = {
     name: 'Realm Info',
+    rpgSystem: 'RPG System',
     content: 'Content',
     calendar: 'Calendar',
     date: 'Starting Date',
@@ -1016,6 +1069,10 @@ const validateCurrentStep = () => {
     }
     if (!realmData.value.Description?.trim() || realmData.value.Description === '<p></p>' || realmData.value.Description === '<p>&nbsp;</p>') {
       errors.push('Realm description is required');
+    }
+  } else if (showRpgSystemStep && currentStep.value === s.rpgSystem) {
+    if (!selectedRuleset.value) {
+      errors.push('An RPG system must be selected');
     }
   } else if (features.hasShop && currentStep.value === s.content) {
     // Content activation step (optional, no required validation)
@@ -1491,15 +1548,31 @@ const save = async () => {
       console.log('No calendar customization detected');
     }
 
-    // Auto-assign gaming system from env var
-    const realmPayload = {
-      ...realmData.value,
-      GamingSystem: {
-        classes: gamingSystemId,
-        spells: gamingSystemId,
-        races: gamingSystemId
-      }
-    };
+    // Auto-assign gaming system from env var. When the RPG-system step is shown
+    // (RealmForge platform), point content at the selected ruleset's child id and
+    // persist the chosen RPGRuleset.
+    let realmPayload;
+    if (showRpgSystemStep) {
+      const contentGsId = gamingSystemIdForRuleset(selectedRuleset.value) || gamingSystemId;
+      realmPayload = {
+        ...realmData.value,
+        RPGRuleset: selectedRuleset.value,
+        GamingSystem: {
+          classes: contentGsId,
+          spells: contentGsId,
+          races: contentGsId
+        }
+      };
+    } else {
+      realmPayload = {
+        ...realmData.value,
+        GamingSystem: {
+          classes: gamingSystemId,
+          spells: gamingSystemId,
+          races: gamingSystemId
+        }
+      };
+    }
 
     // Include activated shop items only when hasShop
     if (features.hasShop) {
@@ -2008,6 +2081,95 @@ const cancel = () => {
   grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
   gap: 1rem;
   margin-bottom: 1.5rem;
+}
+
+/* RPG System selection cards */
+.rpg-system-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.rpg-system-card {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 1.25rem;
+  background: color-mix(in srgb, var(--theme-bg-surface) 50%, transparent);
+  border: 2px solid color-mix(in srgb, var(--theme-accent) 20%, transparent);
+  border-radius: 0.75rem;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.rpg-system-card:hover {
+  background: color-mix(in srgb, var(--theme-accent) 10%, transparent);
+  border-color: color-mix(in srgb, var(--theme-accent) 40%, transparent);
+}
+
+.rpg-system-card.selected {
+  background: color-mix(in srgb, var(--theme-success) 10%, transparent);
+  border-color: var(--theme-success);
+}
+
+.rpg-system-card .card-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  background: color-mix(in srgb, var(--theme-accent) 20%, transparent);
+  border-radius: 0.5rem;
+  flex-shrink: 0;
+}
+
+.rpg-system-card .card-icon .material-symbols-outlined {
+  font-size: 1.25rem;
+  color: var(--theme-accent);
+}
+
+.rpg-system-card.selected .card-icon {
+  background: color-mix(in srgb, var(--theme-success) 20%, transparent);
+}
+
+.rpg-system-card.selected .card-icon .material-symbols-outlined {
+  color: var(--theme-success);
+}
+
+.rpg-system-card .card-content {
+  flex: 1;
+  min-width: 0;
+}
+
+.rpg-system-card .card-content h4 {
+  margin: 0;
+  color: var(--theme-accent);
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.rpg-system-card.selected .card-content h4 {
+  color: var(--theme-success);
+}
+
+.rpg-system-card .card-toggle {
+  flex-shrink: 0;
+  color: #666;
+  transition: color 0.2s ease;
+}
+
+.rpg-system-card .card-toggle .material-symbols-outlined {
+  font-size: 1.75rem;
+}
+
+.rpg-system-card.selected .card-toggle {
+  color: var(--theme-success);
+}
+
+.rpg-system-soon {
+  color: #888;
+  font-style: italic;
 }
 
 .shop-item-card {
