@@ -261,7 +261,12 @@
                 <span class="material-symbols-outlined">star</span>
                 Racial Traits
               </label>
-              <TraitListEditor v-model="traitsList" />
+              <EntryListEditor
+                v-model="traitsList"
+                name-placeholder="Trait name (e.g. Darkvision)"
+                desc-placeholder="What does this trait do?"
+                add-label="Add trait"
+              />
               <small class="form-hint">Add each racial trait with a name and description</small>
             </div>
 
@@ -540,7 +545,7 @@
                 <span class="material-symbols-outlined">star</span>
                 Racial Traits
               </label>
-              <TraitListEditor :model-value="templateRace.Traits || []" readonly />
+              <EntryListEditor :model-value="templateRace.Traits || []" readonly />
             </div>
 
             <div class="form-group">
@@ -625,7 +630,7 @@ import { useCharacterStore } from '@shared/stores/character';
 import { useRacesStore } from '@shared/stores/races';
 import { useAccountStore } from '@shared/stores/account';
 import DeleteRaceWarning from '@shared/components/dialogs/DeleteRaceWarning.vue';
-import TraitListEditor from '@shared/components/gamingSystem/TraitListEditor.vue';
+import EntryListEditor from '@shared/components/gamingSystem/EntryListEditor.vue';
 import {
   ClassicEditor,
   Essentials,
@@ -734,7 +739,7 @@ const tagsInput = ref('');
 const languagesInput = ref('');
 
 // Racial traits are structured objects ({ name, description }), edited via the
-// TraitListEditor. normalizeTraits coerces stored data (objects or legacy
+// EntryListEditor. normalizeTraits coerces stored data (objects or legacy
 // strings) into the editor's shape; serializeTraits trims and drops blank rows.
 const traitsList = ref([]);
 function normalizeTraits(traits) {

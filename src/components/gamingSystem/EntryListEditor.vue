@@ -1,24 +1,52 @@
 <template>
-  <div class="trait-editor" :class="{ 'is-readonly': readonly }">
-    <ul v-if="items.length" class="trait-list">
-      <li v-for="(trait, i) in items" :key="i" class="trait-card">
-        <span class="trait-index">{{ i + 1 }}</span>
+  <div class="entry-editor" :class="{ 'is-readonly': readonly }">
+    <ul v-if="items.length" class="entry-list">
+      <li v-for="(entry, i) in items" :key="i" class="entry-card">
+        <span class="entry-index">{{ i + 1 }}</span>
 
-        <div class="trait-fields">
+        <div class="entry-fields">
           <input
-            :value="trait.name"
-            @input="setName(i, $event.target.value)"
+            :value="entry.name"
+            @input="patch(i, 'name', $event.target.value)"
             type="text"
-            class="trait-name-input"
-            placeholder="Trait name (e.g. Darkvision)"
+            class="entry-name-input"
+            :placeholder="namePlaceholder"
             :readonly="readonly"
           />
+
+          <div v-if="showLevel || showUses" class="entry-meta">
+            <label v-if="showLevel" class="entry-meta-field">
+              <span class="entry-meta-label">Level</span>
+              <input
+                :value="entry.level ?? ''"
+                @input="patch(i, 'level', $event.target.value === '' ? undefined : Number($event.target.value))"
+                type="number"
+                min="1"
+                max="20"
+                class="entry-meta-input entry-level-input"
+                placeholder="—"
+                :readonly="readonly"
+              />
+            </label>
+            <label v-if="showUses" class="entry-meta-field">
+              <span class="entry-meta-label">Uses</span>
+              <input
+                :value="entry.uses || ''"
+                @input="patch(i, 'uses', $event.target.value)"
+                type="text"
+                class="entry-meta-input entry-uses-input"
+                placeholder="e.g. 1/long rest"
+                :readonly="readonly"
+              />
+            </label>
+          </div>
+
           <textarea
-            :value="trait.description"
-            @input="setDescription(i, $event.target.value)"
-            class="trait-desc-input"
+            :value="entry.description"
+            @input="patch(i, 'description', $event.target.value)"
+            class="entry-desc-input"
             rows="2"
-            placeholder="What does this trait do?"
+            :placeholder="descPlaceholder"
             :readonly="readonly"
           ></textarea>
         </div>
@@ -26,20 +54,20 @@
         <button
           v-if="!readonly"
           type="button"
-          class="trait-remove"
-          title="Remove trait"
-          @click="removeTrait(i)"
+          class="entry-remove"
+          title="Remove"
+          @click="removeEntry(i)"
         >
           <span class="material-symbols-outlined">close</span>
         </button>
       </li>
     </ul>
 
-    <p v-else-if="readonly" class="trait-empty">No traits.</p>
+    <p v-else-if="readonly" class="entry-empty">None.</p>
 
-    <button v-if="!readonly" type="button" class="trait-add" @click="addTrait">
+    <button v-if="!readonly" type="button" class="entry-add" @click="addEntry">
       <span class="material-symbols-outlined">add</span>
-      Add trait
+      {{ addLabel }}
     </button>
   </div>
 </template>
@@ -50,44 +78,47 @@ import { computed } from 'vue';
 const props = defineProps({
   modelValue: { type: Array, default: () => [] },
   readonly: { type: Boolean, default: false },
+  showLevel: { type: Boolean, default: false },
+  showUses: { type: Boolean, default: false },
+  namePlaceholder: { type: String, default: 'Name' },
+  descPlaceholder: { type: String, default: 'Description' },
+  addLabel: { type: String, default: 'Add entry' },
 });
 
 const emit = defineEmits(['update:modelValue']);
 
-// Tolerate legacy string traits as well as the canonical { name, description } shape.
+// Tolerate legacy string entries as well as the canonical object shape; preserve
+// any extra fields (e.g. level/uses) so they round-trip even when not shown.
 const items = computed(() =>
   (props.modelValue || []).map((t) =>
     typeof t === 'string'
       ? { name: t, description: '' }
-      : { name: t?.name || '', description: t?.description || '' }
+      : { ...t, name: t?.name || '', description: t?.description || '' }
   )
 );
 
 function commit(list) {
   emit('update:modelValue', list);
 }
-function addTrait() {
+function addEntry() {
   commit([...items.value, { name: '', description: '' }]);
 }
-function removeTrait(i) {
+function removeEntry(i) {
   commit(items.value.filter((_, idx) => idx !== i));
 }
-function setName(i, value) {
-  commit(items.value.map((t, idx) => (idx === i ? { ...t, name: value } : t)));
-}
-function setDescription(i, value) {
-  commit(items.value.map((t, idx) => (idx === i ? { ...t, description: value } : t)));
+function patch(i, key, value) {
+  commit(items.value.map((t, idx) => (idx === i ? { ...t, [key]: value } : t)));
 }
 </script>
 
 <style scoped>
-.trait-editor {
+.entry-editor {
   display: flex;
   flex-direction: column;
   gap: 0.6rem;
 }
 
-.trait-list {
+.entry-list {
   list-style: none;
   margin: 0;
   padding: 0;
@@ -96,7 +127,7 @@ function setDescription(i, value) {
   gap: 0.6rem;
 }
 
-.trait-card {
+.entry-card {
   position: relative;
   display: flex;
   gap: 0.75rem;
@@ -108,13 +139,13 @@ function setDescription(i, value) {
   transition: border-color 0.2s ease, background 0.2s ease;
 }
 
-.trait-card:focus-within {
+.entry-card:focus-within {
   border-color: color-mix(in srgb, var(--theme-accent) 45%, transparent);
   border-left-color: var(--theme-accent);
   background: rgba(255, 255, 255, 0.05);
 }
 
-.trait-index {
+.entry-index {
   flex: 0 0 auto;
   width: 1.6rem;
   height: 1.6rem;
@@ -128,7 +159,7 @@ function setDescription(i, value) {
   line-height: 1;
 }
 
-.trait-fields {
+.entry-fields {
   flex: 1 1 auto;
   min-width: 0;
   display: flex;
@@ -136,8 +167,9 @@ function setDescription(i, value) {
   gap: 0.45rem;
 }
 
-.trait-name-input,
-.trait-desc-input {
+.entry-name-input,
+.entry-desc-input,
+.entry-meta-input {
   width: 100%;
   padding: 0.5rem 0.65rem;
   background: rgba(255, 255, 255, 0.05);
@@ -148,12 +180,12 @@ function setDescription(i, value) {
   transition: border-color 0.2s ease, background 0.2s ease;
 }
 
-.trait-name-input {
+.entry-name-input {
   font-weight: 600;
   font-size: 0.95rem;
 }
 
-.trait-desc-input {
+.entry-desc-input {
   font-size: 0.9rem;
   line-height: 1.4;
   resize: vertical;
@@ -161,19 +193,47 @@ function setDescription(i, value) {
   color: #d6d6d6;
 }
 
-.trait-name-input:focus,
-.trait-desc-input:focus {
+.entry-meta {
+  display: flex;
+  gap: 0.6rem;
+}
+
+.entry-meta-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.entry-meta-field:last-child {
+  flex: 1 1 auto;
+}
+
+.entry-meta-label {
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: rgba(255, 255, 255, 0.45);
+}
+
+.entry-level-input {
+  width: 4.5rem;
+}
+
+.entry-name-input:focus,
+.entry-desc-input:focus,
+.entry-meta-input:focus {
   outline: none;
   border-color: color-mix(in srgb, var(--theme-accent) 50%, transparent);
   background: rgba(255, 255, 255, 0.08);
 }
 
-.trait-name-input::placeholder,
-.trait-desc-input::placeholder {
+.entry-name-input::placeholder,
+.entry-desc-input::placeholder,
+.entry-meta-input::placeholder {
   color: rgba(255, 255, 255, 0.35);
 }
 
-.trait-remove {
+.entry-remove {
   flex: 0 0 auto;
   align-self: flex-start;
   width: 1.75rem;
@@ -188,16 +248,16 @@ function setDescription(i, value) {
   transition: color 0.2s ease, background 0.2s ease;
 }
 
-.trait-remove:hover {
+.entry-remove:hover {
   color: #ff6b6b;
   background: rgba(255, 107, 107, 0.12);
 }
 
-.trait-remove .material-symbols-outlined {
+.entry-remove .material-symbols-outlined {
   font-size: 1.15rem;
 }
 
-.trait-add {
+.entry-add {
   display: inline-flex;
   align-items: center;
   gap: 0.4rem;
@@ -214,16 +274,16 @@ function setDescription(i, value) {
   transition: all 0.2s ease;
 }
 
-.trait-add:hover {
+.entry-add:hover {
   border-color: var(--theme-accent);
   background: color-mix(in srgb, var(--theme-accent) 10%, transparent);
 }
 
-.trait-add .material-symbols-outlined {
+.entry-add .material-symbols-outlined {
   font-size: 1.2rem;
 }
 
-.trait-empty {
+.entry-empty {
   margin: 0;
   padding: 0.6rem 0.2rem;
   color: rgba(255, 255, 255, 0.4);
@@ -232,8 +292,9 @@ function setDescription(i, value) {
 }
 
 /* Read-only rendering: flatten inputs into plain text. */
-.is-readonly .trait-name-input,
-.is-readonly .trait-desc-input {
+.is-readonly .entry-name-input,
+.is-readonly .entry-desc-input,
+.is-readonly .entry-meta-input {
   background: transparent;
   border-color: transparent;
   padding-left: 0;
@@ -242,10 +303,10 @@ function setDescription(i, value) {
 }
 
 @media (max-width: 600px) {
-  .trait-card {
+  .entry-card {
     flex-wrap: wrap;
   }
-  .trait-remove {
+  .entry-remove {
     order: 3;
   }
 }
