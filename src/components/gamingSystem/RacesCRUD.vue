@@ -261,14 +261,14 @@
                 <span class="material-symbols-outlined">star</span>
                 Racial Traits
               </label>
-              <input
+              <textarea
                 id="raceTraits"
                 v-model="traitsInput"
-                type="text"
-                placeholder="e.g., Darkvision, Fey Ancestry (comma-separated)"
+                rows="5"
+                placeholder="One per line, e.g.&#10;Darkvision: You can see in dim light within 60 feet...&#10;Fey Ancestry: Advantage on saves against being charmed"
                 class="form-input"
-              />
-              <small class="form-hint">Special traits and abilities</small>
+              ></textarea>
+              <small class="form-hint">One trait per line, as "Name: Description"</small>
             </div>
 
             <div class="form-group">
@@ -472,7 +472,7 @@
                 <div class="form-group">
                   <label>Strength</label>
                   <input
-                    :value="templateRace.AbilityScoreIncreases?.Strength || 0"
+                    :value="templateRace.AbilityScoreModifiers?.strength || 0"
                     type="number"
                     class="form-input"
                     disabled
@@ -481,7 +481,7 @@
                 <div class="form-group">
                   <label>Dexterity</label>
                   <input
-                    :value="templateRace.AbilityScoreIncreases?.Dexterity || 0"
+                    :value="templateRace.AbilityScoreModifiers?.dexterity || 0"
                     type="number"
                     class="form-input"
                     disabled
@@ -490,7 +490,7 @@
                 <div class="form-group">
                   <label>Constitution</label>
                   <input
-                    :value="templateRace.AbilityScoreIncreases?.Constitution || 0"
+                    :value="templateRace.AbilityScoreModifiers?.constitution || 0"
                     type="number"
                     class="form-input"
                     disabled
@@ -501,7 +501,7 @@
                 <div class="form-group">
                   <label>Intelligence</label>
                   <input
-                    :value="templateRace.AbilityScoreIncreases?.Intelligence || 0"
+                    :value="templateRace.AbilityScoreModifiers?.intelligence || 0"
                     type="number"
                     class="form-input"
                     disabled
@@ -510,7 +510,7 @@
                 <div class="form-group">
                   <label>Wisdom</label>
                   <input
-                    :value="templateRace.AbilityScoreIncreases?.Wisdom || 0"
+                    :value="templateRace.AbilityScoreModifiers?.wisdom || 0"
                     type="number"
                     class="form-input"
                     disabled
@@ -519,7 +519,7 @@
                 <div class="form-group">
                   <label>Charisma</label>
                   <input
-                    :value="templateRace.AbilityScoreIncreases?.Charisma || 0"
+                    :value="templateRace.AbilityScoreModifiers?.charisma || 0"
                     type="number"
                     class="form-input"
                     disabled
@@ -546,12 +546,12 @@
                 <span class="material-symbols-outlined">star</span>
                 Racial Traits
               </label>
-              <input
-                :value="(templateRace.Traits || []).join(', ')"
-                type="text"
+              <textarea
+                :value="formatTraitsForInput(templateRace.Traits)"
+                rows="5"
                 class="form-input"
                 disabled
-              />
+              ></textarea>
             </div>
 
             <div class="form-group">
@@ -743,6 +743,29 @@ const formData = ref({
 const tagsInput = ref('');
 const languagesInput = ref('');
 const traitsInput = ref('');
+
+// Racial traits are stored as structured objects ({ name, description }).
+// In the form we present one trait per line as "Name: Description" so the
+// structure round-trips (descriptions may contain commas). Plain strings are
+// tolerated for backward compatibility.
+function formatTraitsForInput(traits) {
+  return (traits || [])
+    .map(t => (typeof t === 'string'
+      ? t
+      : `${t?.name || ''}${t?.description ? ': ' + t.description : ''}`))
+    .join('\n');
+}
+function parseTraitsFromInput(text) {
+  return (text || '')
+    .split('\n')
+    .map(line => line.trim())
+    .filter(line => line.length > 0)
+    .map(line => {
+      const idx = line.indexOf(':');
+      if (idx === -1) return { name: line, description: '' };
+      return { name: line.slice(0, idx).trim(), description: line.slice(idx + 1).trim() };
+    });
+}
 const abilityScoreIncreases = ref({
   Strength: 0,
   Dexterity: 0,
@@ -989,14 +1012,14 @@ const editRace = async (raceItem) => {
   // Initialize helper inputs
   tagsInput.value = (raceData.Tags || []).join(', ');
   languagesInput.value = (raceData.Languages || []).join(', ');
-  traitsInput.value = (raceData.Traits || []).join(', ');
+  traitsInput.value = formatTraitsForInput(raceData.Traits);
   abilityScoreIncreases.value = {
-    Strength: raceData.AbilityScoreIncreases?.Strength || 0,
-    Dexterity: raceData.AbilityScoreIncreases?.Dexterity || 0,
-    Constitution: raceData.AbilityScoreIncreases?.Constitution || 0,
-    Intelligence: raceData.AbilityScoreIncreases?.Intelligence || 0,
-    Wisdom: raceData.AbilityScoreIncreases?.Wisdom || 0,
-    Charisma: raceData.AbilityScoreIncreases?.Charisma || 0
+    Strength: raceData.AbilityScoreModifiers?.strength || 0,
+    Dexterity: raceData.AbilityScoreModifiers?.dexterity || 0,
+    Constitution: raceData.AbilityScoreModifiers?.constitution || 0,
+    Intelligence: raceData.AbilityScoreModifiers?.intelligence || 0,
+    Wisdom: raceData.AbilityScoreModifiers?.wisdom || 0,
+    Charisma: raceData.AbilityScoreModifiers?.charisma || 0
   };
 
   await nextTick();
@@ -1021,10 +1044,7 @@ const saveRace = async () => {
       .map(l => l.trim())
       .filter(l => l.length > 0);
 
-    const traits = traitsInput.value
-      .split(',')
-      .map(t => t.trim())
-      .filter(t => t.length > 0);
+    const traits = parseTraitsFromInput(traitsInput.value);
 
     // Build ability score increases object (only include non-zero values)
     const asi = {};
@@ -1043,7 +1063,7 @@ const saveRace = async () => {
       Tags: tags.length > 0 ? tags : undefined,
       Size: formData.value.Size || undefined,
       Speed: formData.value.Speed || undefined,
-      AbilityScoreIncreases: Object.keys(asi).length > 0 ? asi : undefined,
+      AbilityScoreModifiers: Object.keys(asi).length > 0 ? Object.fromEntries(Object.entries(asi).map(([k, v]) => [k.toLowerCase(), v])) : undefined,
       Languages: languages.length > 0 ? languages : undefined,
       Traits: traits.length > 0 ? traits : undefined
     };
@@ -1140,7 +1160,7 @@ const disableRace = async () => {
       // Parse form data
       const tags = tagsInput.value.split(',').map(t => t.trim()).filter(t => t.length > 0);
       const languages = languagesInput.value.split(',').map(l => l.trim()).filter(l => l.length > 0);
-      const traits = traitsInput.value.split(',').map(t => t.trim()).filter(t => t.length > 0);
+      const traits = parseTraitsFromInput(traitsInput.value);
 
       const asi = {};
       if (abilityScoreIncreases.value.Strength) asi.Strength = abilityScoreIncreases.value.Strength;
@@ -1157,7 +1177,7 @@ const disableRace = async () => {
         Tags: tags.length > 0 ? tags : undefined,
         Size: formData.value.Size || undefined,
         Speed: formData.value.Speed || undefined,
-        AbilityScoreIncreases: Object.keys(asi).length > 0 ? asi : undefined,
+        AbilityScoreModifiers: Object.keys(asi).length > 0 ? Object.fromEntries(Object.entries(asi).map(([k, v]) => [k.toLowerCase(), v])) : undefined,
         Languages: languages.length > 0 ? languages : undefined,
         Traits: traits.length > 0 ? traits : undefined
       };
