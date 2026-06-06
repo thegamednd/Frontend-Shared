@@ -7,6 +7,7 @@ import { useSubscriptionStore } from '@shared/stores/subscription';
 import { watch } from 'vue';
 import axios from 'axios';
 import apiClient from '@shared/utils/api';
+import { gamingSystemIdForRuleset } from '@shared/constants/gamingSystems';
 
 const BASE_URL = `${import.meta.env.VITE_API_BASE_URL}`;
 
@@ -743,9 +744,25 @@ export const useRealmStore = defineStore('realm', {
             const realm = this.activeRealm;
             if (!realm?.RealmID) throw new Error('No active realm');
 
-            this.realms[realm.RealmID] = { ...realm, RPGRuleset: ruleset };
+            const updatedRealm = { ...realm, RPGRuleset: ruleset };
 
-            const realmOut = JSON.parse(JSON.stringify(this.realms[realm.RealmID]));
+            // Point the realm's content (classes/races/spells) at the RPG system's
+            // content gaming system so the correct rules load. Without this, the
+            // ruleset flag flips but content stays on whatever system the realm
+            // previously used (e.g. The Game or bare RealmForge).
+            const contentGsId = gamingSystemIdForRuleset(ruleset);
+            if (contentGsId) {
+                updatedRealm.GamingSystem = {
+                    ...(realm.GamingSystem || {}),
+                    classes: contentGsId,
+                    races: contentGsId,
+                    spells: contentGsId,
+                };
+            }
+
+            this.realms[realm.RealmID] = updatedRealm;
+
+            const realmOut = JSON.parse(JSON.stringify(updatedRealm));
             delete realmOut.Players;
             const updated = await this._putRealm(realmOut);
             return updated;
