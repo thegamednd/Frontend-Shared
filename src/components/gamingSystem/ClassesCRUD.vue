@@ -250,6 +250,22 @@
             />
           </div>
         </div>
+
+        <div class="form-group">
+          <label>
+            <span class="material-symbols-outlined">auto_awesome</span>
+            Special Abilities
+          </label>
+          <EntryListEditor
+            v-model="abilitiesList"
+            show-level
+            show-uses
+            name-placeholder="Ability name (e.g. Rage)"
+            desc-placeholder="What does this ability do?"
+            add-label="Add ability"
+          />
+          <small class="form-hint">Class features, with optional level gained and uses</small>
+        </div>
         </template>
 
         <!-- TheGame fields -->
@@ -584,6 +600,14 @@
 
             <div class="form-group">
               <label>
+                <span class="material-symbols-outlined">auto_awesome</span>
+                Special Abilities
+              </label>
+              <EntryListEditor :model-value="templateClass.SpecialAbilities || []" show-level show-uses readonly />
+            </div>
+
+            <div class="form-group">
+              <label>
                 <span class="material-symbols-outlined">description</span>
                 Full Description
               </label>
@@ -666,6 +690,7 @@ import { useSkillsStore } from '@shared/stores/skills';
 import { useAccountStore } from '@shared/stores/account';
 import VueMultiselect from 'vue-multiselect';
 import 'vue-multiselect/dist/vue-multiselect.min.css';
+import EntryListEditor from '@shared/components/gamingSystem/EntryListEditor.vue';
 import DeleteClassWarning from '@shared/components/dialogs/DeleteClassWarning.vue';
 import {
   ClassicEditor,
@@ -806,6 +831,31 @@ const proficiencies = ref({
   skillsInput: '',
   toolsInput: ''
 });
+
+// Special abilities are structured objects ({ name, description, level?, uses? }),
+// edited via EntryListEditor. normalizeAbilities coerces stored data into the
+// editor's shape; serializeAbilities trims and drops blank rows.
+const abilitiesList = ref([]);
+function normalizeAbilities(abilities) {
+  return (abilities || []).map(a => (typeof a === 'string'
+    ? { name: a, description: '' }
+    : {
+        name: a?.name || '',
+        description: a?.description || '',
+        ...(a?.level != null ? { level: a.level } : {}),
+        ...(a?.uses ? { uses: a.uses } : {}),
+      }));
+}
+function serializeAbilities(list) {
+  return (list || [])
+    .map(a => ({
+      name: (a.name || '').trim(),
+      description: (a.description || '').trim(),
+      ...(a.level != null && a.level !== '' ? { level: Number(a.level) } : {}),
+      ...(a.uses && String(a.uses).trim() ? { uses: String(a.uses).trim() } : {}),
+    }))
+    .filter(a => a.name.length > 0);
+}
 
 // Disable state
 const showDisableConfirm = ref(false);
@@ -997,6 +1047,7 @@ const addNewClass = async () => {
   };
   tagsInput.value = '';
   primaryAttributesInput.value = '';
+  abilitiesList.value = [];
   hitPointsData.value = { base: null, perLevel: null, diceType: '' };
   proficiencies.value = {
     weaponsInput: '',
@@ -1056,6 +1107,7 @@ const editClass = async (classItem) => {
   // Initialize helper inputs
   tagsInput.value = (classData.Tags || []).join(', ');
   primaryAttributesInput.value = (classData.PrimaryAttributes || []).join(', ');
+  abilitiesList.value = normalizeAbilities(classData.SpecialAbilities);
   hitPointsData.value = { ...(classData.HitPointsData || { base: null, perLevel: null, diceType: '' }) };
 
   const prof = classData.Proficiencies || {};
@@ -1111,6 +1163,8 @@ const saveClass = async () => {
       tools: proficiencies.value.toolsInput.split(',').map(t => t.trim()).filter(t => t.length > 0)
     };
 
+    const abilities = serializeAbilities(abilitiesList.value);
+
     // Build base class data
     let baseData;
     if (isTheGame.value) {
@@ -1139,7 +1193,8 @@ const saveClass = async () => {
         PrimaryAttributes: primaryAttrs.length > 0 ? primaryAttrs : undefined,
         Proficiencies: (prof.weapons.length || prof.armor.length || prof.saves.length || prof.skills.length || prof.tools.length)
           ? prof
-          : undefined
+          : undefined,
+        SpecialAbilities: abilities.length > 0 ? abilities : undefined
       };
     }
 
@@ -1209,6 +1264,7 @@ const cancelForm = () => {
   };
   tagsInput.value = '';
   primaryAttributesInput.value = '';
+  abilitiesList.value = [];
   hitPointsData.value = { base: null, perLevel: null, diceType: '' };
   proficiencies.value = {
     weaponsInput: '',
