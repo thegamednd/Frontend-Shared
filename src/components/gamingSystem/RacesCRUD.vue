@@ -261,14 +261,8 @@
                 <span class="material-symbols-outlined">star</span>
                 Racial Traits
               </label>
-              <textarea
-                id="raceTraits"
-                v-model="traitsInput"
-                rows="5"
-                placeholder="One per line, e.g.&#10;Darkvision: You can see in dim light within 60 feet...&#10;Fey Ancestry: Advantage on saves against being charmed"
-                class="form-input"
-              ></textarea>
-              <small class="form-hint">One trait per line, as "Name: Description"</small>
+              <TraitListEditor v-model="traitsList" />
+              <small class="form-hint">Add each racial trait with a name and description</small>
             </div>
 
             <div class="form-group">
@@ -546,12 +540,7 @@
                 <span class="material-symbols-outlined">star</span>
                 Racial Traits
               </label>
-              <textarea
-                :value="formatTraitsForInput(templateRace.Traits)"
-                rows="5"
-                class="form-input"
-                disabled
-              ></textarea>
+              <TraitListEditor :model-value="templateRace.Traits || []" readonly />
             </div>
 
             <div class="form-group">
@@ -636,6 +625,7 @@ import { useCharacterStore } from '@shared/stores/character';
 import { useRacesStore } from '@shared/stores/races';
 import { useAccountStore } from '@shared/stores/account';
 import DeleteRaceWarning from '@shared/components/dialogs/DeleteRaceWarning.vue';
+import TraitListEditor from '@shared/components/gamingSystem/TraitListEditor.vue';
 import {
   ClassicEditor,
   Essentials,
@@ -742,29 +732,20 @@ const formData = ref({
 // Helper inputs for arrays/objects
 const tagsInput = ref('');
 const languagesInput = ref('');
-const traitsInput = ref('');
 
-// Racial traits are stored as structured objects ({ name, description }).
-// In the form we present one trait per line as "Name: Description" so the
-// structure round-trips (descriptions may contain commas). Plain strings are
-// tolerated for backward compatibility.
-function formatTraitsForInput(traits) {
-  return (traits || [])
-    .map(t => (typeof t === 'string'
-      ? t
-      : `${t?.name || ''}${t?.description ? ': ' + t.description : ''}`))
-    .join('\n');
+// Racial traits are structured objects ({ name, description }), edited via the
+// TraitListEditor. normalizeTraits coerces stored data (objects or legacy
+// strings) into the editor's shape; serializeTraits trims and drops blank rows.
+const traitsList = ref([]);
+function normalizeTraits(traits) {
+  return (traits || []).map(t => (typeof t === 'string'
+    ? { name: t, description: '' }
+    : { name: t?.name || '', description: t?.description || '' }));
 }
-function parseTraitsFromInput(text) {
-  return (text || '')
-    .split('\n')
-    .map(line => line.trim())
-    .filter(line => line.length > 0)
-    .map(line => {
-      const idx = line.indexOf(':');
-      if (idx === -1) return { name: line, description: '' };
-      return { name: line.slice(0, idx).trim(), description: line.slice(idx + 1).trim() };
-    });
+function serializeTraits(list) {
+  return (list || [])
+    .map(t => ({ name: (t.name || '').trim(), description: (t.description || '').trim() }))
+    .filter(t => t.name.length > 0);
 }
 const abilityScoreIncreases = ref({
   Strength: 0,
@@ -957,7 +938,7 @@ const addNewRace = async () => {
   };
   tagsInput.value = '';
   languagesInput.value = '';
-  traitsInput.value = '';
+  traitsList.value = [];
   abilityScoreIncreases.value = {
     Strength: 0,
     Dexterity: 0,
@@ -1012,7 +993,7 @@ const editRace = async (raceItem) => {
   // Initialize helper inputs
   tagsInput.value = (raceData.Tags || []).join(', ');
   languagesInput.value = (raceData.Languages || []).join(', ');
-  traitsInput.value = formatTraitsForInput(raceData.Traits);
+  traitsList.value = normalizeTraits(raceData.Traits);
   abilityScoreIncreases.value = {
     Strength: raceData.AbilityScoreModifiers?.strength || 0,
     Dexterity: raceData.AbilityScoreModifiers?.dexterity || 0,
@@ -1044,7 +1025,7 @@ const saveRace = async () => {
       .map(l => l.trim())
       .filter(l => l.length > 0);
 
-    const traits = parseTraitsFromInput(traitsInput.value);
+    const traits = serializeTraits(traitsList.value);
 
     // Build ability score increases object (only include non-zero values)
     const asi = {};
@@ -1132,7 +1113,7 @@ const cancelForm = () => {
   };
   tagsInput.value = '';
   languagesInput.value = '';
-  traitsInput.value = '';
+  traitsList.value = [];
   abilityScoreIncreases.value = {
     Strength: 0,
     Dexterity: 0,
@@ -1160,7 +1141,7 @@ const disableRace = async () => {
       // Parse form data
       const tags = tagsInput.value.split(',').map(t => t.trim()).filter(t => t.length > 0);
       const languages = languagesInput.value.split(',').map(l => l.trim()).filter(l => l.length > 0);
-      const traits = parseTraitsFromInput(traitsInput.value);
+      const traits = serializeTraits(traitsList.value);
 
       const asi = {};
       if (abilityScoreIncreases.value.Strength) asi.Strength = abilityScoreIncreases.value.Strength;
