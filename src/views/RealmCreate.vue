@@ -655,7 +655,6 @@ import { features } from '@shared/config/features';
 import {
   DND5E_RULESET,
   RPG_RULESETS,
-  REALMFORGE_GAMING_SYSTEM_ID,
   gamingSystemIdForRuleset
 } from '@shared/constants/gamingSystems';
 import apiClient from '@shared/utils/api';
@@ -687,7 +686,7 @@ const gamingSystemId = import.meta.env.VITE_GAMING_SYSTEM_ID;
 // Show the RPG-system step only for apps whose platform gaming system is
 // RealmForge (realmforge.io / rf.realmforge.io). TheGame-Vue uses a different
 // platform gaming system and must not see this step.
-const showRpgSystemStep = import.meta.env.VITE_GAMING_SYSTEM_ID === REALMFORGE_GAMING_SYSTEM_ID;
+const showRpgSystemStep = import.meta.env.VITE_SHOW_RPG_PICKER === 'true';
 
 const elName = ref(null);
 const isCreating = ref(false);
