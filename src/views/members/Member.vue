@@ -158,7 +158,6 @@ import { useUserStore } from '@shared/stores/user';
 import { useRealmStore } from '@shared/stores/realm';
 import { useDateStore } from '@shared/stores/date';
 import { features } from '@shared/config/features';
-import { DND5E_RULESET } from '@shared/constants/gamingSystems';
 import apiClient from '@shared/utils/api';
 
 const props = defineProps({
@@ -198,9 +197,13 @@ const canEdit = computed(() => {
 });
 
 const canViewSheet = computed(() => {
-    if (!characterStore.canViewCharacter(member.value)) return false;
-    // Only show the Sheet button when the active realm has a supported ruleset.
-    return realmStore.activeRPGRuleset === DND5E_RULESET;
+    // Whether this app has character sheets at all is gated at the template via
+    // `features.hasCharacterSheets` (the VITE_HAS_CHARACTER_SHEETS flag, which is
+    // off for the sheet-less generic platform). Here we only check per-character
+    // permission — gating on a specific RPG ruleset would wrongly hide the sheet
+    // in apps that ship their own sheets without using the D&D 5e ruleset
+    // (e.g. TheGame).
+    return characterStore.canViewCharacter(member.value);
 });
 
 const hasPhysicalInfo = computed(() => {
