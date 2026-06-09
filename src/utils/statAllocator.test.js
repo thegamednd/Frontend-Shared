@@ -56,3 +56,42 @@ describe('autoDistribute — class weighting', () => {
     expect(sum(stats)).toBe(53);
   });
 });
+
+describe('autoDistribute — boundaries and fallbacks', () => {
+  it('spends the full pool at exactly capacity (90)', () => {
+    const stats = autoDistribute(90, [{ name: 'Warrior' }]);
+    expect(sum(stats)).toBe(90);
+    expect(POOL_STATS.every((s) => stats[s] === STAT_CAP)).toBe(true);
+  });
+
+  it('caps at 90 and discards overflow when pool is just over capacity (91)', () => {
+    const stats = autoDistribute(91, [{ name: 'Warrior' }]);
+    expect(sum(stats)).toBe(90);
+    expect(inBounds(stats)).toBe(true);
+  });
+
+  it('keeps every stat at the floor when pool equals the floor baseline (30)', () => {
+    const stats = autoDistribute(30, [{ name: 'Warrior' }]);
+    expect(POOL_STATS.every((s) => stats[s] === STAT_FLOOR)).toBe(true);
+    expect(sum(stats)).toBe(30);
+  });
+
+  it('never drops below the floor when pool is under the baseline (< 30)', () => {
+    const stats = autoDistribute(20, [{ name: 'Warrior' }]);
+    expect(POOL_STATS.every((s) => stats[s] === STAT_FLOOR)).toBe(true);
+  });
+
+  it('spreads evenly for an unknown class name (not in the map)', () => {
+    const stats = autoDistribute(53, [{ name: 'Nonexistent Class' }]);
+    const values = POOL_STATS.map((s) => stats[s]);
+    expect(Math.max(...values) - Math.min(...values)).toBeLessThanOrEqual(1);
+    expect(sum(stats)).toBe(53);
+  });
+
+  it('ignores unrecognized PrimaryAttributes and falls back to even spread', () => {
+    const stats = autoDistribute(53, [{ name: 'Unknown', PrimaryAttributes: ['Banana'] }]);
+    const values = POOL_STATS.map((s) => stats[s]);
+    expect(Math.max(...values) - Math.min(...values)).toBeLessThanOrEqual(1);
+    expect(sum(stats)).toBe(53);
+  });
+});
