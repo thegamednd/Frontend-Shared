@@ -20,6 +20,9 @@ export const useAccountStore = defineStore('account', {
     getters: {
         accountId(state) {
             return state.account?.AccountID || null;
+        },
+        preferredLLM(state) {
+            return state.account?.PreferredLLM || 'standard';
         }
     },
     actions: {
@@ -448,6 +451,19 @@ export const useAccountStore = defineStore('account', {
             }
             this.activeAccountId = accountId;
             return true;
+        },
+
+        async setPreferredLLM(value) {
+            const accountId = this.account?.AccountID;
+            if (!accountId) return;
+            const previous = this.account.PreferredLLM;
+            this.account.PreferredLLM = value; // optimistic
+            try {
+                await apiClient.put(`/accounts/account/${accountId}`, { PreferredLLM: value });
+            } catch (e) {
+                console.error('Failed to save preferred LLM:', e);
+                this.account.PreferredLLM = previous; // rollback on failure
+            }
         },
 
         async updateAccount(accountId, account) {
