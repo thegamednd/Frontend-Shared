@@ -163,6 +163,20 @@ export const useAIStore = defineStore('ai', {
             }
         },
 
+        async sendDeepDecision(conversationId, decision) {
+            try {
+                await apiClient.post(`${this._getBaseUrl()}/ai/consult/deep-decision`, {
+                    conversationId,
+                    decision,
+                });
+                return true;
+            } catch (err) {
+                console.error('Failed to send deep-search decision:', err);
+                this.error = 'Failed to send your choice. Please try again.';
+                return false;
+            }
+        },
+
         startNewConversation() {
             this.activeConversationId = null;
             this.activeConversation = null;
