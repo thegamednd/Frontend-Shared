@@ -123,6 +123,26 @@
                   <button @click="confirmBroadQuery(index)" class="confirm-btn">Yes, proceed</button>
                   <button @click="cancelBroadQuery(index)" class="cancel-btn">Cancel</button>
                 </div>
+
+                <div v-if="entry.needMoreCredits" class="deep-search-prompt">
+                  <p class="deep-search-text">{{ entry.deepPrompt }}</p>
+                  <p v-if="entry.deepCappedByBalance" class="deep-search-note">
+                    The depth is limited to your remaining balance.
+                  </p>
+                  <div class="confirmation-actions">
+                    <button @click="continueDeepSearch(index)" class="confirm-btn">
+                      Continue ({{ entry.deepEstimatedCredits }} credits)
+                    </button>
+                    <button @click="stopDeepSearch(index)" class="cancel-btn">
+                      Answer with what you have
+                    </button>
+                  </div>
+                </div>
+
+                <div v-if="entry.deepProgress && !entry.needMoreCredits" class="deep-progress-indicator">
+                  <span class="material-symbols-outlined">menu_book</span>
+                  {{ entry.deepProgress }}
+                </div>
               </div>
             </div>
           </div>
@@ -195,7 +215,7 @@ import { MODEL_TIERS, tierMultiplierLabel } from '@shared/utils/aiModelTiers';
 const aiStore = useAIStore();
 const realmStore = useRealmStore();
 const accountStore = useAccountStore();
-const { connectionId, isConnected, isStreaming, connect, disconnect, onToken, onToolUse, onComplete, onError, startStreaming } = useAIStream();
+const { connectionId, isConnected, isStreaming, connect, disconnect, onToken, onToolUse, onComplete, onError, onNeedMoreCredits, onDeepProgress, startStreaming } = useAIStream();
 
 const question = ref('');
 const conversation = ref([]);
@@ -288,9 +308,18 @@ onMounted(async () => {
     if (message.creditsRemaining !== undefined) {
       aiStore.credits = message.creditsRemaining;
     }
+    // The deep-search charge is applied in the worker after the streaming
+    // response is set up, so message.creditsRemaining can predate it. Reconcile
+    // the authoritative balance from the server so the badge is correct.
+    aiStore.getCredits();
     streamingText.value = '';
     toolIndicator.value = '';
     aiStore.isLoading = false;
+    if (conversation.value.length > 0) {
+      const lastEntry = conversation.value[conversation.value.length - 1];
+      lastEntry.deepProgress = null;
+      lastEntry.needMoreCredits = false;
+    }
     scrollToBottom();
   });
 
@@ -305,6 +334,36 @@ onMounted(async () => {
     streamingText.value = '';
     toolIndicator.value = '';
     aiStore.isLoading = false;
+    scrollToBottom();
+  });
+
+  onNeedMoreCredits((message) => {
+    clearFallbackTimer();
+    startFallbackTimer(message.conversationId || aiStore.activeConversationId);
+    streamingText.value = '';
+    toolIndicator.value = '';
+    if (conversation.value.length > 0) {
+      const lastEntry = conversation.value[conversation.value.length - 1];
+      lastEntry.needMoreCredits = true;
+      lastEntry.deepPrompt = message.prompt;
+      lastEntry.deepEstimatedCredits = message.estimatedCredits;
+      lastEntry.deepReportsRemaining = message.reportsRemaining;
+      lastEntry.deepCappedByBalance = message.cappedByBalance;
+      lastEntry.deepConversationId = message.conversationId || aiStore.activeConversationId;
+    }
+    scrollToBottom();
+  });
+
+  onDeepProgress((message) => {
+    clearFallbackTimer();
+    startFallbackTimer(message.conversationId || aiStore.activeConversationId);
+    if (conversation.value.length > 0) {
+      const lastEntry = conversation.value[conversation.value.length - 1];
+      lastEntry.needMoreCredits = false;
+      lastEntry.deepProgress = message.phase === 'synthesizing'
+        ? `Finished reading ${message.total} reports. Pulling it together now.`
+        : `Reading report ${message.current} of ${message.total}`;
+    }
     scrollToBottom();
   });
 });
@@ -458,6 +517,21 @@ function cancelBroadQuery(index) {
   entry.requiresConfirmation = false;
   entry.answer = "Very well, I shall hold off on that inquiry.";
   delete entry.pendingQuestion;
+}
+
+async function continueDeepSearch(index) {
+  const entry = conversation.value[index];
+  const convId = entry.deepConversationId;
+  entry.needMoreCredits = false;
+  entry.deepProgress = 'Settling in to read deeper...';
+  await aiStore.sendDeepDecision(convId, 'continue');
+}
+
+async function stopDeepSearch(index) {
+  const entry = conversation.value[index];
+  const convId = entry.deepConversationId;
+  entry.needMoreCredits = false;
+  await aiStore.sendDeepDecision(convId, 'stop');
 }
 
 function addNewline(event) {
@@ -1053,6 +1127,46 @@ watch(conversation, () => {
 @keyframes pulse {
   0%, 100% { opacity: 0.4; }
   50% { opacity: 1; }
+}
+
+/* Deep-Search Escalation Card */
+.deep-search-prompt {
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid color-mix(in srgb, var(--theme-accent) 30%, transparent);
+}
+
+.deep-search-text {
+  margin: 0 0 8px 0;
+  color: var(--theme-text-primary);
+  line-height: 1.4;
+}
+
+.deep-search-note {
+  margin: 0 0 10px 0;
+  font-size: 0.85em;
+  color: #b0a080;
+  font-style: italic;
+}
+
+.deep-search-prompt .confirmation-actions {
+  flex-wrap: wrap;
+}
+
+/* Deep-Search Progress */
+.deep-progress-indicator {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 10px;
+  color: var(--theme-accent);
+  font-family: 'Pirata One', cursive;
+  font-size: 0.85em;
+}
+
+.deep-progress-indicator .material-symbols-outlined {
+  font-size: 16px;
+  animation: pulse 1.5s ease-in-out infinite;
 }
 
 /* Thinking Animation */

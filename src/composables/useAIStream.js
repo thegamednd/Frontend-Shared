@@ -20,11 +20,15 @@ export function useAIStream() {
   let toolUseCallback = null;
   let completeCallback = null;
   let errorCallback = null;
+  let needMoreCreditsCallback = null;
+  let deepProgressCallback = null;
 
   function onToken(fn) { tokenCallback = fn; }
   function onToolUse(fn) { toolUseCallback = fn; }
   function onComplete(fn) { completeCallback = fn; }
   function onError(fn) { errorCallback = fn; }
+  function onNeedMoreCredits(fn) { needMoreCreditsCallback = fn; }
+  function onDeepProgress(fn) { deepProgressCallback = fn; }
 
   async function getAuthToken() {
     try {
@@ -83,6 +87,14 @@ export function useAIStream() {
             case 'ai_error':
               isStreaming.value = false;
               if (errorCallback) errorCallback(message.errorMessage || 'An error occurred');
+              break;
+
+            case 'ai_need_more_credits':
+              if (needMoreCreditsCallback) needMoreCreditsCallback(message);
+              break;
+
+            case 'ai_deep_progress':
+              if (deepProgressCallback) deepProgressCallback(message);
               break;
           }
         } catch (err) {
@@ -155,6 +167,8 @@ export function useAIStream() {
     onToolUse,
     onComplete,
     onError,
+    onNeedMoreCredits,
+    onDeepProgress,
     startStreaming,
     stopStreaming,
   };
