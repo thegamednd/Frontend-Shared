@@ -308,6 +308,10 @@ onMounted(async () => {
     if (message.creditsRemaining !== undefined) {
       aiStore.credits = message.creditsRemaining;
     }
+    // The deep-search charge is applied in the worker after the streaming
+    // response is set up, so message.creditsRemaining can predate it. Reconcile
+    // the authoritative balance from the server so the badge is correct.
+    aiStore.getCredits();
     streamingText.value = '';
     toolIndicator.value = '';
     aiStore.isLoading = false;
