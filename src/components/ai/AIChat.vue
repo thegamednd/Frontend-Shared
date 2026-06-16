@@ -47,6 +47,14 @@
           <span class="material-symbols-outlined">quiz</span>
           {{ aiStore.credits }}
         </span>
+        <label class="tier-select" :title="`Lorekeeper's mind for this chat (${tierMultLabel} credits per question)`">
+          <span class="material-symbols-outlined">auto_awesome</span>
+          <select :value="aiStore.modelTier" @change="onModelTierChange" aria-label="Choose the Lorekeeper model">
+            <option v-for="t in MODEL_TIERS" :key="t.value" :value="t.value">
+              {{ t.label }} · {{ t.mult }}
+            </option>
+          </select>
+        </label>
       </div>
       <div class="header-actions">
         <button @click="handleNewConversation" class="action-btn">
@@ -179,11 +187,14 @@
 import { ref, computed, watch, nextTick, onMounted, onUnmounted } from 'vue';
 import { useAIStore } from '@shared/stores/ai';
 import { useRealmStore } from '@shared/stores/realm';
+import { useAccountStore } from '@shared/stores/account';
 import { useAIStream } from '@shared/composables/useAIStream';
 import { sanitizeAIHtml } from '@shared/utils/sanitizeAIHtml';
+import { MODEL_TIERS, tierMultiplierLabel } from '@shared/utils/aiModelTiers';
 
 const aiStore = useAIStore();
 const realmStore = useRealmStore();
+const accountStore = useAccountStore();
 const { connectionId, isConnected, isStreaming, connect, disconnect, onToken, onToolUse, onComplete, onError, startStreaming } = useAIStream();
 
 const question = ref('');
@@ -201,6 +212,17 @@ const aiName = computed(() => {
   return realmStore.activeRealm?.AIConfig?.Name || 'Lorekeeper';
 });
 
+const tierMultLabel = computed(() => tierMultiplierLabel(aiStore.modelTier));
+
+async function onModelTierChange(event) {
+  const value = event.target.value;
+  aiStore.modelTier = value;
+  await accountStore.setPreferredLLM(value);
+  // Re-sync to the actual persisted value: no-op on success; on a failed save
+  // the account store has rolled back, so this reverts the selector too.
+  aiStore.modelTier = accountStore.preferredLLM;
+}
+
 function initWelcomeMessage() {
   if (aiStore.credits <= 0) {
     conversation.value = [{ answer: `You have no questions remaining to ask ${aiName.value}!` }];
@@ -209,7 +231,12 @@ function initWelcomeMessage() {
   }
 }
 
-onMounted(() => {
+onMounted(async () => {
+  if (!accountStore.account) {
+    await accountStore.getAccount();
+  }
+  aiStore.modelTier = accountStore.preferredLLM;
+
   initWelcomeMessage();
   scrollToBottom();
   connect();
@@ -375,7 +402,7 @@ async function submitQuestion() {
 
   // Handle broad query confirmation
   if (data.requiresConfirmation) {
-    const msg = `This search will be more thorough and will use ${data.estimatedCredits} question credits instead of 1. Shall I proceed?`;
+    const msg = `This search will be more thorough and will use ${data.estimatedCredits} question credits. Shall I proceed?`;
     conversation.value[conversation.value.length - 1].answer = msg;
     conversation.value[conversation.value.length - 1].requiresConfirmation = true;
     conversation.value[conversation.value.length - 1].pendingQuestion = currentQuestion;
@@ -628,6 +655,7 @@ watch(conversation, () => {
   display: flex;
   align-items: center;
   gap: 12px;
+  min-width: 0;
 }
 
 .hamburger-btn {
@@ -656,6 +684,11 @@ watch(conversation, () => {
   font-size: 1.4em;
   color: var(--theme-accent);
   text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.5);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+  flex-shrink: 1;
 }
 
 .questions-badge {
@@ -672,6 +705,59 @@ watch(conversation, () => {
 
 .questions-badge .material-symbols-outlined {
   font-size: 16px;
+}
+
+/* Tier Selector */
+.tier-select {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 8px 4px 10px;
+  background: color-mix(in srgb, var(--theme-accent) 12%, transparent);
+  border: 1px solid var(--theme-accent);
+  border-radius: 20px;
+  color: var(--theme-accent);
+  font-size: 0.85em;
+  cursor: pointer;
+  transition: background 0.18s;
+  white-space: nowrap;
+  min-width: 0;
+}
+
+.tier-select:hover {
+  background: color-mix(in srgb, var(--theme-accent) 22%, transparent);
+}
+
+.tier-select .material-symbols-outlined {
+  font-size: 16px;
+  flex-shrink: 0;
+}
+
+.tier-select select {
+  color: var(--theme-accent);
+  font-size: 0.85em;
+  cursor: pointer;
+  outline: none;
+  max-width: 96px;
+  min-width: 0;
+  /* Suppress the native OS arrow so we can draw an on-brand gold caret that
+     stays cohesive with the dark/gold header (native arrow clashes on iOS). */
+  -webkit-appearance: none;
+  appearance: none;
+  border: none;
+  /* Gold caret as an inline SVG, pinned right; reserve room so truncated
+     option text never collides with it. Renders identically across iOS/Android. */
+  background-color: transparent;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12' fill='none'%3E%3Cpath d='M2.5 4.5 6 8l3.5-3.5' stroke='%23cc9a50' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right center;
+  background-size: 12px 12px;
+  padding: 0 16px 0 0;
+}
+
+.tier-select select option {
+  background: #1e2a4a;
+  color: var(--theme-text-primary);
 }
 
 .header-actions {
@@ -1189,6 +1275,16 @@ watch(conversation, () => {
     font-size: 0.8em;
   }
 
+  .tier-select {
+    padding: 4px 6px 4px 8px;
+    font-size: 0.8em;
+  }
+
+  .tier-select select {
+    max-width: 72px;
+    font-size: 0.8em;
+  }
+
   .sidebar {
     width: 260px;
     left: -260px;
@@ -1198,6 +1294,14 @@ watch(conversation, () => {
 @media (max-width: 480px) {
   .chat-header {
     padding: 6px 10px;
+  }
+
+  .tier-select {
+    padding: 3px 5px 3px 7px;
+  }
+
+  .tier-select select {
+    max-width: 60px;
   }
 
   .messages-area {

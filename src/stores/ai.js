@@ -12,6 +12,7 @@ export const useAIStore = defineStore('ai', {
         credits: 0,
         realmCredits: 0,
         userCredits: 0,
+        modelTier: 'standard',
         isLoading: false,
         isLoadingHistory: false,
         error: null,
@@ -42,6 +43,7 @@ export const useAIStore = defineStore('ai', {
                 const response = await apiClient.post(`${this._getBaseUrl()}/ai/consult`, {
                     question,
                     realmId: this.realmId,
+                    modelTier: this.modelTier,
                     ...(this.activeConversationId && { conversationId: this.activeConversationId }),
                     ...(confirmed && { confirmed: true }),
                     ...(connectionId && { connectionId }),
