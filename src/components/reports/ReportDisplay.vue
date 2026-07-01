@@ -106,7 +106,7 @@
       <!-- Report Text -->
       <section class="report-text">
         <div class="text-content">
-          <div v-if="report.Report" v-html="formatReportText(report.Report)"></div>
+          <div v-if="report.Report" class="report-html" v-html="formatReportText(report.Report)"></div>
           <div v-else class="no-content">
             <i class="material-symbols-outlined">text_snippet</i>
             <p>No report content available.</p>
@@ -288,8 +288,15 @@ const formatDateRange = (dates) => {
 
 const formatReportText = (text) => {
   if (!text) return '';
-  
-  // Basic formatting - convert line breaks to paragraphs
+
+  // Reports authored in the rich-text editor are stored as HTML — render it
+  // as-is so figures, image alignment, and captions survive. Only plain-text
+  // content (e.g. legacy or AI-authored reports) gets newline-to-paragraph
+  // wrapping.
+  if (/<\/?[a-z][\s\S]*>/i.test(text)) {
+    return text;
+  }
+
   return text
     .split('\n\n')
     .map(paragraph => `<p>${paragraph.replace(/\n/g, '<br>')}</p>`)
@@ -740,6 +747,72 @@ onMounted(async () => {
   margin-bottom: 0;
 }
 
+/* Contain floated figures so they don't spill past the report body. */
+.report-html {
+  display: flow-root;
+}
+
+/* Framed illustration: a thin accent frame that hugs the image (width:
+   fit-content), echoing the character-avatar frames elsewhere in the report. */
+.report-html :deep(figure.image) {
+  display: block;
+  width: fit-content;
+  max-width: 100%;
+  margin: 0.25rem 0 1rem;
+  border: 3px solid color-mix(in srgb, var(--theme-accent) 65%, #000);
+  border-radius: 3px;
+  background: var(--theme-bg-surface);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.35);
+  overflow: hidden;
+}
+
+.report-html :deep(figure.image img) {
+  display: block;
+  width: auto;
+  max-width: 100%;
+  height: auto;
+}
+
+/* Float alignment. The frame sits inset from the text on its wrap side. */
+.report-html :deep(figure.image.image-style-align-left),
+.report-html :deep(figure.image.image-style-block-align-left) {
+  float: left;
+  margin-right: 1rem;
+}
+
+.report-html :deep(figure.image.image-style-align-right),
+.report-html :deep(figure.image.image-style-side),
+.report-html :deep(figure.image.image-style-block-align-right) {
+  float: right;
+  margin-left: 1rem;
+}
+
+.report-html :deep(figure.image.image-style-align-center) {
+  margin-left: auto;
+  margin-right: auto;
+}
+
+/* Engraved caption plaque beneath the image. width:0 + min-width:100% keeps
+   the caption from widening the frame past the image while still filling it. */
+.report-html :deep(figure.image figcaption) {
+  display: block;
+  box-sizing: border-box;
+  width: 0;
+  min-width: 100%;
+  padding: 0.35em 0.6em;
+  font-size: 80%;
+  font-style: italic;
+  line-height: 1.4;
+  color: var(--theme-text-primary);
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--theme-accent) 22%, var(--theme-bg-surface)),
+    var(--theme-bg-surface)
+  );
+  border-top: 1px solid var(--theme-accent);
+  overflow-wrap: break-word;
+}
+
 .no-content {
   display: flex;
   flex-direction: column;
@@ -835,7 +908,15 @@ onMounted(async () => {
   .text-content {
     padding: 0.5em;
   }
-  
+
+  /* On phones a floated 300px image crowds the text, so center figures
+     full-width and let the body text flow above and below them. */
+  .report-html :deep(figure.image) {
+    float: none !important;
+    margin-left: auto;
+    margin-right: auto;
+  }
+
   .report-header {
     flex-direction: column;
     gap: 1rem;
