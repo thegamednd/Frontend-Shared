@@ -63,11 +63,17 @@ const config = computed(() => {
 
     if (props.imageUpload) {
         toolbarItems.push('|', 'insertImage');
+        // All image plugins except AutoImage. AutoImage auto-embeds pasted image
+        // URLs via a direct model write that bypasses command interception, so it
+        // is only loaded for unlocked (paid) users.
         plugins.push(
-            AutoImage, FileRepository, ImageBlock, ImageCaption, ImageInline,
+            FileRepository, ImageBlock, ImageCaption, ImageInline,
             ImageInsert, ImageInsertViaUrl, ImageResize, ImageStyle,
             ImageTextAlternative, ImageToolbar, ImageUpload, LinkImage
         );
+        if (!props.imageUploadLocked) {
+            plugins.push(AutoImage);
+        }
         extraPlugins.push(ReportsUploadAdapterPlugin);
         if (props.imageUploadLocked) {
             extraPlugins.push(ImageUploadLockPlugin);
@@ -195,7 +201,7 @@ watch(() => props.modelValue, (newVal) => {
 // instead of opening the file dialog or inserting an image.
 function ImageUploadLockPlugin(editor) {
   const blockedCommands = [
-    'uploadImage', 'insertImage', 'imageUpload', 'imageInsert', 'insertImageViaUrl',
+    'uploadImage', 'insertImage', 'imageUpload', 'imageInsert', 'replaceImageSource',
   ];
   for (const name of blockedCommands) {
     const command = editor.commands.get(name);
