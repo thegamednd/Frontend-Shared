@@ -18,10 +18,14 @@ import {
 	Heading, HorizontalLine, Indent, IndentBlock, Italic, Link,
 	List, ListProperties, Paragraph, PasteFromOffice,
 	Subscript, Superscript, Table, TableCaption, TableCellProperties,
-	TableColumnResize, TableProperties, TableToolbar, Underline
+	TableColumnResize, TableProperties, TableToolbar, Underline,
+	AutoImage, FileRepository, ImageBlock, ImageCaption, ImageInline,
+	ImageInsert, ImageInsertViaUrl, ImageResize, ImageStyle,
+	ImageTextAlternative, ImageToolbar, ImageUpload, LinkImage
 } from 'ckeditor5';
 
 import 'ckeditor5/ckeditor5.css';
+import { ReportsUploadAdapterPlugin } from '@shared/utils/ckeditorUploadAdapter';
 
 const LICENSE_KEY = 'GPL';
 const isLayoutReady = ref(false);
@@ -34,27 +38,63 @@ const config = computed(() => {
     if (props.editorConfig) {
         return props.editorConfig;
     }
+    // Image insertion is opt-in (e.g. report editors) so other InlineEditor
+    // callers keep their current, image-free toolbar.
+    const toolbarItems = [
+        'heading', '|', 'bulletedList', 'numberedList', 'outdent',
+        '|', 'fontSize', 'fontFamily', 'fontColor',
+        'fontBackgroundColor', '|', 'bold', 'italic', 'underline',
+        'subscript', 'superscript', '|', 'horizontalLine', 'link',
+        'insertTable', 'blockQuote', '|', 'alignment',
+        'indent'
+    ];
+
+    const plugins = [
+        Alignment, Autosave, BlockQuote, Bold, Essentials,
+        FontBackgroundColor, FontColor, FontFamily, FontSize, Heading,
+        HorizontalLine, Indent, IndentBlock, Italic, Link,
+        List, ListProperties, Paragraph, PasteFromOffice,
+        Subscript, Superscript, Table, TableCaption,
+        TableCellProperties, TableColumnResize, TableProperties, TableToolbar,
+        Underline
+    ];
+
+    const extraPlugins = [];
+
+    if (props.imageUpload) {
+        toolbarItems.push('|', 'insertImage');
+        // All image plugins except AutoImage. AutoImage auto-embeds pasted image
+        // URLs via a direct model write that bypasses command interception, so it
+        // is only loaded for unlocked (paid) users.
+        plugins.push(
+            FileRepository, ImageBlock, ImageCaption, ImageInline,
+            ImageInsert, ImageInsertViaUrl, ImageResize, ImageStyle,
+            ImageTextAlternative, ImageToolbar, ImageUpload, LinkImage
+        );
+        if (!props.imageUploadLocked) {
+            plugins.push(AutoImage);
+        }
+        extraPlugins.push(ReportsUploadAdapterPlugin);
+        if (props.imageUploadLocked) {
+            extraPlugins.push(ImageUploadLockPlugin);
+        }
+    }
+
     return {
         toolbar: {
-            items: [
-                'heading', '|', 'bulletedList', 'numberedList', 'outdent',
-                '|', 'fontSize', 'fontFamily', 'fontColor',
-                'fontBackgroundColor', '|', 'bold', 'italic', 'underline',
-                'subscript', 'superscript', '|', 'horizontalLine', 'link',
-                'insertTable', 'blockQuote', '|', 'alignment',
-                'indent'
-            ],
+            items: toolbarItems,
             shouldNotGroupWhenFull: false
         },
-        plugins: [
-            Alignment, Autosave, BlockQuote, Bold, Essentials,
-            FontBackgroundColor, FontColor, FontFamily, FontSize, Heading,
-            HorizontalLine, Indent, IndentBlock, Italic, Link,
-            List, ListProperties, Paragraph, PasteFromOffice,
-            Subscript, Superscript, Table, TableCaption,
-            TableCellProperties, TableColumnResize, TableProperties, TableToolbar,
-            Underline
-        ],
+        plugins,
+        extraPlugins,
+        image: {
+            toolbar: [
+                'toggleImageCaption', 'imageTextAlternative', '|',
+                'imageStyle:inline', 'imageStyle:alignLeft',
+                'imageStyle:alignRight', 'imageStyle:alignCenter', '|',
+                'resizeImage'
+            ]
+        },
         licenseKey: 'GPL',
         fontFamily: {
             supportAllValues: true
@@ -122,10 +162,24 @@ const props = defineProps({
     type: Object,
     default: null,
   },
+  // Opt-in image insertion + upload. When true, the toolbar gains an image
+  // button and uploads are sent to the Reports API (resized, converted to
+  // JPEG, stored in the media bucket). Off by default so existing editors
+  // are unaffected.
+  imageUpload: {
+    type: Boolean,
+    default: false,
+  },
+  // When true (free tier), the image button stays visible but attempting to
+  // insert/upload an image is blocked and emits `upgrade-required` instead.
+  imageUploadLocked: {
+    type: Boolean,
+    default: false,
+  },
 });
 
 // 2. Define emits for v-model support:
-const emits = defineEmits(['update:modelValue']);
+const emits = defineEmits(['update:modelValue', 'upgrade-required']);
 
 // 3. Create a local ref that holds the current content of the editor:
 const editorData = ref(props.modelValue);
@@ -141,6 +195,24 @@ watch(() => props.modelValue, (newVal) => {
     editorData.value = newVal;
   }
 });
+
+// CKEditor plugin that blocks image insertion/upload for locked (free-tier)
+// users. The toolbar button stays visible; clicking it fires `upgrade-required`
+// instead of opening the file dialog or inserting an image.
+function ImageUploadLockPlugin(editor) {
+  const blockedCommands = [
+    'uploadImage', 'insertImage', 'imageUpload', 'imageInsert', 'replaceImageSource',
+  ];
+  for (const name of blockedCommands) {
+    const command = editor.commands.get(name);
+    if (command) {
+      command.on('execute', (evt) => {
+        evt.stop();
+        emits('upgrade-required');
+      }, { priority: 'highest' });
+    }
+  }
+}
 </script>
 
 <style>
@@ -175,6 +247,35 @@ div.ck-content.ck-editor__editable {
 div.ck-content table {
     table-layout: fixed;
     width: 100%;
+}
+
+/* Framed illustration + engraved caption plaque, themed to match the report
+   view so what authors see while editing matches the published report. */
+div.ck-content figure.image {
+    border: 3px solid color-mix(in srgb, var(--theme-accent) 65%, #000);
+    border-radius: 3px;
+    background: var(--theme-bg-surface);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.35);
+    overflow: hidden;
+}
+
+div.ck-content figure.image img {
+    max-width: 100%;
+    height: auto;
+    display: block;
+}
+
+div.ck-content figure.image figcaption {
+    background: linear-gradient(
+        180deg,
+        color-mix(in srgb, var(--theme-accent) 22%, var(--theme-bg-surface)),
+        var(--theme-bg-surface)
+    );
+    border-top: 1px solid var(--theme-accent);
+    color: var(--theme-text-primary);
+    font-size: 80%;
+    font-style: italic;
+    padding: 0.35em 0.6em;
 }
 </style>
 

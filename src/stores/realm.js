@@ -8,6 +8,7 @@ import { watch } from 'vue';
 import axios from 'axios';
 import apiClient from '@shared/utils/api';
 import { gamingSystemIdForRuleset } from '@shared/constants/gamingSystems';
+import { isPaidPlan } from '@shared/utils/subscriptionTier';
 
 const BASE_URL = `${import.meta.env.VITE_API_BASE_URL}`;
 
@@ -40,6 +41,11 @@ export const useRealmStore = defineStore('realm', {
     getters: {
         activeRealm(state) {
             return (state.activeRealmId) ? state.realms[state.activeRealmId] : null;
+        },
+        // True when the active realm is on a paid subscription tier.
+        // Used to gate paid-only features (e.g. report image uploads).
+        isPaidTier() {
+            return isPaidPlan(this.activeRealm?.SubscriptionPlan);
         },
         // Get gaming system ID for classes
         // Returns GamingSystem.classes.GamingSystemID (new format) or GamingSystem.classes (old string format)
