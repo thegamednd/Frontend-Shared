@@ -173,9 +173,12 @@
             
             <div class="content-field">
               <label class="field-label">Report Details</label>
-              <InlineEditor 
+              <InlineEditor
                 v-model="form.content"
+                :image-upload="true"
+                :image-upload-locked="!realmStore.isPaidTier"
                 placeholder="Describe the events, encounters, discoveries, and outcomes of this period..."
+                @upgrade-required="showImageUpgradePrompt"
               />
               <div class="field-help">
                 Describe the events, encounters, discoveries, and outcomes of this period.
@@ -226,6 +229,7 @@ import { useReportsStore } from '@shared/stores/reports';
 import { useUserStore } from '@shared/stores/user';
 import { useDateStore } from '@shared/stores/date';
 import { useCharacterStore } from '@shared/stores/character';
+import { useRealmStore } from '@shared/stores/realm';
 import { useNotifications } from '@shared/composables/useNotifications';
 import Multiselect from 'vue-multiselect';
 import InlineEditor from '@shared/components/cms/InlineEditor.vue';
@@ -243,9 +247,15 @@ const reportsStore = useReportsStore();
 const userStore = useUserStore();
 const dateStore = useDateStore();
 const characterStore = useCharacterStore();
+const realmStore = useRealmStore();
 
 // Notifications
-const { notifySuccess, notifyError } = useNotifications();
+const { notifySuccess, notifyError, notifyInfo } = useNotifications();
+
+// Free-tier users see the image button but are prompted to upgrade on click.
+function showImageUpgradePrompt() {
+  notifyInfo('Adding images to reports is a paid feature. Upgrade your realm to unlock image uploads.');
+}
 
 // State
 const loading = ref(false);

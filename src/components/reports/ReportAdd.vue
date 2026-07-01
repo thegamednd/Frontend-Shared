@@ -168,9 +168,12 @@
           
           <div class="content-field">
             <label class="field-label">Report Details</label>
-            <InlineEditor 
+            <InlineEditor
               v-model="form.content"
+              :image-upload="true"
+              :image-upload-locked="!realmStore.isPaidTier"
               placeholder="Describe the events, encounters, discoveries, and outcomes of this period..."
+              @upgrade-required="showImageUpgradePrompt"
             />
             <div class="field-help">
               Describe the events, encounters, discoveries, and outcomes of this period.
@@ -236,7 +239,12 @@ const characterStore = useCharacterStore();
 const realmStore = useRealmStore();
 
 // Notifications
-const { notifyError } = useNotifications();
+const { notifyError, notifyInfo } = useNotifications();
+
+// Free-tier users see the image button but are prompted to upgrade on click.
+function showImageUpgradePrompt() {
+  notifyInfo('Adding images to reports is a paid feature. Upgrade your realm to unlock image uploads.');
+}
 
 // Form state
 const form = ref({
