@@ -9,6 +9,7 @@ import axios from 'axios';
 import apiClient from '@shared/utils/api';
 import { gamingSystemIdForRuleset } from '@shared/constants/gamingSystems';
 import { isPaidPlan } from '@shared/utils/subscriptionTier';
+import { resolveWizardConfig } from '@shared/config/wizardConfig';
 
 const BASE_URL = `${import.meta.env.VITE_API_BASE_URL}`;
 
@@ -147,6 +148,11 @@ export const useRealmStore = defineStore('realm', {
             const spells = realm.GamingSystem?.spells;
             if (!spells || typeof spells === 'string') return null;
             return spells.EnabledShopItems || null;
+        },
+        // Resolved per-realm wizard school config (stored overrides merged over defaults).
+        // Always returns a complete config; falls back to DEFAULT_WIZARD_CONFIG.
+        activeRealmWizardConfig() {
+            return resolveWizardConfig(this.activeRealm);
         },
         // Get gaming system ID for skills (uses same system as classes)
         activeRealmSkillsSystemId(state) {
