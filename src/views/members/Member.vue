@@ -86,9 +86,9 @@
                                 <label>Level:</label>
                                 <span>{{ member.Level }}</span>
                             </div>
-                            <div class="info-item" v-if="member.HP">
+                            <div class="info-item" v-if="hpTotal != null">
                                 <label>HP:</label>
-                                <span>{{ member.HP }}</span>
+                                <span>{{ hpTotal }}</span>
                             </div>
                         </template>
                         <div class="info-item" v-if="member.Religion">
@@ -158,6 +158,7 @@ import { useUserStore } from '@shared/stores/user';
 import { useRealmStore } from '@shared/stores/realm';
 import { useDateStore } from '@shared/stores/date';
 import { features } from '@shared/config/features';
+import { hpTotal as getHpTotal } from '@shared/utils/hp';
 import apiClient from '@shared/utils/api';
 
 const props = defineProps({
@@ -185,6 +186,9 @@ const age = computed(() => {
     if (currentYear == null) return null;
     return currentYear - born;
 });
+// The profile shows total HP only; current HP belongs on the character sheet.
+const hpTotal = computed(() => getHpTotal(member.value?.HP));
+
 const imagesCdnUrl = import.meta.env.VITE_IMAGES_CDN_URL;
 
 const classesLookup = ref({});

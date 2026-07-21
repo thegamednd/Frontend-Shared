@@ -431,6 +431,7 @@ import { useRealmStore } from '@shared/stores/realm';
 import { useUserStore } from '@shared/stores/user';
 import { features } from '@shared/config/features';
 import apiClient from '@shared/utils/api';
+import { hpTotal as getHpTotal } from '@shared/utils/hp';
 import VueMultiselect from 'vue-multiselect';
 import 'vue-multiselect/dist/vue-multiselect.min.css';
 import InlineEditor from '@shared/components/cms/InlineEditor.vue';
@@ -463,6 +464,10 @@ const bioEditor = ref(null);
 const showDeleteModal = ref(false);
 const deleteConfirmed = ref(false);
 const deleting = ref(false);
+
+// HP as it was loaded, so the stored shape ({ current, total } or a plain
+// number) and the current HP survive an edit of the total.
+const originalHP = ref(1);
 
 // Reactive character object for editing
 const character = reactive({
@@ -704,7 +709,10 @@ const loadCharacter = async (characterId) => {
     character.Hair = characterData.Hair || characterData.hair || '';
     character.Ethnicity = characterData.Ethnicity || characterData.ethnicity || '';
     character.Level = characterData.Level || characterData.level || 1;
-    character.HP = characterData.HP || characterData.hp || 1;
+    // HP is stored either as a plain number or as { current, total }. The form
+    // edits the total only; the original shape and current HP are kept for save.
+    originalHP.value = characterData.HP ?? characterData.hp ?? 1;
+    character.HP = getHpTotal(originalHP.value) ?? 1;
     character.Religion = characterData.Religion || characterData.religion || '';
     character.Image = characterData.Image || characterData.image || null;
 
@@ -978,7 +986,6 @@ const saveCharacter = async () => {
       'Hair': 'Hair',
       'Ethnicity': 'Ethnicity',
       'Level': 'Level',
-      'HP': 'HP',
       'Religion': 'Religion',
       'Born': 'Born',
       'Died': 'Died'
@@ -989,7 +996,7 @@ const saveCharacter = async () => {
       const value = character[formKey];
       if (value !== null && value !== undefined && value !== '') {
         // Special handling for numeric fields
-        if (['Weight', 'Level', 'HP', 'Born', 'Died'].includes(apiKey)) {
+        if (['Weight', 'Level', 'Born', 'Died'].includes(apiKey)) {
           const numValue = Number(value);
           if (!isNaN(numValue)) {
             updates[apiKey] = numValue;
@@ -1000,6 +1007,18 @@ const saveCharacter = async () => {
         }
       }
     });
+
+    // HP: the form holds the total only. Write it back in whatever shape the
+    // character already used, leaving current HP untouched.
+    const hpTotal = Number(character.HP);
+    if (character.HP !== null && character.HP !== '' && !isNaN(hpTotal)) {
+      const original = originalHP.value;
+      if (original && typeof original === 'object') {
+        updates.HP = { current: original.current ?? hpTotal, total: hpTotal };
+      } else {
+        updates.HP = hpTotal;
+      }
+    }
 
     // Convert classes back to array of class IDs
     if (features.hasClasses) {
