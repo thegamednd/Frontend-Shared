@@ -10,9 +10,25 @@
                 <span class="material-symbols-outlined">person_add</span>
                 Add Character
             </button>
+            <button
+                @click="router.push({ name: 'Factions' })"
+                title="Factions"
+                class="add-member-btn"
+            >
+                <span class="material-symbols-outlined">groups</span>
+                Factions
+            </button>
         </div>
         <div v-else>
             <p>Nothing has been added to this gallery.</p>
+            <button
+                @click="router.push({ name: 'Factions' })"
+                title="Factions"
+                class="add-member-btn"
+            >
+                <span class="material-symbols-outlined">groups</span>
+                Factions
+            </button>
         </div>
 
     </div>
