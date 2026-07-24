@@ -538,7 +538,7 @@ header h2 {
 }
 
 .faction-line {
-    margin: 0.15em 0 0;
+    margin: 0;
     font-size: 0.9em;
     font-style: italic;
     color: color-mix(in srgb, var(--theme-text) 70%, transparent);
