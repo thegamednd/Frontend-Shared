@@ -6,6 +6,7 @@
                     <span class="material-symbols-outlined">arrow_back</span>
                 </button>
                 <h2>{{ member.Name }}</h2>
+                <p v-if="factionLine" class="faction-line">{{ factionLine }}</p>
             </div>
             <div class="header-actions">
                 <template v-if="features.hasCharacterSheets && canViewSheet">
@@ -157,8 +158,10 @@ import { useCharacterStore } from '@shared/stores/character';
 import { useUserStore } from '@shared/stores/user';
 import { useRealmStore } from '@shared/stores/realm';
 import { useDateStore } from '@shared/stores/date';
+import { useFactionStore } from '@shared/stores/faction';
 import { features } from '@shared/config/features';
 import { hpTotal as getHpTotal } from '@shared/utils/hp';
+import { factionMembershipLine } from '@shared/utils/factions';
 import apiClient from '@shared/utils/api';
 
 const props = defineProps({
@@ -174,6 +177,7 @@ const characterStore = useCharacterStore();
 const userStore = useUserStore();
 const realmStore = useRealmStore();
 const dateStore = useDateStore();
+const factionStore = useFactionStore();
 
 const dateSuffixAbbr = computed(() => realmStore.activeRealm?.DateSuffix?.Abbr || 'SF');
 
@@ -237,6 +241,8 @@ const ownerName = computed(() => {
     return owner.NameFirst || owner.Name || null;
 });
 
+const factionLine = computed(() => factionMembershipLine(member.value, factionStore.factions));
+
 const classDisplayNames = computed(() => {
     if (!member.value || !member.value.Classes || !member.value.Classes.length) {
         return [];
@@ -258,6 +264,7 @@ const classDisplayNames = computed(() => {
 
 onMounted(async () => {
     loading.value = true;
+    factionStore.loadFactions();
 
     // Get the member ID from route params
     const memberId = props.id || route.params.id;
@@ -528,5 +535,12 @@ header h2 {
     .info-grid {
         grid-template-columns: 1fr;
     }
+}
+
+.faction-line {
+    margin: 0;
+    font-size: 0.9em;
+    font-style: italic;
+    color: color-mix(in srgb, var(--theme-text) 70%, transparent);
 }
 </style>

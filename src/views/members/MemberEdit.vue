@@ -92,13 +92,36 @@
                 label="Name"
                 track-by="Name"
                 placeholder="Select a group..."
-                :disabled="loading"
+                :disabled="loading || factionMemberships.length > 0"
                 class="custom-multiselect"
               >
                 <template #option="{ option }">
                   <div>{{ option.Name }}</div>
                 </template>
               </VueMultiselect>
+            </div>
+
+            <div class="form-field" v-if="canManageFactions && factionStore.arFactionsAZ.length">
+              <label>Factions</label>
+              <div v-for="f in factionStore.arFactionsAZ" :key="f.ID" class="faction-assign">
+                <label class="faction-check">
+                  <input type="checkbox" :checked="isAssigned(f.ID)"
+                         @change="onToggleFaction(f.ID, $event.target.checked)" />
+                  {{ f.Name }}
+                </label>
+                <label v-if="isAssigned(f.ID)" class="faction-known-check">
+                  <input type="checkbox" :checked="membershipKnown(f.ID)"
+                         @change="onSetMembershipKnown(f.ID, $event.target.checked)" />
+                  This character is a known member of this faction
+                </label>
+              </div>
+            </div>
+
+            <div class="form-field" v-if="canManageFactions && character.Group && character.Group.Name === 'NPC'">
+              <label class="faction-check">
+                <input type="checkbox" v-model="hiddenFromPlayers" />
+                Hidden from players
+              </label>
             </div>
 
             <div class="form-field" v-if="character.Group && character.Group.Name !== 'NPC'">
@@ -429,6 +452,8 @@ import { useRoute, useRouter } from 'vue-router';
 import { useCharacterStore } from '@shared/stores/character';
 import { useRealmStore } from '@shared/stores/realm';
 import { useUserStore } from '@shared/stores/user';
+import { useFactionStore } from '@shared/stores/faction';
+import { toggleMembership, setMembershipKnown } from '@shared/utils/factions';
 import { features } from '@shared/config/features';
 import apiClient from '@shared/utils/api';
 import { hpTotal as getHpTotal } from '@shared/utils/hp';
@@ -441,6 +466,7 @@ const router = useRouter();
 const characterStore = useCharacterStore();
 const realmStore = useRealmStore();
 const userStore = useUserStore();
+const factionStore = useFactionStore();
 const imagesCdnUrl = import.meta.env.VITE_IMAGES_CDN_URL;
 
 // Classes and races loaded directly via API (avoids dynamic import issues with @/ alias)
@@ -496,6 +522,27 @@ const character = reactive({
 const isFormValid = computed(() => {
   return character.Name && character.Name.trim().length > 0;
 });
+
+const factionMemberships = ref([]);
+const hiddenFromPlayers = ref(false);
+const canManageFactions = computed(() => realmStore.isOwner || realmStore.isRealmDM);
+
+function isAssigned(factionId) {
+  return factionMemberships.value.some((m) => m.FactionID === factionId);
+}
+function onToggleFaction(factionId, assigned) {
+  factionMemberships.value = toggleMembership(factionMemberships.value, factionId, assigned);
+  if (factionMemberships.value.length > 0) {
+    // Membership makes the character an NPC (mirrors the server rule).
+    character.Group = characterStore.arSortedGroups?.find(g => g.Name === 'NPC') || { Name: 'NPC' };
+  }
+}
+function membershipKnown(factionId) {
+  return factionMemberships.value.find((m) => m.FactionID === factionId)?.Known === true;
+}
+function onSetMembershipKnown(factionId, known) {
+  factionMemberships.value = setMembershipKnown(factionMemberships.value, factionId, known);
+}
 
 const selectedImageUrl = computed(() => {
   return selectedImage.value ? URL.createObjectURL(selectedImage.value) : null;
@@ -592,6 +639,8 @@ onMounted(async () => {
     }
 
     await loadCharacter(characterId);
+
+    if (canManageFactions.value) factionStore.loadFactions();
   } catch (err) {
     console.error('Error in onMounted:', err);
     error.value = 'Failed to initialize character editor';
@@ -825,6 +874,9 @@ const loadCharacter = async (characterId) => {
       character.Group = null;
     }
 
+    factionMemberships.value = Array.isArray(characterData.Factions) ? characterData.Factions.map(m => ({ ...m })) : [];
+    hiddenFromPlayers.value = characterData.Known === false;
+
     // Handle UserID (character owner)
     character.UserID = characterData.UserID || characterData.userID || null;
 
@@ -1056,6 +1108,9 @@ const saveCharacter = async () => {
     } else if (typeof character.Group === 'string') {
       updates.Group = character.Group;
     }
+
+    updates.Factions = factionMemberships.value;
+    updates.Known = !hiddenFromPlayers.value;
 
     // Set UserID directly
     updates.UserID = character.UserID;
@@ -1815,4 +1870,8 @@ const cancelEdit = () => {
     align-self: center;
   }
 }
+
+.faction-assign { display: flex; flex-direction: column; gap: 0.2em; margin-bottom: 0.5em; }
+.faction-check, .faction-known-check { display: flex; align-items: center; gap: 0.5em; }
+.faction-known-check { margin-left: 1.6em; font-size: 0.9em; }
 </style>
