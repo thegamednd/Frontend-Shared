@@ -6,7 +6,15 @@ import Factions from './Factions.vue';
 
 const routerPush = vi.fn();
 vi.mock('vue-router', () => ({ useRouter: () => ({ push: routerPush }) }));
-vi.mock('@shared/utils/api', () => ({ default: { get: vi.fn(async () => ({ data: [] })), post: vi.fn(), put: vi.fn(), delete: vi.fn() } }));
+vi.mock('@shared/utils/api', () => ({
+    default: {
+        get: vi.fn(async () => ({ data: [
+            { ID: 'f1', Name: 'Harpers', BriefDescription: 'Do-gooders', Known: true },
+            { ID: 'f2', Name: 'Zhentarim', BriefDescription: 'Shady', Known: false },
+        ] })),
+        post: vi.fn(), put: vi.fn(), delete: vi.fn(),
+    },
+}));
 
 let privileged = false;
 vi.mock('@shared/stores/realm', () => ({
@@ -25,14 +33,7 @@ vi.mock('@shared/stores/character', () => ({
 import { useFactionStore } from '@shared/stores/faction';
 
 function mountView() {
-    const w = mount(Factions, { global: { stubs: { teleport: true } } });
-    const factionStore = useFactionStore();
-    factionStore.factions = [
-        { ID: 'f1', Name: 'Harpers', BriefDescription: 'Do-gooders', Known: true },
-        { ID: 'f2', Name: 'Zhentarim', BriefDescription: 'Shady', Known: false },
-    ];
-    factionStore.loaded = true;
-    return w;
+    return mount(Factions, { global: { stubs: { teleport: true } } });
 }
 
 beforeEach(() => { setActivePinia(createPinia()); privileged = false; vi.clearAllMocks(); });

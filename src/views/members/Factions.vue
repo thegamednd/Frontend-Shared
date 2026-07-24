@@ -76,6 +76,7 @@ const confirmingDelete = ref(false);
 const form = ref({ Name: '', BriefDescription: '', Description: '', Known: true });
 
 onMounted(() => {
+    factionStore.loadFactions(true);
     characterStore.fetchCharacters();
 });
 
