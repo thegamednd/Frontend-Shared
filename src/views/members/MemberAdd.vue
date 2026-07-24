@@ -61,6 +61,7 @@
                                 :options="characterGroups"
                                 :multiple="false"
                                 :close-on-select="true"
+                                :disabled="factionMemberships.length > 0"
                                 label="name"
                                 track-by="name"
                                 placeholder="Select a group"
@@ -70,6 +71,29 @@
                                     <div>{{ option.name }}</div>
                                 </template>
                             </VueMultiselect>
+                        </div>
+
+                        <div class="form-field" v-if="canManageFactions && factionStore.arFactionsAZ.length">
+                            <label>Factions</label>
+                            <div v-for="f in factionStore.arFactionsAZ" :key="f.ID" class="faction-assign">
+                                <label class="faction-check">
+                                    <input type="checkbox" :checked="isAssigned(f.ID)"
+                                           @change="onToggleFaction(f.ID, $event.target.checked)" />
+                                    {{ f.Name }}
+                                </label>
+                                <label v-if="isAssigned(f.ID)" class="faction-known-check">
+                                    <input type="checkbox" :checked="membershipKnown(f.ID)"
+                                           @change="onSetMembershipKnown(f.ID, $event.target.checked)" />
+                                    This character is a known member of this faction
+                                </label>
+                            </div>
+                        </div>
+
+                        <div class="form-field" v-if="canManageFactions && characterGroup && characterGroup.name === 'NPC'">
+                            <label class="faction-check">
+                                <input type="checkbox" v-model="hiddenFromPlayers" />
+                                Hidden from players
+                            </label>
                         </div>
 
                         <div class="form-field" v-if="characterGroup && characterGroup.name !== 'NPC'">
@@ -337,11 +361,14 @@ import { features } from '@shared/config/features';
 import { useCharacterStore } from '@shared/stores/character';
 import { useRealmStore } from '@shared/stores/realm';
 import { useUserStore } from '@shared/stores/user';
+import { useFactionStore } from '@shared/stores/faction';
+import { toggleMembership, setMembershipKnown } from '@shared/utils/factions';
 import { useRouter } from 'vue-router';
 
 const characterStore = useCharacterStore();
 const userStore = useUserStore();
 const realmStore = useRealmStore();
+const factionStore = useFactionStore();
 
 // Conditionally import gaming-system-specific stores (resolved in onMounted)
 let classesStore = null;
@@ -373,6 +400,26 @@ const memberRaces = ref([]);
 const characterClasses = ref([]);
 const selectedFile = ref(null);
 const router = useRouter();
+const factionMemberships = ref([]);
+const hiddenFromPlayers = ref(false);
+const canManageFactions = computed(() => realmStore.isOwner || realmStore.isRealmDM);
+
+function isAssigned(factionId) {
+    return factionMemberships.value.some((m) => m.FactionID === factionId);
+}
+function onToggleFaction(factionId, assigned) {
+    factionMemberships.value = toggleMembership(factionMemberships.value, factionId, assigned);
+    if (factionMemberships.value.length > 0) {
+        // Membership makes the character an NPC (mirrors the server rule).
+        characterGroup.value = characterGroups.value.find((g) => g.name === 'NPC');
+    }
+}
+function membershipKnown(factionId) {
+    return factionMemberships.value.find((m) => m.FactionID === factionId)?.Known === true;
+}
+function onSetMembershipKnown(factionId, known) {
+    factionMemberships.value = setMembershipKnown(factionMemberships.value, factionId, known);
+}
 
 onMounted(async () => {
     // Load gaming-system-specific stores before using them
@@ -412,6 +459,8 @@ onMounted(async () => {
         // Set default level to 1
         characterData.value.Level = 1;
     }
+
+    if (canManageFactions.value) factionStore.loadFactions();
 });
 
 watch(() => characterGroup.value, (newVal) => {
@@ -653,7 +702,9 @@ const save = async () => {
             ...characterData.value,
             imageBase64: imageBase64,
             imageType: imageType,
-            imageFilename: selectedFile.value?.name || null
+            imageFilename: selectedFile.value?.name || null,
+            Factions: factionMemberships.value,
+            Known: !hiddenFromPlayers.value,
         };
 
         console.log('Saving character...', payload);
@@ -1101,4 +1152,8 @@ input:disabled {
         max-width: none;
     }
 }
+
+.faction-assign { display: flex; flex-direction: column; gap: 0.2em; margin-bottom: 0.5em; }
+.faction-check, .faction-known-check { display: flex; align-items: center; gap: 0.5em; }
+.faction-known-check { margin-left: 1.6em; font-size: 0.9em; }
 </style>
