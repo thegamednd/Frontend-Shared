@@ -21,6 +21,14 @@
             <h2>
                 Gallery
                 <button
+                    @click="router.push({ name: 'Factions' })"
+                    title="Factions"
+                    class="add-member-btn"
+                >
+                    <span class="material-symbols-outlined">groups</span>
+                    Factions
+                </button>
+                <button
                     v-if="isMemberEditor && isDesktop"
                     @click="goAddMember"
                     title="Add Member"
@@ -80,35 +88,16 @@
             </nav>
         </header>
         <div id="memberList">
-            <div
+            <MemberCard
                 v-for="member in filteredMembers"
                 :key="member.id || member.ID"
                 :class="member.elClass"
-                :data-id="member.id || member.ID"
-                class="member-card"
-            >
-                <router-link
-                    :to="{ name: 'Member', params: { id: member.id || member.ID } }"
-                >
-                    <img
-                        :src="`${imagesCdnUrl}/${member.image || member.Image}`"
-                        loading="lazy"
-                        v-if="isViewportMedium" class="memImg"
-                    />
-                    <span class="name">{{ member.name || member.Name }}</span>
-                </router-link>
-
-                <!-- Edit button for character editors -->
-                <div v-if="isMemberEditor && isDesktop" class="member-actions">
-                    <button
-                        @click.stop="editCharacter(member.id || member.ID)"
-                        class="edit-button"
-                        :title="`Edit ${member.name || member.Name}`"
-                    >
-                        <span class="material-symbols-outlined">edit</span>
-                    </button>
-                </div>
-            </div>
+                :member="member"
+                :images-cdn-url="imagesCdnUrl"
+                :show-image="isViewportMedium"
+                :editable="isMemberEditor && isDesktop"
+                @edit="editCharacter"
+            />
         </div>
     </div>
 </template>
@@ -120,6 +109,7 @@ import { useCharacterStore } from '@shared/stores/character';
 import { useUserStore } from '@shared/stores/user';
 import { useRealmStore } from '@shared/stores/realm';
 import { useConfigStore } from '@shared/stores/config';
+import MemberCard from '@shared/components/MemberCard.vue';
 
 const emits = defineEmits(['set-room']);
 const characterStore = useCharacterStore();
@@ -671,42 +661,12 @@ nav > .filter > button {
     padding-top: 0.5em;
 }
 
-#memberPlatform #memberList > div > a {
-    color: var(--theme-accent);
-    text-decoration: none;
-    display: flex;
-    align-items: center;
-    padding: 0.75rem 1rem;
-    min-height: 44px;
-}
-
 @media only screen and (min-width: 600px) {
     #memberPlatform #memberList {
         display: flex;
         flex-wrap: wrap;
         justify-content: space-around;
         gap: 1em;
-    }
-
-    #memberPlatform #memberList > div {
-        width: 154px;
-        height: 254px;
-        position: relative;
-        text-shadow:
-            2px 2px 10px #fff,
-            2px 2px 10px #ccc;
-        color: black;
-        border: 2px outset brown;
-        overflow: hidden;
-    }
-
-    #memberPlatform .memImg {
-        position: absolute;
-        top: 0px;
-        left: 0px;
-        height: 250px;
-        width: 150px;
-        z-index: 1;
     }
 
     #memberPlatform a > .deathshroud {
@@ -724,22 +684,6 @@ nav > .filter > button {
     display: none;
 } */
 
-#memberPlatform #memberList > div {
-    background-color: rgba(55, 77, 125, 0.4);
-    color: var(--theme-accent);
-    cursor: pointer;
-    border-bottom: 1px solid var(--theme-bg-surface-alt);
-    margin-bottom: 1px;
-}
-
-#memberPlatform #memberList > div:hover {
-    background-color: rgba(55, 77, 125, 0.8);
-}
-
-#memberPlatform #memberList > div > a > span.name {
-    display: block;
-}
-
 @media only screen and (min-width: 600px) {
     #memberPlatform
         > nav
@@ -756,62 +700,6 @@ nav > .filter > button {
         display: block;
     }
 
-    #memberPlatform #memberList a span.name {
-        position: absolute;
-        width: 100%;
-        bottom: 0px;
-        left: 0px;
-        font-family: 'Pirata One', cursive;
-        color: var(--theme-bg-surface);
-        font-size: 150%;
-        padding: 0.3em;
-        padding-bottom: 0;
-        z-index: 2;
-    }
-}
-
-/* Member card edit functionality */
-.member-card {
-    position: relative;
-}
-
-.member-actions {
-    position: absolute;
-    top: 8px;
-    right: 8px;
-    z-index: 10;
-    opacity: 0;
-    transition: opacity 0.2s ease;
-}
-
-.member-card:hover .member-actions {
-    opacity: 1;
-}
-
-.edit-button {
-    background: rgba(0, 0, 0, 0.8);
-    color: #ffd700;
-    border: 1px solid #ffd700;
-    border-radius: 50%;
-    width: 36px;
-    height: 36px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    cursor: pointer;
-    transition: all 0.2s ease;
-    backdrop-filter: blur(4px);
-}
-
-.edit-button:hover {
-    background: #ffd700;
-    color: #000;
-    transform: scale(1.1);
-}
-
-.edit-button .material-symbols-outlined {
-    font-size: 18px;
-    pointer-events: none;
 }
 
 /* Responsive Design */
