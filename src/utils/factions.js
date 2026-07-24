@@ -31,3 +31,14 @@ export function factionMembershipLine(character, factions) {
         .map((f) => f.Name);
     return names.length ? `Member of the ${names.join(', ')}` : '';
 }
+
+export function toggleMembership(memberships, factionId, assigned) {
+    const list = (memberships || []).filter((m) => m.FactionID !== factionId);
+    if (assigned) list.push({ FactionID: factionId, Known: false });
+    return list;
+}
+
+export function setMembershipKnown(memberships, factionId, known) {
+    return (memberships || []).map((m) =>
+        m.FactionID === factionId ? { ...m, Known: known === true } : m);
+}

@@ -3,6 +3,7 @@ import {
     membershipsOf, isMemberOfFaction, membersOfFaction,
     isHiddenMember, factionMembershipLine,
 } from './factions.js';
+import { toggleMembership, setMembershipKnown } from './factions.js';
 
 const harpers = { ID: 'f1', Name: 'Harpers', Known: true };
 const zhent = { ID: 'f2', Name: 'Zhentarim', Known: false };
@@ -52,5 +53,23 @@ describe('factionMembershipLine', () => {
         const multi = { ...bob, Factions: [{ FactionID: 'f1', Known: true }, { FactionID: 'f3', Known: true }] };
         expect(factionMembershipLine(multi, [...factions, { ID: 'f3', Name: 'Lords', Known: true }]))
             .toBe('Member of the Harpers, Lords');
+    });
+});
+
+describe('membership editing helpers', () => {
+    it('toggleMembership adds with Known=false and removes cleanly', () => {
+        let list = toggleMembership([], 'f1', true);
+        expect(list).toEqual([{ FactionID: 'f1', Known: false }]);
+        list = toggleMembership(list, 'f2', true);
+        expect(list).toHaveLength(2);
+        list = toggleMembership(list, 'f1', false);
+        expect(list).toEqual([{ FactionID: 'f2', Known: false }]);
+    });
+    it('setMembershipKnown flips one entry immutably', () => {
+        const list = [{ FactionID: 'f1', Known: false }, { FactionID: 'f2', Known: false }];
+        const next = setMembershipKnown(list, 'f1', true);
+        expect(next[0]).toEqual({ FactionID: 'f1', Known: true });
+        expect(next[1]).toEqual({ FactionID: 'f2', Known: false });
+        expect(list[0].Known).toBe(false);
     });
 });
