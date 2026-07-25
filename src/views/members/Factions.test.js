@@ -97,6 +97,7 @@ describe('Factions help', () => {
         const w = mountView();
         await flushPromises();
         expect(w.find('.faction-help-btn').exists()).toBe(false);
+        expect(w.find('dialog.faction-help').exists()).toBe(false);
     });
 
     it('shows the help button to owner/DM', async () => {

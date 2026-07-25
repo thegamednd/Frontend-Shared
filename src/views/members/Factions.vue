@@ -63,7 +63,7 @@
             </form>
         </div>
 
-        <FactionsHelpDialog :open="helpOpen" @close="helpOpen = false" />
+        <FactionsHelpDialog v-if="privileged" :open="helpOpen" @close="helpOpen = false" />
     </div>
 </template>
 
