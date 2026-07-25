@@ -41,6 +41,14 @@ describe('FactionsHelpDialog', () => {
         expect(text).toContain('Hidden from players');
     });
 
+    it('names the dialog with its own heading', async () => {
+        const w = mountDialog();
+        await w.vm.$nextTick();
+        const labelledBy = w.find('dialog.faction-help').attributes('aria-labelledby');
+        expect(labelledBy).toBe('factionHelpTitle');
+        expect(w.find(`#${labelledBy}`).text()).toBe('How factions work');
+    });
+
     it('lists the three conditions a player needs to see a membership', async () => {
         const w = mountDialog();
         await w.vm.$nextTick();

@@ -1,8 +1,8 @@
 <template>
-    <dialog ref="dialogRef" class="faction-help" @close="emit('close')" @click="onBackdropClick">
+    <dialog ref="dialogRef" class="faction-help" aria-labelledby="factionHelpTitle" @close="emit('close')" @click="onBackdropClick">
         <div class="faction-help-inner" @click.stop>
             <header class="faction-help-header">
-                <h2>How factions work</h2>
+                <h2 id="factionHelpTitle">How factions work</h2>
                 <button type="button" class="faction-help-close" aria-label="Close" @click="close">
                     <span class="material-symbols-outlined">close</span>
                 </button>
