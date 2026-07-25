@@ -38,6 +38,16 @@ function mountView() {
 
 beforeEach(() => { setActivePinia(createPinia()); privileged = false; vi.clearAllMocks(); });
 
+beforeEach(() => {
+    HTMLDialogElement.prototype.showModal = vi.fn(function showModal() {
+        this.open = true;
+    });
+    HTMLDialogElement.prototype.close = vi.fn(function close() {
+        this.open = false;
+        this.dispatchEvent(new Event('close'));
+    });
+});
+
 describe('Factions list', () => {
     it('shows name, brief description, and member count', async () => {
         const w = mountView();
@@ -79,5 +89,31 @@ describe('Factions list', () => {
         await w.findAll('.edit-faction-btn')[0].trigger('click');
         expect(w.find('.faction-dialog').exists()).toBe(true);
         expect(w.find('.faction-dialog input[name="name"]').element.value).toBe('Harpers');
+    });
+});
+
+describe('Factions help', () => {
+    it('hides the help button from players', async () => {
+        const w = mountView();
+        await flushPromises();
+        expect(w.find('.faction-help-btn').exists()).toBe(false);
+        expect(w.find('dialog.faction-help').exists()).toBe(false);
+    });
+
+    it('shows the help button to owner/DM', async () => {
+        privileged = true;
+        const w = mountView();
+        await flushPromises();
+        expect(w.find('.faction-help-btn').exists()).toBe(true);
+    });
+
+    it('opens the help dialog when the button is clicked', async () => {
+        privileged = true;
+        const w = mountView();
+        await flushPromises();
+        expect(w.find('dialog.faction-help').attributes('open')).toBeUndefined();
+        await w.find('.faction-help-btn').trigger('click');
+        await flushPromises();
+        expect(w.find('dialog.faction-help').attributes('open')).toBeDefined();
     });
 });
