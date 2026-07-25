@@ -7,6 +7,16 @@
                     <span class="material-symbols-outlined">group_add</span>
                     Add Faction
                 </button>
+                <button
+                    v-if="privileged"
+                    type="button"
+                    class="faction-help-btn"
+                    aria-label="How factions work"
+                    title="How factions work"
+                    @click="helpOpen = true"
+                >
+                    <span class="material-symbols-outlined">help</span>
+                </button>
             </h2>
         </header>
 
@@ -52,6 +62,8 @@
                 </div>
             </form>
         </div>
+
+        <FactionsHelpDialog :open="helpOpen" @close="helpOpen = false" />
     </div>
 </template>
 
@@ -62,6 +74,7 @@ import { useFactionStore } from '@shared/stores/faction';
 import { useCharacterStore } from '@shared/stores/character';
 import { useRealmStore } from '@shared/stores/realm';
 import { membersOfFaction } from '@shared/utils/factions';
+import FactionsHelpDialog from '@shared/components/members/FactionsHelpDialog.vue';
 
 const router = useRouter();
 const factionStore = useFactionStore();
@@ -71,6 +84,7 @@ const realmStore = useRealmStore();
 const privileged = computed(() => realmStore.isOwner || realmStore.isRealmDM);
 
 const dialogOpen = ref(false);
+const helpOpen = ref(false);
 const editing = ref(null); // faction ID being edited, or null for add
 const confirmingDelete = ref(false);
 const form = ref({ Name: '', BriefDescription: '', Description: '', Known: true });
@@ -132,6 +146,14 @@ async function remove() {
     color: var(--theme-text); cursor: pointer;
 }
 .add-faction-btn:hover { background: color-mix(in srgb, var(--theme-accent) 15%, transparent); }
+.faction-help-btn {
+    display: inline-flex; align-items: center; justify-content: center;
+    font-size: 0.6em; padding: 0.5em; line-height: 1; border-radius: 8px;
+    background: transparent; border: 1px solid color-mix(in srgb, var(--theme-text) 25%, transparent);
+    color: var(--theme-text); cursor: pointer;
+}
+.faction-help-btn:hover { border-color: var(--theme-accent); color: var(--theme-accent); }
+.faction-help-btn:focus-visible { outline: 2px solid var(--theme-accent); outline-offset: 2px; }
 .empty { color: color-mix(in srgb, var(--theme-text) 60%, transparent); font-style: italic; }
 
 .faction-row {
