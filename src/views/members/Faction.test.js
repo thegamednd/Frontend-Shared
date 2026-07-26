@@ -8,6 +8,7 @@ vi.mock('@shared/utils/api', () => ({
     default: {
         get: vi.fn(async () => ({ data: [
             { ID: 'f1', Name: 'Harpers', Description: '<p>A <strong>bold</strong> group</p>', Image: 'https://cdn/factions/harpers.jpg', Known: true },
+            { ID: 'f2', Name: 'Zhentarim', Description: '', BriefDescription: 'Shady <b>folk</b>', Known: true },
         ] })),
     },
 }));
@@ -72,5 +73,15 @@ describe('faction detail presentation', () => {
         const w = mountView();
         await flushPromises();
         expect(w.find('.description').html()).toContain('<strong>bold</strong>');
+    });
+
+    // BriefDescription is plain text, not sanitized HTML. If the fallback branch is
+    // ever switched to v-html it becomes an injection point, so pin it as escaped.
+    it('falls back to BriefDescription as text, never as html', async () => {
+        const w = mountView('f2');
+        await flushPromises();
+        const description = w.find('.description');
+        expect(description.text()).toContain('Shady <b>folk</b>');
+        expect(description.html()).not.toContain('<b>folk</b>');
     });
 });
