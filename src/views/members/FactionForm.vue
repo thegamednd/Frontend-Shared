@@ -4,94 +4,108 @@
             <h2>{{ isEdit ? 'Edit Faction' : 'Add Faction' }}</h2>
         </header>
 
-        <p v-if="!isEdit && !realmStore.isPaidTier" class="upgrade-notice">
-            Factions are a paid feature. Upgrade your realm to create new factions. Existing factions stay editable.
-        </p>
+        <div v-if="loadFailed" class="load-failed">
+            <h3>Faction unavailable</h3>
+            <p>This faction could not be loaded, so editing is unavailable until it does. Nothing has been changed.</p>
+            <router-link :to="{ name: 'Factions' }">Back to factions</router-link>
+        </div>
 
-        <form @submit.prevent="save">
-            <div class="form-section">
-                <h3>Details</h3>
+        <template v-else>
+            <p v-if="!isEdit && !realmStore.isPaidTier" class="upgrade-notice">
+                Factions are a paid feature. Upgrade your realm to create new factions. Existing factions stay editable.
+            </p>
 
-                <div class="form-field">
-                    <label for="factionName">Name *</label>
-                    <input id="factionName" name="name" type="text" v-model="form.Name" required maxlength="128" />
+            <form @submit.prevent="save">
+                <div class="form-section">
+                    <h3>Details</h3>
+
+                    <div class="form-field">
+                        <label for="factionName">Name *</label>
+                        <input id="factionName" name="name" type="text" v-model="form.Name" required maxlength="128" />
+                    </div>
+
+                    <div class="form-field">
+                        <label for="factionBrief">Brief description</label>
+                        <textarea id="factionBrief" name="brief" rows="2" v-model="form.BriefDescription" maxlength="256"></textarea>
+                        <small class="field-help">Shown in the factions list.</small>
+                    </div>
+
+                    <div class="form-field">
+                        <label>Description</label>
+                        <InlineEditor v-model="form.Description" placeholder="Describe the faction's history, goals and reputation..." />
+                        <small class="field-help">Shown on the faction's own page.</small>
+                    </div>
+
+                    <div class="form-field">
+                        <label class="known-toggle">
+                            <input type="checkbox" v-model="form.Known" />
+                            Known to players
+                        </label>
+                        <small class="field-help">Unchecked hides the faction from players entirely.</small>
+                    </div>
                 </div>
 
-                <div class="form-field">
-                    <label for="factionBrief">Brief description</label>
-                    <textarea id="factionBrief" name="brief" rows="2" v-model="form.BriefDescription" maxlength="256"></textarea>
-                    <small class="field-help">Shown in the factions list.</small>
-                </div>
+                <div class="form-section">
+                    <h3>Faction Image</h3>
+                    <div class="image-upload-section">
+                        <div
+                            class="image-upload-area"
+                            @click="triggerFileInput"
+                            @drop.prevent="handleFileDrop"
+                            @dragover.prevent
+                            @dragenter.prevent
+                        >
+                            <input
+                                type="file"
+                                ref="elFileUploader"
+                                @change="handleFileSelect"
+                                accept="image/*"
+                                style="display: none;"
+                            />
 
-                <div class="form-field">
-                    <label>Description</label>
-                    <InlineEditor v-model="form.Description" placeholder="Describe the faction's history, goals and reputation..." />
-                    <small class="field-help">Shown on the faction's own page.</small>
-                </div>
+                            <div v-if="!form.Image" class="drag-drop-content">
+                                <span class="material-symbols-outlined upload-icon">cloud_upload</span>
+                                <p>{{ isUploading ? 'Uploading...' : 'Click to select or drag and drop an image' }}</p>
+                                <small>Square works best. Larger images are resized to 300x300.</small>
+                            </div>
 
-                <div class="form-field">
-                    <label class="known-toggle">
-                        <input type="checkbox" v-model="form.Known" />
-                        Known to players
-                    </label>
-                    <small class="field-help">Unchecked hides the faction from players entirely.</small>
-                </div>
-            </div>
-
-            <div class="form-section">
-                <h3>Faction Image</h3>
-                <div class="image-upload-section">
-                    <div
-                        class="image-upload-area"
-                        @click="triggerFileInput"
-                        @drop.prevent="handleFileDrop"
-                        @dragover.prevent
-                        @dragenter.prevent
-                    >
-                        <input
-                            type="file"
-                            ref="elFileUploader"
-                            @change="handleFileSelect"
-                            accept="image/*"
-                            style="display: none;"
-                        />
-
-                        <div v-if="!form.Image" class="drag-drop-content">
-                            <span class="material-symbols-outlined upload-icon">cloud_upload</span>
-                            <p>{{ isUploading ? 'Uploading...' : 'Click to select or drag and drop an image' }}</p>
-                            <small>Square works best. Larger images are resized to 300x300.</small>
-                        </div>
-
-                        <div v-else class="selected-image">
-                            <div class="image-preview">
-                                <img :src="form.Image" :alt="form.Name || 'Faction'" />
-                                <div class="image-overlay">
-                                    <button
-                                        @click.stop="removeImage"
-                                        class="remove-image-btn"
-                                        type="button"
-                                        title="Remove Image"
-                                    >
-                                        <span class="material-symbols-outlined">delete</span>
-                                    </button>
+                            <div v-else class="selected-image">
+                                <div class="image-preview">
+                                    <img :src="form.Image" :alt="form.Name || 'Faction'" />
+                                    <div v-if="isUploading" class="image-uploading-overlay">
+                                        <span class="material-symbols-outlined spin">progress_activity</span>
+                                        <span>Uploading...</span>
+                                    </div>
+                                    <div v-else class="image-overlay">
+                                        <button
+                                            @click.stop="removeImage"
+                                            class="remove-image-btn"
+                                            type="button"
+                                            title="Remove Image"
+                                        >
+                                            <span class="material-symbols-outlined">delete</span>
+                                        </button>
+                                    </div>
                                 </div>
                             </div>
                         </div>
+
+                        <div v-if="fileError" class="file-error">{{ fileError }}</div>
                     </div>
-
-                    <div v-if="fileError" class="file-error">{{ fileError }}</div>
                 </div>
-            </div>
 
-            <div class="form-actions">
-                <button v-if="isEdit" type="button" class="delete-faction-btn" @click="remove">
-                    {{ confirmingDelete ? 'Confirm delete?' : 'Delete' }}
-                </button>
-                <span class="spacer"></span>
-                <button type="button" class="cancel-btn" @click="cancel">Cancel</button>
-                <button type="submit" :disabled="!canSave">{{ isSaving ? 'Saving...' : 'Save' }}</button>
-            </div>
-        </form>
+                <div v-if="saveError" class="save-error">{{ saveError }}</div>
+
+                <div class="form-actions">
+                    <button v-if="isEdit" type="button" class="delete-faction-btn" @click="remove">
+                        {{ confirmingDelete ? 'Confirm delete?' : 'Delete' }}
+                    </button>
+                    <span class="spacer"></span>
+                    <button type="button" class="cancel-btn" @click="cancel">Cancel</button>
+                    <button type="submit" :disabled="!canSave">{{ isSaving ? 'Saving...' : 'Save' }}</button>
+                </div>
+            </form>
+        </template>
     </div>
 </template>
 
@@ -115,22 +129,30 @@ const isEdit = computed(() => !!factionId.value);
 const form = ref({ Name: '', BriefDescription: '', Description: '', Image: null, Known: true });
 const elFileUploader = ref(null);
 const fileError = ref('');
+const saveError = ref('');
 const isUploading = ref(false);
 const isSaving = ref(false);
 const confirmingDelete = ref(false);
+const loadFailed = ref(false);
 
 // Free tier may edit an existing faction but may not create a new one. The
 // server enforces this; the disabled button just avoids a pointless round trip.
 const canSave = computed(() =>
-    !!form.value.Name.trim() && !isSaving.value && !isUploading.value &&
+    !loadFailed.value && !!form.value.Name.trim() && !isSaving.value && !isUploading.value &&
     (isEdit.value || realmStore.isPaidTier)
 );
 
 onMounted(async () => {
     if (!isEdit.value) return;
-    await factionStore.loadFactions();
+    // Force a fresh load rather than trusting a possibly-stale or
+    // partially-populated store — otherwise a transient earlier failure
+    // could produce a false "not found" here.
+    await factionStore.loadFactions(true);
     const faction = factionStore.getFactionById(factionId.value);
-    if (!faction) return;
+    if (!faction) {
+        loadFailed.value = true;
+        return;
+    }
     form.value = {
         Name: faction.Name || '',
         BriefDescription: faction.BriefDescription || '',
@@ -180,7 +202,18 @@ function removeImage() {
     if (elFileUploader.value) elFileUploader.value.value = '';
 }
 
+// Maps a failed save's response status to actionable copy. A 403 means the
+// realm genuinely isn't entitled (paywall); a 503 means we couldn't even
+// check entitlement (transient) and must not be read as a paywall.
+function describeSaveError(error) {
+    const status = error?.response?.status;
+    if (status === 403) return 'Factions are a paid feature. Upgrade your realm to create new factions.';
+    if (status === 503) return 'Could not verify your realm subscription. Please try again in a moment.';
+    return 'Failed to save faction. Please try again.';
+}
+
 async function save() {
+    if (loadFailed.value) return;
     if (!canSave.value) {
         if (!isEdit.value && !realmStore.isPaidTier) {
             notifyInfo('Factions are a paid feature. Upgrade your realm to create new factions.');
@@ -188,6 +221,7 @@ async function save() {
         return;
     }
     isSaving.value = true;
+    saveError.value = '';
     try {
         // An explicit null clears the image server-side; undefined would leave it.
         const payload = { ...form.value, Image: form.value.Image || null };
@@ -196,20 +230,28 @@ async function save() {
         router.push({ name: 'Factions' });
     } catch (error) {
         console.error('Failed to save faction:', error);
-        fileError.value = 'Failed to save faction. Please try again.';
+        saveError.value = describeSaveError(error);
     } finally {
         isSaving.value = false;
     }
 }
 
 async function remove() {
+    if (loadFailed.value) return;
     if (!confirmingDelete.value) {
         confirmingDelete.value = true;
         setTimeout(() => { confirmingDelete.value = false; }, 4000);
         return;
     }
-    await factionStore.deleteFaction(factionId.value);
-    router.push({ name: 'Factions' });
+    saveError.value = '';
+    try {
+        await factionStore.deleteFaction(factionId.value);
+        router.push({ name: 'Factions' });
+    } catch (error) {
+        console.error('Failed to delete faction:', error);
+        saveError.value = 'Failed to delete faction. Please try again.';
+        confirmingDelete.value = false;
+    }
 }
 
 function cancel() {
@@ -228,6 +270,11 @@ function cancel() {
     border-radius: 0 8px 8px 0;
     background: color-mix(in srgb, #d8a657 8%, transparent);
 }
+
+.load-failed { text-align: center; padding: 3em 1em; }
+.load-failed h3 { margin: 0 0 0.5em; }
+.load-failed p { margin: 0 0 1em; color: color-mix(in srgb, var(--theme-text) 65%, transparent); }
+.load-failed a { color: var(--theme-accent); }
 
 .form-section {
     margin-bottom: 1.5em;
@@ -288,6 +335,24 @@ function cancel() {
     width: 36px; height: 36px; cursor: pointer;
 }
 .file-error { color: #ef4444; margin-top: 0.5em; font-size: 0.9em; }
+
+.image-uploading-overlay {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0.4em;
+    background: rgb(0 0 0 / 0.6);
+    color: #fff;
+    border-radius: 8px;
+    font-size: 0.85em;
+}
+.image-uploading-overlay .material-symbols-outlined { animation: spin 1s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+.save-error { color: #ef4444; margin-bottom: 0.75em; font-size: 0.9em; }
 
 .form-actions { display: flex; gap: 0.6em; align-items: center; flex-wrap: wrap; }
 .form-actions .spacer { flex: 1; }

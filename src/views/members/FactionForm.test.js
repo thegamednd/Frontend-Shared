@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { mount, flushPromises } from '@vue/test-utils';
+import { nextTick } from 'vue';
 import { setActivePinia, createPinia } from 'pinia';
 
 const routerPush = vi.fn();
@@ -44,7 +45,9 @@ vi.mock('@shared/components/cms/InlineEditor.vue', () => ({
 import FactionForm from './FactionForm.vue';
 
 function mountForm() {
-    return mount(FactionForm);
+    return mount(FactionForm, {
+        global: { stubs: { 'router-link': { template: '<a><slot /></a>' } } },
+    });
 }
 
 beforeEach(() => {
@@ -62,7 +65,7 @@ describe('FactionForm add mode', () => {
         expect(w.find('.delete-faction-btn').exists()).toBe(false);
     });
 
-    it('submits the name and uploaded image url', async () => {
+    it('submits the entered name', async () => {
         const w = mountForm();
         await flushPromises();
         await w.find('input[name="name"]').setValue('Zhentarim');
@@ -70,6 +73,21 @@ describe('FactionForm add mode', () => {
         await flushPromises();
         expect(createFaction).toHaveBeenCalled();
         expect(createFaction.mock.calls[0][0].Name).toBe('Zhentarim');
+    });
+
+    it('submits the uploaded image url unmodified', async () => {
+        const w = mountForm();
+        await flushPromises();
+        await w.find('input[name="name"]').setValue('Zhentarim');
+        const file = new File(['x'], 'crest.png', { type: 'image/png' });
+        const input = w.find('input[type="file"]');
+        Object.defineProperty(input.element, 'files', { value: [file] });
+        await input.trigger('change');
+        await flushPromises();
+        await w.find('form').trigger('submit');
+        await flushPromises();
+        expect(createFaction).toHaveBeenCalled();
+        expect(createFaction.mock.calls[0][0].Image).toBe('https://cdn/factions/a.jpg');
     });
 
     it('disables save and warns on the free tier', async () => {
@@ -147,5 +165,99 @@ describe('FactionForm edit mode', () => {
         await w.find('.delete-faction-btn').trigger('click');
         await flushPromises();
         expect(deleteFaction).toHaveBeenCalledWith('f1');
+    });
+
+    it('shows an uploading indication when replacing an image that is already present', async () => {
+        let resolveUpload;
+        uploadFactionImage.mockImplementationOnce(() => new Promise((resolve) => { resolveUpload = resolve; }));
+        const w = mountForm();
+        await flushPromises();
+        expect(w.find('.image-preview img').exists()).toBe(true);
+
+        const file = new File(['x'], 'crest.png', { type: 'image/png' });
+        const input = w.find('input[type="file"]');
+        Object.defineProperty(input.element, 'files', { value: [file] });
+        await input.trigger('change');
+        await nextTick();
+
+        expect(w.find('.image-uploading-overlay').exists()).toBe(true);
+        expect(w.find('.image-uploading-overlay').text()).toContain('Uploading');
+
+        resolveUpload('https://cdn/factions/new.jpg');
+        await flushPromises();
+        expect(w.find('.image-uploading-overlay').exists()).toBe(false);
+        expect(w.find('.image-preview img').attributes('src')).toBe('https://cdn/factions/new.jpg');
+    });
+});
+
+describe('FactionForm load failure', () => {
+    beforeEach(() => { routeParams = { id: 'missing' }; });
+
+    it('shows an error state instead of a blank prefilled form, and blocks save and delete', async () => {
+        const w = mountForm();
+        await flushPromises();
+        expect(w.find('.load-failed').exists()).toBe(true);
+        expect(w.find('form').exists()).toBe(false);
+        expect(w.find('.delete-faction-btn').exists()).toBe(false);
+        expect(w.find('button[type="submit"]').exists()).toBe(false);
+        expect(updateFaction).not.toHaveBeenCalled();
+        expect(deleteFaction).not.toHaveBeenCalled();
+    });
+
+    it('forces a fresh reload rather than trusting a stale store', async () => {
+        mountForm();
+        await flushPromises();
+        expect(loadFactions).toHaveBeenCalledWith(true);
+    });
+});
+
+describe('FactionForm save and delete errors', () => {
+    beforeEach(() => { routeParams = { id: 'f1' }; });
+
+    it('renders a save error next to the actions and does not navigate', async () => {
+        updateFaction.mockRejectedValueOnce(new Error('boom'));
+        const w = mountForm();
+        await flushPromises();
+        await w.find('form').trigger('submit');
+        await flushPromises();
+        expect(w.find('.save-error').text()).toContain('Failed to save faction');
+        expect(w.find('.file-error').exists()).toBe(false);
+        expect(routerPush).not.toHaveBeenCalled();
+    });
+
+    it('shows upgrade wording for a 403 save failure', async () => {
+        const error = new Error('forbidden');
+        error.response = { status: 403 };
+        updateFaction.mockRejectedValueOnce(error);
+        const w = mountForm();
+        await flushPromises();
+        await w.find('form').trigger('submit');
+        await flushPromises();
+        expect(w.find('.save-error').text()).toContain('Upgrade your realm');
+    });
+
+    it('shows a retry message for a 503 save failure without paywall wording', async () => {
+        const error = new Error('unavailable');
+        error.response = { status: 503 };
+        updateFaction.mockRejectedValueOnce(error);
+        const w = mountForm();
+        await flushPromises();
+        await w.find('form').trigger('submit');
+        await flushPromises();
+        const message = w.find('.save-error').text();
+        expect(message).toContain('try again');
+        expect(message.toLowerCase()).not.toContain('upgrade');
+    });
+
+    it('surfaces a delete failure instead of an unhandled rejection', async () => {
+        deleteFaction.mockRejectedValueOnce(new Error('boom'));
+        const w = mountForm();
+        await flushPromises();
+        await w.find('.delete-faction-btn').trigger('click');
+        await w.find('.delete-faction-btn').trigger('click');
+        await flushPromises();
+        expect(w.find('.save-error').exists()).toBe(true);
+        expect(routerPush).not.toHaveBeenCalled();
+        expect(w.find('.delete-faction-btn').text()).toBe('Delete');
     });
 });
