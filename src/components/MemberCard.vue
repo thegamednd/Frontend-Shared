@@ -8,6 +8,17 @@
         class="memImg"
       />
       <span class="name">{{ member.name || member.Name }}</span>
+      <span v-if="crests.length" class="faction-crests">
+        <img
+          v-for="faction in crests"
+          :key="faction.ID"
+          :src="faction.Image"
+          class="faction-crest"
+          :title="faction.Name"
+          :alt="faction.Name"
+          loading="lazy"
+        />
+      </span>
       <span v-if="badge" class="member-badge">{{ badge }}</span>
     </router-link>
     <div v-if="editable" class="member-actions">
@@ -24,6 +35,7 @@
 
 <script setup>
 import { computed } from 'vue';
+import { knownFactionsOf } from '@shared/utils/factions';
 
 const props = defineProps({
     member: { type: Object, required: true },
@@ -31,10 +43,15 @@ const props = defineProps({
     showImage: { type: Boolean, default: true },
     editable: { type: Boolean, default: false },
     badge: { type: String, default: '' },
+    factions: { type: Array, default: () => [] },
 });
 defineEmits(['edit']);
 
 const memberId = computed(() => props.member.id || props.member.ID);
+
+// Crests a viewer may see for this character. knownFactionsOf owns the
+// visibility rule; only factions carrying an image can render a crest.
+const crests = computed(() => knownFactionsOf(props.member, props.factions).filter((f) => f.Image));
 </script>
 
 <style scoped>
@@ -145,6 +162,29 @@ const memberId = computed(() => props.member.id || props.member.ID);
 .edit-button .material-symbols-outlined {
     font-size: 18px;
     pointer-events: none;
+}
+
+.faction-crests {
+    display: flex;
+    gap: 0.25em;
+    align-items: center;
+}
+
+.faction-crest {
+    width: 22px;
+    height: 22px;
+    object-fit: cover;
+    border-radius: 4px;
+    border: 1px solid color-mix(in srgb, var(--theme-text) 30%, transparent);
+}
+
+@media only screen and (min-width: 600px) {
+    .faction-crests {
+        position: absolute;
+        top: 6px;
+        left: 6px;
+        z-index: 3;
+    }
 }
 
 .member-badge {

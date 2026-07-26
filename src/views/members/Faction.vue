@@ -21,6 +21,7 @@
                     :key="member.ID"
                     :member="member"
                     :images-cdn-url="imagesCdnUrl"
+                    :factions="factionStore.arFactionsAZ"
                     :badge="privileged && isHiddenMember(member, id) ? 'hidden' : ''"
                 />
             </div>
