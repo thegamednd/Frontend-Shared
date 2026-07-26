@@ -66,6 +66,18 @@ export const sharedRoutes = [
         meta: { requiresActiveRealm: true }
     },
     {
+        path: '/gallery/factions/add',
+        name: 'FactionAdd',
+        component: () => import('@shared/views/members/FactionForm.vue'),
+        meta: { requiresActiveRealm: true }
+    },
+    {
+        path: '/gallery/factions/:id/edit',
+        name: 'FactionEdit',
+        component: () => import('@shared/views/members/FactionForm.vue'),
+        meta: { requiresActiveRealm: true }
+    },
+    {
         path: '/gallery/factions/:id',
         name: 'Faction',
         component: () => import('@shared/views/members/Faction.vue'),
