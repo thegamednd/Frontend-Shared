@@ -75,9 +75,10 @@
 
                         <div class="form-field" v-if="canManageFactions && factionStore.arFactionsAZ.length">
                             <label>Factions</label>
-                            <div v-for="f in factionStore.arFactionsAZ" :key="f.ID" class="faction-assign">
+                            <div v-for="f in factionStore.arFactionsAZ" :key="f.ID" class="faction-assign" :data-faction-id="f.ID">
                                 <label class="faction-check">
                                     <input type="checkbox" :checked="isAssigned(f.ID)"
+                                           :disabled="!realmStore.isPaidTier"
                                            @change="onToggleFaction(f.ID, $event.target.checked)" />
                                     {{ f.Name }}
                                 </label>
@@ -87,6 +88,9 @@
                                     This character is a known member of this faction
                                 </label>
                             </div>
+                            <small v-if="!realmStore.isPaidTier" class="faction-upgrade-hint">
+                                Adding characters to factions requires a paid subscription.
+                            </small>
                         </div>
 
                         <div class="form-field" v-if="canManageFactions && characterGroup && characterGroup.name === 'NPC'">
@@ -1156,4 +1160,5 @@ input:disabled {
 .faction-assign { display: flex; flex-direction: column; gap: 0.2em; margin-bottom: 0.5em; }
 .faction-check, .faction-known-check { display: flex; align-items: center; gap: 0.5em; }
 .faction-known-check { margin-left: 1.6em; font-size: 0.9em; }
+.faction-upgrade-hint { color: #d8a657; font-size: 0.85em; display: block; margin-top: 0.4em; }
 </style>
