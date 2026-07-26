@@ -9,16 +9,26 @@ vi.mock('vue-router', () => ({ useRouter: () => ({ push: routerPush }) }));
 vi.mock('@shared/utils/api', () => ({
     default: {
         get: vi.fn(async () => ({ data: [
-            { ID: 'f1', Name: 'Harpers', BriefDescription: 'Do-gooders', Known: true },
+            { ID: 'f1', Name: 'Harpers', BriefDescription: 'Do-gooders', Known: true, Image: 'https://cdn/factions/harpers.jpg' },
             { ID: 'f2', Name: 'Zhentarim', BriefDescription: 'Shady', Known: false },
         ] })),
         post: vi.fn(), put: vi.fn(), delete: vi.fn(),
     },
 }));
 
+const notifyInfo = vi.fn();
+vi.mock('@shared/composables/useNotifications', () => ({
+    useNotifications: () => ({ notifyInfo, notifyError: vi.fn(), notifySuccess: vi.fn() }),
+}));
+
 let privileged = false;
+let paid = true;
 vi.mock('@shared/stores/realm', () => ({
-    useRealmStore: () => ({ get isOwner() { return privileged; }, get isRealmDM() { return false; } }),
+    useRealmStore: () => ({
+        get isOwner() { return privileged; },
+        get isRealmDM() { return false; },
+        get isPaidTier() { return paid; },
+    }),
 }));
 vi.mock('@shared/stores/character', () => ({
     useCharacterStore: () => ({
@@ -36,7 +46,7 @@ function mountView() {
     return mount(Factions, { global: { stubs: { teleport: true } } });
 }
 
-beforeEach(() => { setActivePinia(createPinia()); privileged = false; vi.clearAllMocks(); });
+beforeEach(() => { setActivePinia(createPinia()); privileged = false; paid = true; vi.clearAllMocks(); });
 
 beforeEach(() => {
     HTMLDialogElement.prototype.showModal = vi.fn(function showModal() {
@@ -81,15 +91,6 @@ describe('Factions list', () => {
         await w.findAll('.faction-row .faction-open')[0].trigger('click');
         expect(routerPush).toHaveBeenCalledWith({ name: 'Faction', params: { id: 'f1' } });
     });
-
-    it('opens the edit dialog prefilled', async () => {
-        privileged = true;
-        const w = mountView();
-        await flushPromises();
-        await w.findAll('.edit-faction-btn')[0].trigger('click');
-        expect(w.find('.faction-dialog').exists()).toBe(true);
-        expect(w.find('.faction-dialog input[name="name"]').element.value).toBe('Harpers');
-    });
 });
 
 describe('Factions help', () => {
@@ -115,5 +116,42 @@ describe('Factions help', () => {
         await w.find('.faction-help-btn').trigger('click');
         await flushPromises();
         expect(w.find('dialog.faction-help').attributes('open')).toBeDefined();
+    });
+});
+
+describe('Factions list navigation', () => {
+    it('navigates to the add form instead of opening a dialog', async () => {
+        privileged = true;
+        const w = mountView();
+        await flushPromises();
+        await w.find('.add-faction-btn').trigger('click');
+        expect(routerPush).toHaveBeenCalledWith({ name: 'FactionAdd' });
+        expect(w.find('.faction-dialog').exists()).toBe(false);
+    });
+
+    it('navigates to the edit form for a row', async () => {
+        privileged = true;
+        const w = mountView();
+        await flushPromises();
+        await w.findAll('.edit-faction-btn')[0].trigger('click');
+        expect(routerPush).toHaveBeenCalledWith({ name: 'FactionEdit', params: { id: 'f1' } });
+    });
+
+    it('prompts to upgrade instead of navigating on the free tier', async () => {
+        privileged = true;
+        paid = false;
+        const w = mountView();
+        await flushPromises();
+        await w.find('.add-faction-btn').trigger('click');
+        expect(notifyInfo).toHaveBeenCalled();
+        expect(routerPush).not.toHaveBeenCalledWith({ name: 'FactionAdd' });
+    });
+
+    it('shows a thumbnail for a faction that has an image', async () => {
+        const w = mountView();
+        await flushPromises();
+        const img = w.find('.faction-thumb');
+        expect(img.exists()).toBe(true);
+        expect(img.attributes('src')).toBe('https://cdn/factions/harpers.jpg');
     });
 });

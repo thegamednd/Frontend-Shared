@@ -24,6 +24,7 @@
 
         <div v-for="faction in factionStore.arFactionsAZ" :key="faction.ID" class="faction-row">
             <button type="button" class="faction-open" @click="router.push({ name: 'Faction', params: { id: faction.ID } })">
+                <img v-if="faction.Image" :src="faction.Image" class="faction-thumb" loading="lazy" alt="" />
                 <span class="faction-name">
                     {{ faction.Name }}
                     <span v-if="privileged && faction.Known === false" class="hidden-badge">hidden from players</span>
@@ -36,33 +37,6 @@
             </button>
         </div>
 
-        <div v-if="dialogOpen" class="faction-dialog-backdrop" @click.self="dialogOpen = false">
-            <form class="faction-dialog" @submit.prevent="save">
-                <h3>{{ editing ? 'Edit Faction' : 'Add Faction' }}</h3>
-                <label>Name
-                    <input name="name" type="text" v-model="form.Name" required maxlength="128" />
-                </label>
-                <label>Brief description
-                    <input name="brief" type="text" v-model="form.BriefDescription" maxlength="256" />
-                </label>
-                <label>Description
-                    <textarea name="description" rows="6" v-model="form.Description"></textarea>
-                </label>
-                <label class="known-toggle">
-                    <input type="checkbox" v-model="form.Known" />
-                    Known to players
-                </label>
-                <div class="dialog-actions">
-                    <button v-if="editing" type="button" class="delete-faction-btn" @click="remove">
-                        {{ confirmingDelete ? 'Confirm delete?' : 'Delete' }}
-                    </button>
-                    <span class="spacer"></span>
-                    <button type="button" @click="dialogOpen = false">Cancel</button>
-                    <button type="submit" :disabled="!form.Name.trim()">Save</button>
-                </div>
-            </form>
-        </div>
-
         <FactionsHelpDialog v-if="privileged" :open="helpOpen" @close="helpOpen = false" />
     </div>
 </template>
@@ -73,6 +47,7 @@ import { useRouter } from 'vue-router';
 import { useFactionStore } from '@shared/stores/faction';
 import { useCharacterStore } from '@shared/stores/character';
 import { useRealmStore } from '@shared/stores/realm';
+import { useNotifications } from '@shared/composables/useNotifications';
 import { membersOfFaction } from '@shared/utils/factions';
 import FactionsHelpDialog from '@shared/components/members/FactionsHelpDialog.vue';
 
@@ -81,13 +56,11 @@ const factionStore = useFactionStore();
 const characterStore = useCharacterStore();
 const realmStore = useRealmStore();
 
+const { notifyInfo } = useNotifications();
+
 const privileged = computed(() => realmStore.isOwner || realmStore.isRealmDM);
 
-const dialogOpen = ref(false);
 const helpOpen = ref(false);
-const editing = ref(null); // faction ID being edited, or null for add
-const confirmingDelete = ref(false);
-const form = ref({ Name: '', BriefDescription: '', Description: '', Known: true });
 
 onMounted(() => {
     factionStore.loadFactions(true);
@@ -100,39 +73,15 @@ function memberCount(faction) {
 }
 
 function openAdd() {
-    editing.value = null;
-    confirmingDelete.value = false;
-    form.value = { Name: '', BriefDescription: '', Description: '', Known: true };
-    dialogOpen.value = true;
+    if (!realmStore.isPaidTier) {
+        notifyInfo('Factions are a paid feature. Upgrade your realm to create new factions.');
+        return;
+    }
+    router.push({ name: 'FactionAdd' });
 }
 
 function openEdit(faction) {
-    editing.value = faction.ID;
-    confirmingDelete.value = false;
-    form.value = {
-        Name: faction.Name,
-        BriefDescription: faction.BriefDescription || '',
-        Description: faction.Description || '',
-        Known: faction.Known !== false,
-    };
-    dialogOpen.value = true;
-}
-
-async function save() {
-    const payload = { ...form.value };
-    if (editing.value) await factionStore.updateFaction(editing.value, payload);
-    else await factionStore.createFaction(payload);
-    dialogOpen.value = false;
-}
-
-async function remove() {
-    if (!confirmingDelete.value) {
-        confirmingDelete.value = true;
-        setTimeout(() => { confirmingDelete.value = false; }, 4000);
-        return;
-    }
-    await factionStore.deleteFaction(editing.value);
-    dialogOpen.value = false;
+    router.push({ name: 'FactionEdit', params: { id: faction.ID } });
 }
 </script>
 
@@ -170,6 +119,11 @@ async function remove() {
 }
 .faction-open:hover { border-color: var(--theme-accent); }
 .faction-name { font-weight: 700; font-size: 1.05em; display: flex; align-items: center; gap: 0.5em; }
+.faction-thumb {
+    width: 48px; height: 48px; object-fit: cover;
+    border-radius: 8px; margin-bottom: 0.35em;
+    border: 1px solid color-mix(in srgb, var(--theme-text) 20%, transparent);
+}
 .hidden-badge {
     font-size: 0.62em; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em;
     border: 1px solid #d8a657; color: #d8a657; border-radius: 4px; padding: 0.1em 0.4em;
@@ -181,31 +135,4 @@ async function remove() {
     border-radius: 10px; padding: 0 0.7em; cursor: pointer; color: var(--theme-text);
 }
 .edit-faction-btn:hover { border-color: var(--theme-accent); color: var(--theme-accent); }
-
-.faction-dialog-backdrop {
-    position: fixed; inset: 0; z-index: 50;
-    background: rgb(0 0 0 / 0.5);
-    display: flex; align-items: center; justify-content: center; padding: 1em;
-}
-.faction-dialog {
-    width: min(34em, 100%); display: flex; flex-direction: column; gap: 0.75em;
-    background: var(--theme-bg-surface); border-radius: 12px; padding: 1.25em;
-    border: 1px solid color-mix(in srgb, var(--theme-text) 20%, transparent);
-}
-.faction-dialog label { display: flex; flex-direction: column; gap: 0.25em; font-size: 0.9em; }
-.faction-dialog input[type="text"], .faction-dialog textarea {
-    background: color-mix(in srgb, var(--theme-bg-surface) 50%, transparent);
-    border: 1px solid color-mix(in srgb, var(--theme-text) 20%, transparent);
-    border-radius: 8px; padding: 0.5em 0.6em; color: var(--theme-text); font: inherit;
-}
-.known-toggle { flex-direction: row !important; align-items: center; gap: 0.5em !important; }
-.dialog-actions { display: flex; gap: 0.6em; align-items: center; }
-.dialog-actions .spacer { flex: 1; }
-.dialog-actions button {
-    padding: 0.5em 1em; border-radius: 8px; cursor: pointer; font: inherit;
-    background: transparent; border: 1px solid color-mix(in srgb, var(--theme-text) 25%, transparent); color: var(--theme-text);
-}
-.dialog-actions button[type="submit"] { border-color: var(--theme-accent); }
-.dialog-actions button:disabled { opacity: 0.5; cursor: not-allowed; }
-.delete-faction-btn { border-color: #ef4444 !important; color: #ef4444 !important; }
 </style>
