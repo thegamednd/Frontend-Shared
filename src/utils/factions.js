@@ -19,16 +19,21 @@ export function isHiddenMember(character, factionId) {
     return character?.Known === false || !membership || membership.Known !== true;
 }
 
-// "Member of the Harpers, Lords" — only when character, faction, and
-// membership are all known; empty string otherwise.
-export function factionMembershipLine(character, factions) {
-    if (!character || character.Known === false) return '';
+// The single definition of "a viewer may see this character in this faction":
+// the character is visible, the membership is marked known, and the faction
+// itself is known. Both the membership line and the member-card crests use it.
+export function knownFactionsOf(character, factions) {
+    if (!character || character.Known === false) return [];
     const byId = new Map((factions || []).map((f) => [f.ID, f]));
-    const names = membershipsOf(character)
+    return membershipsOf(character)
         .filter((m) => m.Known === true)
         .map((m) => byId.get(m.FactionID))
-        .filter((f) => f && f.Known !== false)
-        .map((f) => f.Name);
+        .filter((f) => f && f.Known !== false);
+}
+
+// "Member of the Harpers, Lords" — empty string when nothing is visible.
+export function factionMembershipLine(character, factions) {
+    const names = knownFactionsOf(character, factions).map((f) => f.Name);
     return names.length ? `Member of the ${names.join(', ')}` : '';
 }
 

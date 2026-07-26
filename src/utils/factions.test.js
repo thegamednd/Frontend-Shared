@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
     membershipsOf, isMemberOfFaction, membersOfFaction,
-    isHiddenMember, factionMembershipLine,
+    isHiddenMember, factionMembershipLine, knownFactionsOf,
 } from './factions.js';
 import { toggleMembership, setMembershipKnown } from './factions.js';
 
@@ -71,5 +71,35 @@ describe('membership editing helpers', () => {
         expect(next[0]).toEqual({ FactionID: 'f1', Known: true });
         expect(next[1]).toEqual({ FactionID: 'f2', Known: false });
         expect(list[0].Known).toBe(false);
+    });
+});
+
+describe('knownFactionsOf', () => {
+    const harpers = { ID: 'f1', Name: 'Harpers', Known: true };
+    const zhents = { ID: 'f2', Name: 'Zhentarim', Known: false };
+
+    it('returns factions where character, membership and faction are all visible', () => {
+        const character = { Known: true, Factions: [{ FactionID: 'f1', Known: true }] };
+        expect(knownFactionsOf(character, [harpers, zhents]).map(f => f.ID)).toEqual(['f1']);
+    });
+
+    it('excludes a secret membership', () => {
+        const character = { Known: true, Factions: [{ FactionID: 'f1', Known: false }] };
+        expect(knownFactionsOf(character, [harpers])).toEqual([]);
+    });
+
+    it('excludes a hidden faction', () => {
+        const character = { Known: true, Factions: [{ FactionID: 'f2', Known: true }] };
+        expect(knownFactionsOf(character, [zhents])).toEqual([]);
+    });
+
+    it('excludes everything for a hidden character', () => {
+        const character = { Known: false, Factions: [{ FactionID: 'f1', Known: true }] };
+        expect(knownFactionsOf(character, [harpers])).toEqual([]);
+    });
+
+    it('returns an empty array for a missing character or unknown faction id', () => {
+        expect(knownFactionsOf(null, [harpers])).toEqual([]);
+        expect(knownFactionsOf({ Known: true, Factions: [{ FactionID: 'nope', Known: true }] }, [harpers])).toEqual([]);
     });
 });
