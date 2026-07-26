@@ -40,6 +40,23 @@ export const useFactionStore = defineStore('faction', {
             await apiClient.delete(`/characters/factions/${id}`);
             this.factions = this.factions.filter((f) => f.ID !== id);
         },
+        /**
+         * Upload a faction image. The server resizes it, converts it to JPEG,
+         * stores it under factions/ in the media bucket, and returns the full
+         * CDN URL — not a bare key, so it is used as-is in <img src>.
+         */
+        async uploadFactionImage(file) {
+            const imageData = await new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = () => resolve(reader.result);
+                reader.onerror = reject;
+                reader.readAsDataURL(file);
+            });
+            const response = await apiClient.post('/characters/factions/images', { imageData });
+            const url = response.data?.url;
+            if (!url) throw new Error('Image upload did not return a URL');
+            return url;
+        },
         clear() {
             this.factions = [];
             this.loaded = false;

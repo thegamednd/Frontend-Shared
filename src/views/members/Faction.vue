@@ -7,7 +7,11 @@
                     <span v-if="privileged && faction.Known === false" class="hidden-badge">hidden from players</span>
                 </h2>
             </header>
-            <p class="description">{{ faction.Description || faction.BriefDescription }}</p>
+            <img v-if="faction.Image" :src="faction.Image" class="faction-image" :alt="faction.Name" />
+            <!-- Description is sanitized server-side (sanitizeFactionHtml) before storage.
+                 BriefDescription is plain text and must not be rendered as HTML. -->
+            <div v-if="faction.Description" class="description" v-html="faction.Description"></div>
+            <p v-else class="description">{{ faction.BriefDescription }}</p>
 
             <h3>Known members</h3>
             <p v-if="!members.length" class="empty">No known members yet.</p>
@@ -17,6 +21,7 @@
                     :key="member.ID"
                     :member="member"
                     :images-cdn-url="imagesCdnUrl"
+                    :factions="factionStore.arFactionsAZ"
                     :badge="privileged && isHiddenMember(member, id) ? 'hidden' : ''"
                 />
             </div>
@@ -63,6 +68,11 @@ onMounted(() => {
     border: 1px solid #d8a657; color: #d8a657; border-radius: 4px; padding: 0.1em 0.4em;
 }
 .description { white-space: pre-wrap; line-height: 1.5; margin-bottom: 1.25em; }
+.faction-image {
+    width: 100%; max-width: 300px; border-radius: 12px;
+    display: block; margin-bottom: 1em;
+    border: 1px solid color-mix(in srgb, var(--theme-text) 20%, transparent);
+}
 .empty { color: color-mix(in srgb, var(--theme-text) 60%, transparent); font-style: italic; }
 .faction-members {
     display: grid;

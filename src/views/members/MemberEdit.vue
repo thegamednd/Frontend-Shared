@@ -103,9 +103,10 @@
 
             <div class="form-field" v-if="canManageFactions && factionStore.arFactionsAZ.length">
               <label>Factions</label>
-              <div v-for="f in factionStore.arFactionsAZ" :key="f.ID" class="faction-assign">
+              <div v-for="f in factionStore.arFactionsAZ" :key="f.ID" class="faction-assign" :data-faction-id="f.ID">
                 <label class="faction-check">
                   <input type="checkbox" :checked="isAssigned(f.ID)"
+                         :disabled="!canToggleFaction(f.ID)"
                          @change="onToggleFaction(f.ID, $event.target.checked)" />
                   {{ f.Name }}
                 </label>
@@ -115,6 +116,9 @@
                   This character is a known member of this faction
                 </label>
               </div>
+              <small v-if="!realmStore.isPaidTier" class="faction-upgrade-hint">
+                Adding characters to new factions requires a paid subscription. Existing memberships stay editable.
+              </small>
             </div>
 
             <div class="form-field" v-if="canManageFactions && character.Group && character.Group.Name === 'NPC'">
@@ -524,11 +528,20 @@ const isFormValid = computed(() => {
 });
 
 const factionMemberships = ref([]);
+// The memberships as loaded from the server. A free-tier realm may drop a
+// membership but not introduce one, and the server judges "new" against what is
+// stored, so unchecking a faction and changing your mind before saving is still
+// a valid write. Gating on the live list instead would leave an accidental
+// uncheck impossible to undo without reloading the page.
+const savedFactionIds = ref([]);
 const hiddenFromPlayers = ref(false);
 const canManageFactions = computed(() => realmStore.isOwner || realmStore.isRealmDM);
 
 function isAssigned(factionId) {
   return factionMemberships.value.some((m) => m.FactionID === factionId);
+}
+function canToggleFaction(factionId) {
+  return realmStore.isPaidTier || savedFactionIds.value.includes(factionId);
 }
 function onToggleFaction(factionId, assigned) {
   factionMemberships.value = toggleMembership(factionMemberships.value, factionId, assigned);
@@ -875,6 +888,7 @@ const loadCharacter = async (characterId) => {
     }
 
     factionMemberships.value = Array.isArray(characterData.Factions) ? characterData.Factions.map(m => ({ ...m })) : [];
+    savedFactionIds.value = factionMemberships.value.map(m => m.FactionID);
     hiddenFromPlayers.value = characterData.Known === false;
 
     // Handle UserID (character owner)
@@ -1874,4 +1888,5 @@ const cancelEdit = () => {
 .faction-assign { display: flex; flex-direction: column; gap: 0.2em; margin-bottom: 0.5em; }
 .faction-check, .faction-known-check { display: flex; align-items: center; gap: 0.5em; }
 .faction-known-check { margin-left: 1.6em; font-size: 0.9em; }
+.faction-upgrade-hint { color: #d8a657; font-size: 0.85em; display: block; margin-top: 0.4em; }
 </style>
