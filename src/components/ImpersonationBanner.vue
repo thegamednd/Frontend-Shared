@@ -1,10 +1,15 @@
 <template>
     <Transition name="impersonation-banner">
         <div
-            v-if="isImpersonating"
+            v-if="isImpersonating && expanded"
+            id="impersonation-banner"
             class="impersonation-banner"
             role="alert"
             aria-live="polite"
+            @pointerenter="hold"
+            @pointerleave="release"
+            @focusin="hold"
+            @focusout="release"
         >
             <div class="impersonation-banner__inner">
                 <div class="impersonation-banner__mark" aria-hidden="true">
@@ -56,14 +61,103 @@
             </div>
         </div>
     </Transition>
+
+    <!-- Ember seal — the banner collapsed to a single mark. Stays put so the
+         admin never loses track of whose account they're in, without covering
+         the hamburger menu. -->
+    <button
+        v-if="isImpersonating"
+        type="button"
+        class="impersonation-seal"
+        :class="{ 'impersonation-seal--tucked': expanded }"
+        :aria-expanded="expanded"
+        :aria-hidden="expanded"
+        :tabindex="expanded ? -1 : 0"
+        aria-controls="impersonation-banner"
+        :aria-label="`Show impersonation bar for ${impersonatedUserName || 'user'}`"
+        :title="`Impersonating ${impersonatedUserName || 'user'}`"
+        @pointerenter="hold"
+        @pointerleave="release"
+        @focus="hold"
+        @blur="release"
+        @click="hold"
+    >
+        <span class="impersonation-seal__pulse" aria-hidden="true" />
+        <svg
+            viewBox="0 0 24 24"
+            width="16"
+            height="16"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            aria-hidden="true"
+        >
+            <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
+            <circle cx="9" cy="7" r="4" />
+            <path d="M22 11l-3-3-3 3" />
+            <path d="M19 8v8" />
+        </svg>
+    </button>
 </template>
 
 <script setup>
+import { ref, watch, onBeforeUnmount } from 'vue';
 import { useImpersonation } from '@shared/composables/useImpersonation';
 
 const { impersonatedUserName, isImpersonating, clearImpersonation } = useImpersonation();
 
+/* The bar covers app chrome (the hamburger menu sits underneath it), so it
+ * announces itself for 5s and then tucks away into the seal at top right.
+ * Hovering or focusing either the seal or the bar brings it back; leaving
+ * tucks it away again 3s later. */
+const AUTO_HIDE_MS = 5000;
+const LEAVE_HIDE_MS = 3000;
+
+const expanded = ref(false);
+let hideTimer = null;
+
+function cancelHide() {
+    if (hideTimer) {
+        clearTimeout(hideTimer);
+        hideTimer = null;
+    }
+}
+
+function scheduleHide(delay) {
+    cancelHide();
+    hideTimer = setTimeout(() => {
+        expanded.value = false;
+        hideTimer = null;
+    }, delay);
+}
+
+// pointerenter / focus / tap on the seal — show it and stop any pending hide
+function hold() {
+    cancelHide();
+    expanded.value = true;
+}
+
+// pointerleave / blur — tuck it away again shortly after
+function release() {
+    scheduleHide(LEAVE_HIDE_MS);
+}
+
+watch(
+    isImpersonating,
+    (on) => {
+        cancelHide();
+        expanded.value = on;
+        if (on) scheduleHide(AUTO_HIDE_MS);
+    },
+    { immediate: true }
+);
+
+onBeforeUnmount(cancelHide);
+
 function exit() {
+    cancelHide();
     clearImpersonation();
     // Reload so cached user-scoped data (characters, prefs, realm membership)
     // is refetched under the admin's real identity.
@@ -83,7 +177,9 @@ function exit() {
     left: 0;
     right: 0;
     z-index: 99999;
-    pointer-events: none;
+    /* Interactive across its full width so pointerenter/leave drive the
+     * show/hide timing, not just the centred inner strip. */
+    pointer-events: auto;
     /* Two stacked layers for depth — woven amber light with a deep base */
     background:
         linear-gradient(
@@ -110,7 +206,6 @@ function exit() {
 }
 
 .impersonation-banner__inner {
-    pointer-events: auto;
     display: flex;
     align-items: center;
     gap: 0.6rem;
@@ -251,6 +346,63 @@ function exit() {
     outline-offset: 2px;
 }
 
+/* The tucked-away state: same ember mark as the banner, one object collapsed.
+ * Small enough to clear app chrome, warm enough to stay noticeable. */
+.impersonation-seal {
+    position: fixed;
+    top: max(0.35rem, env(safe-area-inset-top));
+    right: max(0.35rem, env(safe-area-inset-right));
+    z-index: 99998;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 34px;
+    height: 34px;
+    padding: 0;
+    border-radius: 999px;
+    border: 1px solid rgba(255, 209, 138, 0.55);
+    background: linear-gradient(
+        160deg,
+        rgba(140, 60, 28, 0.95) 0%,
+        rgba(102, 30, 18, 0.95) 100%
+    );
+    color: #ffe9b8;
+    cursor: pointer;
+    box-shadow:
+        inset 0 1px 0 rgba(255, 209, 138, 0.35),
+        0 3px 10px rgba(0, 0, 0, 0.45);
+    transition: opacity 0.25s ease, transform 0.25s ease, background 0.15s ease;
+}
+
+.impersonation-seal:hover {
+    background: linear-gradient(
+        160deg,
+        rgba(170, 90, 30, 0.98) 0%,
+        rgba(122, 40, 22, 0.98) 100%
+    );
+}
+
+.impersonation-seal:focus-visible {
+    outline: 2px solid #ffd18a;
+    outline-offset: 2px;
+}
+
+/* Out of the way while the bar itself is on screen */
+.impersonation-seal--tucked {
+    opacity: 0;
+    transform: scale(0.8);
+    pointer-events: none;
+}
+
+.impersonation-seal__pulse {
+    position: absolute;
+    inset: -3px;
+    border-radius: 999px;
+    border: 1px solid rgba(255, 209, 138, 0.55);
+    animation: impersonation-pulse 2.8s ease-out infinite;
+    pointer-events: none;
+}
+
 /* Narrower phones — let the name take all remaining room and shrink labels */
 @media (max-width: 380px) {
     .impersonation-banner__label {
@@ -276,5 +428,18 @@ function exit() {
 .impersonation-banner-leave-to {
     transform: translateY(-100%);
     opacity: 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .impersonation-banner__pulse,
+    .impersonation-seal__pulse {
+        animation: none;
+    }
+    .impersonation-banner-enter-active,
+    .impersonation-banner-leave-active,
+    .impersonation-seal,
+    .impersonation-banner__exit {
+        transition-duration: 0.01ms;
+    }
 }
 </style>
