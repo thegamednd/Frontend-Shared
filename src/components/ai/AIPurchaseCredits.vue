@@ -74,9 +74,10 @@ function onDialogClose() {
 }
 
 function calculatePrice(questions) {
-  if (questions === 60) return '4.40';
-  if (questions === 150) return '10.50';
-  if (questions === 300) return '20.00';
+  // Must match API-AI payment.service.ts, which verifies the PayPal charge.
+  if (questions === 60) return '8.00';
+  if (questions === 150) return '19.00';
+  if (questions === 300) return '37.00';
   return '0.00';
 }
 
