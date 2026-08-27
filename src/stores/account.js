@@ -5,6 +5,7 @@ import { useUserStore } from '@shared/stores/user';
 import { patreonService } from '@shared/services/patreonService';
 import axios from 'axios';
 import apiClient from '@shared/utils/api';
+import { normalizeTier } from '@shared/utils/aiModelTiers';
 
 const BASE_URL = `${import.meta.env.VITE_API_BASE_URL}`;
 
@@ -22,7 +23,9 @@ export const useAccountStore = defineStore('account', {
             return state.account?.AccountID || null;
         },
         preferredLLM(state) {
-            return state.account?.PreferredLLM || 'standard';
+            // Accounts saved before the Haiku tier was retired may hold the old
+            // 'premium' slug; normalize so the UI shows it as Enhanced.
+            return normalizeTier(state.account?.PreferredLLM);
         }
     },
     actions: {
