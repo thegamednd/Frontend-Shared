@@ -9,7 +9,24 @@
 
     <header class="page-header">
       <h1><span class="material-symbols-outlined">token</span> Tracker</h1>
-      <p class="page-desc">A framed counter on the home page. Players see it; you and your DM can change the number by double-clicking it.</p>
+      <div class="tracker-intro">
+        <p>
+          The Game was built for long campaigns where players drift in and out between sessions.
+          Rather than explain every absence, the setting added magic items, pendants at first,
+          that let a character join or leave the party whenever a player can or cannot make it.
+          Those items run on charges, and the whole group shares one pool.
+        </p>
+        <p>
+          This tracker keeps that pool in view on the home page as a number over the pendant.
+          It starts red when charges are low and warms to gold as they climb.
+        </p>
+        <p class="tracker-howto">
+          Only the DM and the realm owner can change it. Double-click the number, type the new
+          value and press <kbd>Enter</kbd>. <kbd>Esc</kbd> cancels. Everyone in the realm sees
+          the new count within a second.
+        </p>
+        <p>If your realm uses some other trinket, change the label below.</p>
+      </div>
     </header>
 
     <section v-if="!realmStore.isOwner" class="notice">
@@ -243,6 +260,10 @@ async function resetImage() {
 .breadcrumb-link { display: inline-flex; align-items: center; gap: 0.3rem; color: var(--theme-accent); text-decoration: none; font-size: 0.85rem; }
 .page-header h1 { display: flex; align-items: center; gap: 0.5rem; margin: 0.75rem 0 0.25rem; }
 .page-desc, .card-desc { color: var(--theme-text-secondary); font-size: 0.85rem; margin: 0 0 0.75rem; }
+.tracker-intro { max-width: 62ch; margin: 0 0 1.25rem; color: var(--theme-text-secondary); font-size: 0.9rem; line-height: 1.55; }
+.tracker-intro p { margin: 0 0 0.6rem; }
+.tracker-intro .tracker-howto { color: var(--theme-text-primary); padding-left: 0.75rem; border-left: 2px solid var(--theme-accent); }
+.tracker-intro kbd { font: inherit; font-size: 0.8em; padding: 0.05em 0.4em; border: 1px solid color-mix(in srgb, var(--theme-accent) 45%, transparent); border-bottom-width: 2px; border-radius: 0.25rem; background: rgba(0, 0, 0, 0.25); }
 .notice { padding: 1rem; border: 1px solid var(--theme-border-ornate); border-radius: 0.5rem; color: var(--theme-text-secondary); }
 .card { border: 1px solid var(--theme-border-ornate); border-radius: 0.5rem; padding: 1rem; margin-top: 1rem; background: var(--card-background, rgba(0,0,0,0.35)); }
 .card h2 { font-size: 1rem; margin: 0 0 0.5rem; }
