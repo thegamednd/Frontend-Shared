@@ -459,6 +459,28 @@
       </template>
     </div>
 
+    <!-- Tracker Section -->
+    <div class="display-prefs-section tracker-section">
+      <div class="section-header">
+        <h2>
+          <span class="material-symbols-outlined">token</span>
+          Tracker
+        </h2>
+        <div v-if="realmStore.isOwner" class="header-actions">
+          <router-link to="/account/active-realm/tracker" class="manage-theme-btn">
+            <span class="material-symbols-outlined">settings</span>
+            Manage
+          </router-link>
+        </div>
+      </div>
+      <p class="section-desc">
+        <strong>{{ realmStore.activeRealm?.Tracker?.Enabled ? 'On' : 'Off' }}</strong>
+        <template v-if="realmStore.activeRealm?.Tracker?.Enabled">
+          · {{ realmStore.activeRealm?.Tracker?.Label }} · {{ realmStore.activeRealm?.Tracker?.Count ?? 0 }}
+        </template>
+      </p>
+    </div>
+
     <!-- Delete Realm Section (Owner Only) -->
     <div v-if="realmStore.isOwner" class="delete-realm-section">
       <div class="danger-card">
