@@ -54,7 +54,7 @@
 
       <section class="card media-card">
         <h2>Intro video</h2>
-        <p class="card-desc">Plays once when the home page opens, then fades to the final image. MP4, 10 seconds or shorter. It will be cropped to {{ TRACKER_WIDTH }}×{{ TRACKER_HEIGHT }}.</p>
+        <p class="card-desc">Plays once when the home page opens, then fades to the final image. MP4, 10 seconds or shorter. It will be resized to {{ TRACKER_WIDTH }}×{{ TRACKER_HEIGHT }}.</p>
         <div class="media-row">
           <video class="media-preview" :src="videoUrl" :key="videoUrl" muted playsinline controls preload="metadata"></video>
           <div class="media-controls">
@@ -70,7 +70,7 @@
 
       <section class="card media-card">
         <h2>Final image</h2>
-        <p class="card-desc">Shown behind the number after the video ends. Any image; it will be cropped to {{ TRACKER_WIDTH }}×{{ TRACKER_HEIGHT }} and saved as JPG.</p>
+        <p class="card-desc">Shown behind the number after the video ends. Any image; it will be resized to {{ TRACKER_WIDTH }}×{{ TRACKER_HEIGHT }} and saved as JPG.</p>
         <div class="media-row">
           <img class="media-preview" :src="imageUrl" :key="imageUrl" alt="" />
           <div class="media-controls">
