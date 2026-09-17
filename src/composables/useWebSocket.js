@@ -55,7 +55,7 @@ export function useWebSocket() {
           const message = JSON.parse(event.data);
           console.log('WebSocket message:', message);
 
-          if (message.type === 'characterUpdate' && messageHandler) {
+          if ((message.type === 'characterUpdate' || message.type === 'trackerUpdate') && messageHandler) {
             messageHandler(message);
           }
         } catch (error) {

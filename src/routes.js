@@ -37,6 +37,12 @@ export const sharedRoutes = [
         meta: { requiresActiveRealm: true }
     },
     {
+        path: '/account/active-realm/tracker',
+        name: 'TrackerSettings',
+        component: () => import('@shared/views/account/TrackerSettings.vue'),
+        meta: { requiresActiveRealm: true }
+    },
+    {
         path: '/realm/create',
         name: 'RealmCreate',
         component: () => import('@shared/views/RealmCreate.vue'),

@@ -5,7 +5,6 @@ import { useCharacterStore } from '@shared/stores/character';
 import { useDateStore } from '@shared/stores/date';
 import { useSubscriptionStore } from '@shared/stores/subscription';
 import { watch } from 'vue';
-import axios from 'axios';
 import apiClient from '@shared/utils/api';
 import { gamingSystemIdForRuleset } from '@shared/constants/gamingSystems';
 import { isPaidPlan } from '@shared/utils/subscriptionTier';
@@ -332,6 +331,15 @@ export const useRealmStore = defineStore('realm', {
         },
     },
     actions: {
+        /**
+         * Merge a partial Tracker into a realm in the store. Used by the
+         * widget (optimistic count), the WebSocket handler, and the settings page.
+         */
+        setTracker(realmId, patch) {
+            const realm = this.realms[realmId];
+            if (!realm) return;
+            realm.Tracker = { Enabled: false, Label: 'Pendant Charges', Count: 0, ...(realm.Tracker || {}), ...patch };
+        },
         setPsionicsEnabled(value) {
             this.psionicsEnabled = value;
         },
