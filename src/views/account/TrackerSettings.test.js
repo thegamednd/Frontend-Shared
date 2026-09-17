@@ -39,7 +39,12 @@ function setup({ isOwner = true, tracker = { Enabled: true, Label: 'Pendant Char
 }
 
 describe('TrackerSettings', () => {
-    beforeEach(() => { put.mockClear(); notifySuccess.mockClear(); notifyError.mockClear(); });
+    beforeEach(() => { put.mockClear(); notifySuccess.mockClear(); notifyError.mockClear(); window.scrollTo = vi.fn(); });
+
+    it('scrolls to the top on mount so the description is visible', () => {
+        setup();
+        expect(window.scrollTo).toHaveBeenCalledWith(0, 0);
+    });
 
     it('renders the toggle, label input, and both upload buttons for an owner', () => {
         const { wrapper } = setup({ isOwner: true });

@@ -95,7 +95,7 @@
 </template>
 
 <script setup>
-import { ref, reactive, computed, watch } from 'vue';
+import { ref, reactive, computed, watch, onMounted } from 'vue';
 import apiClient from '@shared/utils/api';
 import { useRealmStore } from '@shared/stores/realm';
 import { useNotifications } from '@shared/composables/useNotifications';
@@ -134,6 +134,14 @@ const imageError = ref('');
 const videoInput = ref(null);
 const imageInput = ref(null);
 const previewKey = ref(0);
+
+// The realm page this links from is long, and the apps set no router
+// scrollBehavior, so arrive at the top where the description is.
+onMounted(() => {
+  try {
+    window.scrollTo(0, 0);
+  } catch (_) { /* not available in some test environments */ }
+});
 
 async function saveSettings() {
   const check = validateLabel(form.label);
