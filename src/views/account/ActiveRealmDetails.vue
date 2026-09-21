@@ -7218,4 +7218,4 @@ onMounted(async () => {
   font-style: italic;
   color: color-mix(in srgb, var(--theme-text) 70%, transparent);
 }
-</style>
+</style>
