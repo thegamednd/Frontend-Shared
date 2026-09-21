@@ -58,6 +58,8 @@ import { trackerVideoUrl, trackerImageUrl, numeralStyle, DEFAULT_TRACKER } from 
 const props = defineProps({
     // Settings-page mode: always plays the intro, never edits, no WebSocket.
     preview: { type: Boolean, default: false },
+    // Skip the intro video and show the finished state (image + numeral).
+    intro: { type: Boolean, default: true },
 });
 
 const realmStore = useRealmStore();
@@ -72,8 +74,8 @@ const imageUrl = computed(() => trackerImageUrl(realmId.value, tracker.value));
 const canEdit = computed(() => !props.preview && (realmStore.isOwner || realmStore.isRealmDM));
 
 const trackerPlayed = props.preview ? ref(false) : inject('trackerPlayed', ref(false));
-const showVideo = ref(!trackerPlayed.value);
-const introComplete = ref(trackerPlayed.value);
+const showVideo = ref(props.intro && !trackerPlayed.value);
+const introComplete = ref(!props.intro || trackerPlayed.value);
 const videoEl = ref(null);
 const inputEl = ref(null);
 const editing = ref(false);

@@ -473,12 +473,20 @@
           </router-link>
         </div>
       </div>
-      <p class="section-desc">
-        <strong>{{ realmStore.activeRealm?.Tracker?.Enabled ? 'On' : 'Off' }}</strong>
-        <template v-if="realmStore.activeRealm?.Tracker?.Enabled">
-          · {{ realmStore.activeRealm?.Tracker?.Label }} · {{ realmStore.activeRealm?.Tracker?.Count ?? 0 }}
-        </template>
-      </p>
+      <div class="tracker-preview">
+        <figure class="tracker-preview-figure">
+          <figcaption class="tracker-preview-label">{{ realmStore.activeRealm?.Tracker?.Label || 'Pendant Charges' }}</figcaption>
+          <RealmTracker preview :intro="false" />
+        </figure>
+        <p class="section-desc tracker-preview-status">
+          <template v-if="realmStore.activeRealm?.Tracker?.Enabled">
+            <strong>On.</strong> Shown on the home page; the DM and owner double-click the number to change it.
+          </template>
+          <template v-else>
+            <strong>Off.</strong> Not shown on the home page yet.
+          </template>
+        </p>
+      </div>
     </div>
 
     <!-- Delete Realm Section (Owner Only) -->
@@ -1461,6 +1469,7 @@ import { patreonService } from '@shared/services/patreonService';
 import { features } from '@shared/config/features';
 import { RPG_RULESETS, DND5E_RULESET } from '@shared/constants/gamingSystems';
 import BillingLocationPicker from '@shared/components/billing/BillingLocationPicker.vue';
+import RealmTracker from '@shared/components/widgets/RealmTracker.vue';
 
 // Conditionally import PayPal store and component
 const PayPalSubscriptionButton = shallowRef(null);
@@ -7079,6 +7088,39 @@ onMounted(async () => {
   text-transform: capitalize;
 }
 
+/* Tracker card: finished-state figure beside its status */
+.tracker-preview {
+  display: flex;
+  align-items: center;
+  gap: 1.25rem;
+  margin-top: 0.75rem;
+}
+.tracker-preview-figure {
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.4rem;
+  flex-shrink: 0;
+}
+.tracker-preview-label {
+  font-family: 'Cinzel', serif;
+  font-size: 0.7rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--theme-accent);
+}
+.tracker-preview-status {
+  margin: 0;
+  max-width: 34ch;
+}
+@media (max-width: 480px) {
+  .tracker-preview {
+    flex-direction: column;
+    text-align: center;
+  }
+}
+
 /* Inline Theme Picker (RF-Vue style) */
 .theme-selector {
   margin-top: 0.5rem;
@@ -7176,4 +7218,4 @@ onMounted(async () => {
   font-style: italic;
   color: color-mix(in srgb, var(--theme-text) 70%, transparent);
 }
-</style>
+</style>
