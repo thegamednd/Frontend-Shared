@@ -128,6 +128,14 @@ describe('RealmTracker', () => {
         expect(wrapper.find('.realm-tracker').classes()).toContain('intro-complete');
     });
 
+    it('renders the finished state when intro is false, even in preview', () => {
+        const { wrapper } = setup({ props: { preview: true, intro: false }, trackerPlayed: ref(false) });
+        expect(wrapper.find('video').exists()).toBe(false);
+        expect(wrapper.find('.realm-tracker').classes()).toContain('intro-complete');
+        expect(wrapper.find('img.tracker-image').classes()).not.toContain('is-hidden');
+        expect(wrapper.find('.charge-numeral').text()).toBe('3');
+    });
+
     it('preview mode always plays the intro', () => {
         const { wrapper } = setup({ props: { preview: true }, trackerPlayed: ref(true) });
         expect(wrapper.find('video').exists()).toBe(true);
