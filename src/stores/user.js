@@ -4,6 +4,7 @@ import { useRealmStore } from '@shared/stores/realm';
 import { Hub } from 'aws-amplify/utils';
 import axios from 'axios';
 import apiClient from '@shared/utils/api';
+import { cleanFamilyName, joinName } from '@shared/utils/names';
 import {
     getImpersonatedUserId,
     getImpersonatedUserName,
@@ -56,6 +57,10 @@ export const useUserStore = defineStore('user', {
             }
             return state.user?.attributes?.given_name || null;
         },
+        lastName(state) {
+            const attributes = state.user?.attributes;
+            return cleanFamilyName(attributes?.given_name, attributes?.family_name, attributes?.identities) || null;
+        },
         fullName(state) {
             if (this.isImpersonating) {
                 const first = state.prefs?.NameFirst;
@@ -67,9 +72,7 @@ export const useUserStore = defineStore('user', {
                 if (urlName) return urlName;
                 return 'UNKNOWN';
             }
-            const givenName = state.user?.attributes?.given_name || null;
-            const familyName = state.user?.attributes?.family_name || null;
-            return (givenName || familyName) ? `${givenName} ${familyName}` : 'UNKNOWN';
+            return joinName(state.user?.attributes?.given_name, this.lastName) || 'UNKNOWN';
         },
         userSub(state) {
             if (this.isImpersonating) {
@@ -467,4 +470,4 @@ Hub.listen('auth', async (data) => {
         const userStore = useUserStore();
         userStore.user = null;
     }
-});
+});
