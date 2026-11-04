@@ -470,4 +470,4 @@ Hub.listen('auth', async (data) => {
         const userStore = useUserStore();
         userStore.user = null;
     }
-});
+});
