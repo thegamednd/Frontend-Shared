@@ -280,7 +280,7 @@ const passwordDialog = ref(null);
 // Computed properties
 const hasProfileChanges = computed(() => {
   return profileForm.value.firstName !== (userStore.firstName || '') ||
-         profileForm.value.lastName !== (userStore.user?.attributes?.family_name || '');
+         profileForm.value.lastName !== (userStore.lastName || '');
 });
 
 const authMethod = computed(() => {
@@ -316,7 +316,7 @@ const authMethodClass = computed(() => {
 // Methods
 const initializeForm = () => {
   profileForm.value.firstName = userStore.firstName || '';
-  profileForm.value.lastName = userStore.user?.attributes?.family_name || '';
+  profileForm.value.lastName = userStore.lastName || '';
 };
 
 const resetProfileForm = () => {
@@ -333,7 +333,7 @@ const saveProfile = async () => {
       updates.given_name = profileForm.value.firstName;
     }
     
-    if (profileForm.value.lastName !== (userStore.user?.attributes?.family_name || '')) {
+    if (profileForm.value.lastName !== (userStore.lastName || '')) {
       updates.family_name = profileForm.value.lastName;
     }
     
