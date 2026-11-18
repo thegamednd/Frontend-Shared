@@ -1467,7 +1467,7 @@ import { useSessionStore } from '@shared/stores/session';
 import { useConfigStore } from '@shared/stores/config';
 import { patreonService } from '@shared/services/patreonService';
 import { features } from '@shared/config/features';
-import { RPG_RULESETS, DND5E_RULESET } from '@shared/constants/gamingSystems';
+import { RPG_RULESETS, DND5E_RULESET, REALMFORGE_GAMING_SYSTEM_ID } from '@shared/constants/gamingSystems';
 import BillingLocationPicker from '@shared/components/billing/BillingLocationPicker.vue';
 import RealmTracker from '@shared/components/widgets/RealmTracker.vue';
 
@@ -1632,9 +1632,11 @@ const gamingSystemSpells = computed(() => {
 
 // Display name for the selected RPG ruleset shown on the active-realm card
 const gamingSystemDisplayName = computed(() => {
-    const ruleset = realmStore.activeRPGRuleset;
-    if (!ruleset) return null;
-    if (ruleset === DND5E_RULESET) return RPG_RULESETS.DND5E.name;
+    if (realmStore.activeRPGRuleset === DND5E_RULESET) return RPG_RULESETS.DND5E.name;
+    // Apps bound to one gaming system (The Game, D&D 5e) always use it, so name it.
+    // Only the generic RealmForge platform app leaves the choice to the realm.
+    const appSystemId = import.meta.env.VITE_GAMING_SYSTEM_ID;
+    if (appSystemId && appSystemId !== REALMFORGE_GAMING_SYSTEM_ID) return features.appName;
     return null;
 });
 
