@@ -1,0 +1,154 @@
+/* Shared look for the dynasty dialogs: full-width sheet on phones, a centred
+   panel from 40em, matching the other shared dialogs (FactionsHelpDialog). */
+.dyn-dialog {
+    padding: 0;
+    width: 100vw;
+    max-width: 100vw;
+    max-height: 92dvh;
+    overflow: hidden;
+    background: var(--theme-bg-surface);
+    color: var(--theme-text);
+    border: 1px solid color-mix(in srgb, var(--theme-text) 20%, transparent);
+    border-radius: 0;
+}
+.dyn-dialog::backdrop { background: rgb(0 0 0 / 0.6); }
+.dyn-dialog[open] .dyn-layout {
+    display: grid;
+    grid-template-rows: auto 1fr auto;
+    max-height: 92dvh;
+}
+.dyn-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5em;
+    padding: 0.85em 1em;
+    border-bottom: 1px solid color-mix(in srgb, var(--theme-text) 15%, transparent);
+}
+.dyn-header h3 {
+    margin: 0;
+    font-family: var(--theme-font-display, inherit);
+    font-size: 1.1rem;
+    overflow-wrap: anywhere;
+}
+.dyn-close {
+    flex: none;
+    width: 2em;
+    height: 2em;
+    padding: 0;
+    background: transparent;
+    border: 1px solid color-mix(in srgb, var(--theme-text) 20%, transparent);
+    border-radius: 8px;
+    color: var(--theme-text);
+    font-size: 1.1rem;
+    line-height: 1;
+    cursor: pointer;
+}
+.dyn-close:hover { border-color: var(--theme-accent); color: var(--theme-accent); }
+.dyn-body { min-height: 0; overflow-y: auto; padding: 1em; }
+.dyn-footer {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.5em;
+    padding: 0.75em 1em;
+    border-top: 1px solid color-mix(in srgb, var(--theme-text) 15%, transparent);
+}
+.dyn-footer .spacer { flex: 1; }
+
+.field { display: flex; flex-direction: column; gap: 0.3em; margin-bottom: 0.9em; min-width: 0; }
+.field > label, .field-label, .group legend {
+    font-size: 0.82rem;
+    color: color-mix(in srgb, var(--theme-text) 70%, transparent);
+}
+.group {
+    margin: 0 0 1em;
+    padding: 0.75em 0.85em 0.25em;
+    border: 1px solid color-mix(in srgb, var(--theme-text) 15%, transparent);
+    border-radius: 10px;
+    min-width: 0;
+}
+.group legend { padding: 0 0.35em; }
+.pair { display: grid; grid-template-columns: minmax(0, 1fr); gap: 0 0.9em; }
+
+.dyn-dialog input[type='text'],
+.dyn-dialog input[type='number'],
+.dyn-dialog input[type='url'],
+.dyn-dialog input:not([type]),
+.dyn-dialog select,
+.dyn-dialog textarea {
+    width: 100%;
+    box-sizing: border-box;
+    padding: 0.5em 0.6em;
+    font: inherit;
+    font-size: 16px; /* keeps iOS from zooming on focus */
+    color: var(--theme-text);
+    background: color-mix(in srgb, var(--theme-bg-primary, #000) 55%, transparent);
+    border: 1px solid color-mix(in srgb, var(--theme-text) 22%, transparent);
+    border-radius: 8px;
+}
+.dyn-dialog input:focus-visible,
+.dyn-dialog select:focus-visible,
+.dyn-dialog textarea:focus-visible,
+.dyn-dialog button:focus-visible {
+    outline: 2px solid var(--theme-accent);
+    outline-offset: 2px;
+}
+.year-row { display: flex; align-items: center; gap: 0.6em; }
+.year-row input[type='text'] { width: 7em; flex: none; }
+.year-row .abbr { color: color-mix(in srgb, var(--theme-text) 65%, transparent); }
+.check { display: inline-flex; align-items: center; gap: 0.4em; cursor: pointer; }
+.check input { width: 1.1em; height: 1.1em; accent-color: var(--theme-accent); }
+.hint { margin: 0 0 0.6em; font-size: 0.82rem; color: color-mix(in srgb, var(--theme-text) 60%, transparent); }
+.field-error { margin: 0; font-size: 0.85rem; color: var(--theme-danger, #e06c75); }
+.save-error {
+    margin: 0.5em 0 0;
+    padding: 0.6em 0.8em;
+    border-left: 3px solid var(--theme-danger, #e06c75);
+    border-radius: 0 8px 8px 0;
+    background: color-mix(in srgb, var(--theme-danger, #e06c75) 12%, transparent);
+}
+.save-error a { color: var(--theme-accent); margin-left: 0.35em; }
+
+.btn {
+    min-height: 2.5em;
+    padding: 0.45em 1.1em;
+    font: inherit;
+    border-radius: 8px;
+    cursor: pointer;
+    color: var(--theme-text);
+    background: transparent;
+    border: 1px solid color-mix(in srgb, var(--theme-text) 25%, transparent);
+}
+.btn:hover:not(:disabled) { border-color: var(--theme-accent); color: var(--theme-accent); }
+.btn-primary { background: var(--theme-accent); border-color: var(--theme-accent); color: var(--theme-bg-primary, #111); font-weight: 600; }
+.btn-primary:hover:not(:disabled) { color: var(--theme-bg-primary, #111); filter: brightness(1.1); }
+.btn-danger { border-color: var(--theme-danger, #e06c75); color: var(--theme-danger, #e06c75); }
+.btn:disabled { opacity: 0.5; cursor: not-allowed; }
+.link-btn {
+    padding: 0;
+    background: none;
+    border: none;
+    color: var(--theme-accent);
+    font: inherit;
+    font-size: 0.88rem;
+    text-decoration: underline;
+    cursor: pointer;
+}
+.choices { display: flex; flex-wrap: wrap; gap: 0.4em; margin-bottom: 0.75em; }
+.choice {
+    display: inline-flex; align-items: center; gap: 0.35em;
+    padding: 0.35em 0.8em;
+    border: 1px solid color-mix(in srgb, var(--theme-text) 22%, transparent);
+    border-radius: 999px;
+    cursor: pointer;
+}
+.choice.on { border-color: var(--theme-accent); color: var(--theme-accent); }
+.choice input { accent-color: var(--theme-accent); }
+
+@media (min-width: 40em) {
+    .dyn-dialog { width: 40em; max-width: 94vw; max-height: 88vh; border-radius: 12px; }
+    .dyn-dialog[open] .dyn-layout { max-height: 88vh; }
+    .dyn-body { padding: 1.25em; }
+    .pair { grid-template-columns: 1fr 1fr; }
+}
