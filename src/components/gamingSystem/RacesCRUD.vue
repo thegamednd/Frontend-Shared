@@ -1122,7 +1122,7 @@ const saveRace = async () => {
         Replaces: editingRace.value.ID,
         IsTemplate: false
       };
-      // A cleared field must not inherit the template's value
+      // Cleared field: omit the key (the server copies the template's value when none is sent)
       if (lifespanPayload.value === undefined) delete overrideData.LifespanPercent;
 
       await apiClient.post('/races/race', overrideData);

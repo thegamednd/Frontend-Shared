@@ -44,3 +44,35 @@ describe('ManageRaces lifespans card', () => {
         expect(setAttr).toHaveBeenCalledWith('r1', 'HumanLifespan', 90);
     });
 });
+
+describe('ManageRaces lifespan seeding', () => {
+    it('shows the realm value when the realm loads after mount', async () => {
+        const pinia = createPinia(); setActivePinia(pinia);
+        const realmStore = useRealmStore();
+        Object.defineProperty(realmStore, 'isOwner', { get: () => true, configurable: true });
+        Object.defineProperty(realmStore, 'isRealmDM', { get: () => false, configurable: true });
+        realmStore.activeRealmId = 'r1';
+        realmStore.realms = {};
+        const wrapper = mount(ManageRaces, { global: { plugins: [pinia], mocks: { $router: { back: vi.fn() } } } });
+        await flushPromises();
+        expect(wrapper.find('#humanLifespan').element.value).toBe('62');
+        realmStore.realms = { r1: { RealmID: 'r1', HumanLifespan: 80 } };
+        await flushPromises();
+        expect(wrapper.find('#humanLifespan').element.value).toBe('80');
+    });
+
+    it('does not clobber an in-progress edit', async () => {
+        const pinia = createPinia(); setActivePinia(pinia);
+        const realmStore = useRealmStore();
+        Object.defineProperty(realmStore, 'isOwner', { get: () => true, configurable: true });
+        Object.defineProperty(realmStore, 'isRealmDM', { get: () => false, configurable: true });
+        realmStore.activeRealmId = 'r1';
+        realmStore.realms = {};
+        const wrapper = mount(ManageRaces, { global: { plugins: [pinia], mocks: { $router: { back: vi.fn() } } } });
+        await flushPromises();
+        await wrapper.find('#humanLifespan').setValue('90');
+        realmStore.realms = { r1: { RealmID: 'r1', HumanLifespan: 80 } };
+        await flushPromises();
+        expect(wrapper.find('#humanLifespan').element.value).toBe('90');
+    });
+});

@@ -181,7 +181,7 @@
 </template>
 
 <script setup>
-import { computed, onMounted, ref } from 'vue';
+import { computed, onMounted, ref, watch } from 'vue';
 import { useRealmStore } from '@shared/stores/realm';
 import { useAccountStore } from '@shared/stores/account';
 import { useUserStore } from '@shared/stores/user';
@@ -563,6 +563,10 @@ async function saveRacePackages() {
 const humanLifespan = computed(() => realmStore.activeRealm?.HumanLifespan ?? DEFAULT_HUMAN_LIFESPAN);
 const lifespanInput = ref(String(realmStore.activeRealm?.HumanLifespan ?? DEFAULT_HUMAN_LIFESPAN));
 const savingLifespan = ref(false);
+// Re-seed when the realm loads or changes, unless the user has edited the field
+watch(humanLifespan, (next, prev) => {
+  if (String(lifespanInput.value) === String(prev)) lifespanInput.value = String(next);
+});
 const lifespanNumber = computed(() => toPercentPayload(lifespanInput.value));
 const lifespanValid = computed(() => validHumanLifespan(lifespanNumber.value));
 const lifespanDirty = computed(() => lifespanNumber.value !== humanLifespan.value);
