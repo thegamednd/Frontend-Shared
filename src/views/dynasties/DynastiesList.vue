@@ -24,7 +24,8 @@
             </div>
 
             <p v-if="editor && status?.needsSelection" id="add-house-note" class="notice warn" role="note">
-                Your realm has more active trees than its plan allows. Choose which ones stay active before you add a house.
+                Your realm has more active trees than its plan allows. Choose which ones stay active, or upgrade the plan, before you add a house.
+                <router-link :to="UPGRADE_PATH">See upgrade options</router-link>
             </p>
             <p v-else-if="editor && atLimit" id="add-house-note" class="notice" role="note">
                 Your plan has room for {{ status.maxTrees }} family {{ status.maxTrees === 1 ? 'tree' : 'trees' }}.

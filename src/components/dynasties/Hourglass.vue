@@ -16,7 +16,7 @@
             <path v-for="(p, i) in paths" :key="i" :d="p.d" :class="p.kind" />
         </svg>
 
-        <p v-if="editable && addBlocked" :id="blockedId" class="add-blocked" role="note">
+        <p v-if="editable && blockedText" :id="blockedId" class="add-blocked" role="note">
             {{ blockedText }}
             <router-link v-if="showUpgrade" :to="UPGRADE_PATH">See upgrade options</router-link>
         </p>
@@ -59,7 +59,7 @@
                         type="button"
                         class="add-slot"
                         :disabled="addBlocked"
-                        :aria-describedby="addBlocked ? blockedId : null"
+                        :aria-describedby="blockedText ? blockedId : null"
                         @click="emit('add', { role: slot.key })"
                     >
                         + Add {{ slot.key }}
@@ -83,7 +83,7 @@
                         @select="select"
                     />
                     <button
-                        v-if="editable"
+                        v-if="canEditMarriages"
                         type="button"
                         class="edit-marriage"
                         :title="marriageTitle(m)"
@@ -115,7 +115,7 @@
                         @select="select"
                     />
                     <button
-                        v-if="editable"
+                        v-if="canEditMarriages"
                         type="button"
                         class="edit-marriage"
                         :title="marriageTitle(m)"
@@ -131,7 +131,7 @@
                     type="button"
                     class="add-slot"
                     :disabled="addBlocked"
-                    :aria-describedby="addBlocked ? blockedId : null"
+                    :aria-describedby="blockedText ? blockedId : null"
                     @click="emit('add', { role: 'spouse' })"
                 >
                     + Add spouse
@@ -199,7 +199,7 @@
                     type="button"
                     class="add-slot"
                     :disabled="addBlocked"
-                    :aria-describedby="addBlocked ? blockedId : null"
+                    :aria-describedby="blockedText ? blockedId : null"
                     @click="emit('add', { role: 'child' })"
                 >
                     + Add child
@@ -228,7 +228,8 @@ import { UPGRADE_PATH } from '@shared/utils/dynastyErrors';
 const props = defineProps({
     data: { type: Object, required: true },
     editable: { type: Boolean, default: false },
-    // Why adding people is blocked, if it is: null | 'full' | 'frozen' | 'generation'.
+    // Why adding people is blocked, if it is: null | 'full' | 'frozen' | 'generation',
+    // 'loading' (limits not known yet, no note) or 'unknown' (limits failed to load).
     canAdd: { type: Object, default: () => ({ reason: null }) },
 });
 const emit = defineEmits(['select', 'add', 'edit-marriage']);
@@ -242,6 +243,8 @@ const LINE_MIN_WIDTH = 640;
 
 const blockedId = `hg-blocked-${Math.random().toString(36).slice(2, 8)}`;
 const addBlocked = computed(() => Boolean(props.canAdd?.reason));
+// A frozen tree is browse-only, marriages included.
+const canEditMarriages = computed(() => props.editable && props.canAdd?.reason !== 'frozen');
 const limits = computed(() => dynastiesStore.status?.limits || {});
 const blockedText = computed(() => {
     switch (props.canAdd?.reason) {
@@ -251,6 +254,8 @@ const blockedText = computed(() => {
                 : 'This family is at its limit of living members.';
         case 'frozen':
             return "This tree is frozen. You can browse it, but you can't add anyone.";
+        case 'unknown':
+            return "This tree's limits could not be loaded, so you can't add anyone yet. Reload the page to try again.";
         case 'generation':
             return limits.value.maxGenerations != null
                 ? `Your plan allows ${limits.value.maxGenerations} generations.`

@@ -54,6 +54,7 @@ describe('DynastiesList', () => {
         await flushPromises();
         expect(activationOpen()).toBe(true);
         expect(addBtn(w).attributes('disabled')).toBeDefined();
+        expect(w.find('.notice a[data-to="/account/manage-realm"]').exists()).toBe(true);
         w.unmount();
     });
 

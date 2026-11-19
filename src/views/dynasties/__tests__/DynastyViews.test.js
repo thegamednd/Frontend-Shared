@@ -65,6 +65,86 @@ describe('DynastyPerson', () => {
     });
 });
 
+describe('DynastyPerson on a frozen tree, as a DM', () => {
+    it('hides marriage edits and Edit but keeps the DM-only details', async () => {
+        params = { personId: 'p1' };
+        const store = useDynastiesStore();
+        seed(store, { frozen: true });
+        const spouse = { id: 'p2', name: 'Oswin', houseId: 'h1', gender: 'male' };
+        store.fetchPerson = vi.fn(async () => ({
+            ...hourglass,
+            person: { ...person, fatherPresumed: true },
+            marriages: [{ id: 'm1', personA: 'p1', personB: 'p2', spouseId: 'p2', spouse, from: 230 }],
+        }));
+        const w = mount(DynastyPerson, { global: { stubs } });
+        await flushPromises();
+        expect(w.text()).toContain('Oswin');
+        expect(w.find('.edit-marriage').exists()).toBe(false);
+        expect(w.text()).toContain('True father');
+        expect(w.findAll('button').some((b) => b.text() === 'Edit')).toBe(false);
+    });
+
+    it('shows marriage edits on an active tree', async () => {
+        params = { personId: 'p1' };
+        const store = useDynastiesStore();
+        seed(store);
+        const spouse = { id: 'p2', name: 'Oswin', houseId: 'h1', gender: 'male' };
+        store.fetchPerson = vi.fn(async () => ({
+            ...hourglass,
+            marriages: [{ id: 'm1', personA: 'p1', personB: 'p2', spouseId: 'p2', spouse, from: 230 }],
+        }));
+        const w = mount(DynastyPerson, { global: { stubs } });
+        await flushPromises();
+        expect(w.find('.edit-marriage').exists()).toBe(true);
+    });
+});
+
+describe('when the house list fails to load', () => {
+    function failing(store) {
+        store.houses = [];
+        store.status = null;
+        store.fetchHouses = vi.fn(async () => { throw new Error('500'); });
+    }
+
+    it('keeps adding off on the person page and says why', async () => {
+        params = { personId: 'p1' };
+        const store = useDynastiesStore();
+        failing(store);
+        store.fetchPerson = vi.fn(async () => hourglass);
+        const w = mount(DynastyPerson, { global: { stubs } });
+        await flushPromises();
+        expect(w.findComponent(Hourglass).props('canAdd')).toEqual({ reason: 'unknown' });
+        expect(w.text()).toContain("limits could not be loaded");
+    });
+
+    it('blocks adds silently while the limits are still loading', async () => {
+        params = { personId: 'p1' };
+        const store = useDynastiesStore();
+        store.houses = [];
+        store.status = null;
+        store.fetchHouses = vi.fn(() => new Promise(() => {}));
+        store.fetchPerson = vi.fn(async () => hourglass);
+        const w = mount(DynastyPerson, { global: { stubs } });
+        await flushPromises();
+        expect(w.findComponent(Hourglass).props('canAdd')).toEqual({ reason: 'loading' });
+        expect(w.find('.add-blocked').exists()).toBe(false);
+    });
+
+    it('disables Add person on the house page with a notice', async () => {
+        params = { houseId: 'h1' };
+        const store = useDynastiesStore();
+        failing(store);
+        store.fetchHouse = vi.fn(async () => {
+            store.house = { house: { id: 'h1', name: 'Vane' }, people: [], marriedIn: [], bornElsewhere: [] };
+        });
+        const w = mount(DynastyHouse, { global: { stubs } });
+        await flushPromises();
+        const add = w.findAll('button').find((b) => b.text() === 'Add person');
+        expect(add.attributes('disabled')).toBeDefined();
+        expect(w.text()).toContain('limits could not be loaded');
+    });
+});
+
 describe('DynastyHouse', () => {
     const page = { house: { id: 'h1', name: 'Vane' }, people: [{ ...person }], marriedIn: [], bornElsewhere: [] };
 

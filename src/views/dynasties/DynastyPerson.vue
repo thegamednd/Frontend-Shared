@@ -39,6 +39,7 @@
                     :marriages="data.marriages || []"
                     :deletable="Boolean(data.deletable)"
                     :editable="editor && !frozen"
+                    :dm-view="editor"
                     :legitimacy="data.legitimacy || 'unknown'"
                     :character-bio="Boolean(data.characterBio)"
                     :siblings="data.siblings || []"
@@ -111,9 +112,16 @@ const houseName = computed(() => store.houses.find((h) => h.id === personHouseId
 
 // Adding is blocked by the person's own tree: frozen first, then full. The
 // generation limit is the server's call and comes back through the dialogs.
+// Until the house list (with the limits) has loaded, nothing can be added;
+// if it fails to load, the tree says so instead of guessing.
+const limitsState = ref(store.status ? 'ok' : 'loading');
 const limit = computed(() => store.limitReached(personHouseId.value));
 const frozen = computed(() => limit.value.frozen);
-const canAdd = computed(() => ({ reason: limit.value.frozen ? 'frozen' : limit.value.full ? 'full' : null }));
+const canAdd = computed(() => {
+    if (limitsState.value === 'loading') return { reason: 'loading' };
+    if (limitsState.value === 'failed') return { reason: 'unknown' };
+    return { reason: limit.value.frozen ? 'frozen' : limit.value.full ? 'full' : null };
+});
 
 const SUMMARY_KEYS = ['id', 'name', 'houseId', 'gender', 'born', 'died', 'characterId'];
 function summaryOf(p) {
@@ -298,7 +306,12 @@ watch(personId, (id) => {
 onMounted(() => {
     emit('set-room', 'dynasties');
     // The house list carries the plan limits and frozen flags the tree needs.
-    if (!store.status) store.fetchHouses().catch(() => {});
+    if (!store.status) {
+        store
+            .fetchHouses()
+            .then(() => (limitsState.value = 'ok'))
+            .catch(() => (limitsState.value = 'failed'));
+    }
     if (!Object.keys(characterStore.characters || {}).length) characterStore.fetchCharacters?.();
     load();
 });

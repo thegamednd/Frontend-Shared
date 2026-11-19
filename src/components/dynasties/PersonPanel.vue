@@ -47,17 +47,17 @@
                 <dt>Fertility</dt>
                 <dd>{{ person.barrenSince != null ? `Barren since ${formatYear(person.barrenSince, { abbr })}` : 'Barren' }}</dd>
             </div>
-            <div v-if="editable && person.willNotMarry" class="editor-only">
+            <div v-if="dmInfo && person.willNotMarry" class="editor-only">
                 <dt>Marriage</dt>
                 <dd>Will not marry <span class="tag">editors only</span></dd>
             </div>
-            <div v-if="editable && person.fatherPresumed" class="editor-only">
+            <div v-if="dmInfo && person.fatherPresumed" class="editor-only">
                 <dt>True father</dt>
                 <dd>Not the recorded father, but a man outside the family <span class="tag">editors only</span></dd>
             </div>
         </dl>
 
-        <section v-if="editable && person.stats" class="block" aria-label="Hidden stats">
+        <section v-if="dmInfo && person.stats" class="block" aria-label="Hidden stats">
             <button type="button" class="small-btn" :aria-expanded="statsShown" @click="statsShown = !statsShown">
                 {{ statsShown ? 'Hide stats' : 'Show stats' }}
             </button>
@@ -164,7 +164,10 @@ const props = defineProps({
     house: { type: String, default: '' },
     marriages: { type: Array, default: () => [] },
     deletable: { type: Boolean, default: false },
+    // Edit, delete, reveal and marriage edits.
     editable: { type: Boolean, default: false },
+    // DM-only details (hidden stats, presumed father, will not marry), shown even when editing is off.
+    dmView: { type: Boolean, default: false },
     legitimacy: { type: String, default: 'unknown' },
     // The linked character has a bio of their own.
     characterBio: { type: Boolean, default: false },
@@ -176,6 +179,7 @@ const props = defineProps({
     mother: { type: Object, default: null },
 });
 const emit = defineEmits(['edit', 'delete', 'edit-marriage', 'reveal']);
+const dmInfo = computed(() => props.dmView || props.editable);
 
 const characterStore = useCharacterStore();
 const realmStore = useRealmStore();

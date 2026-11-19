@@ -40,8 +40,8 @@
                     <button
                         type="button"
                         class="tool-btn primary"
-                        :disabled="full"
-                        :aria-describedby="full ? 'house-full-note' : null"
+                        :disabled="full || limitsState !== 'ok'"
+                        :aria-describedby="full || limitsState === 'failed' ? 'house-full-note' : null"
                         @click="personDialog.open({ defaults: { houseId } })"
                     >
                         Add person
@@ -57,7 +57,10 @@
                     Delete house
                 </button>
             </div>
-            <p v-if="editor && full && !frozen" id="house-full-note" class="notice" role="note">{{ fullText }}</p>
+            <p v-if="editor && !frozen && limitsState === 'failed'" id="house-full-note" class="notice" role="note">
+                This tree's limits could not be loaded, so you can't add anyone yet. Reload the page to try again.
+            </p>
+            <p v-else-if="editor && full && !frozen" id="house-full-note" class="notice" role="note">{{ fullText }}</p>
             <p v-if="actionError" class="error-text" role="alert">{{ actionError }}</p>
 
             <section class="block">
@@ -174,6 +177,8 @@ const people = computed(() => page.value?.people || []);
 const marriedIn = computed(() => page.value?.marriedIn || []);
 const bornElsewhere = computed(() => page.value?.bornElsewhere || []);
 
+// Until the house list (with the limits) has loaded, Add person stays off.
+const limitsState = ref(store.status ? 'ok' : 'loading');
 const frozen = computed(() => Boolean(house.value?.frozen || store.limitReached(houseId.value).frozen));
 const full = computed(() => store.limitReached(houseId.value).full);
 const fullText = computed(() => {
@@ -263,7 +268,12 @@ watch(houseId, () => {
 onMounted(() => {
     emit('set-room', 'dynasties');
     // The house list carries the plan limits and frozen flags.
-    if (!store.status) store.fetchHouses().catch(() => {});
+    if (!store.status) {
+        store
+            .fetchHouses()
+            .then(() => (limitsState.value = 'ok'))
+            .catch(() => (limitsState.value = 'failed'));
+    }
     if (!Object.keys(characterStore.characters || {}).length) characterStore.fetchCharacters?.();
     load();
 });
