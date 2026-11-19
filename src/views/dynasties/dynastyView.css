@@ -1,0 +1,99 @@
+/* Shared page look for the dynasty views, in the same theme tokens as
+   Factions and the dynasty dialogs. Phone first; wider rules at 40em. */
+.dynasties-view {
+    max-width: 960px;
+    margin: 0 auto;
+    padding: 1em 1em 3em;
+    box-sizing: border-box;
+}
+.dyn-page-head { margin-bottom: 1em; }
+.dyn-page-head h2 {
+    margin: 0;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.5em;
+    font-family: var(--theme-font-display, inherit);
+    overflow-wrap: anywhere;
+}
+.subtitle { margin: 0.2em 0 0; font-size: 0.9rem; color: color-mix(in srgb, var(--theme-text) 65%, transparent); }
+
+.tool-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.35em;
+    min-height: 2.75em;
+    padding: 0.45em 1em;
+    box-sizing: border-box;
+    border-radius: 8px;
+    background: transparent;
+    border: 1px solid color-mix(in srgb, var(--theme-text) 25%, transparent);
+    color: var(--theme-text);
+    font: inherit;
+    font-size: 0.92rem;
+    text-decoration: none;
+    cursor: pointer;
+}
+.tool-btn .material-symbols-outlined { font-size: 1.15rem; }
+.tool-btn:hover:not(:disabled) { border-color: var(--theme-accent); color: var(--theme-accent); }
+.tool-btn:focus-visible { outline: 2px solid var(--theme-accent); outline-offset: 2px; }
+.tool-btn.primary { border-color: var(--theme-accent); }
+.tool-btn.primary:hover:not(:disabled) { background: color-mix(in srgb, var(--theme-accent) 15%, transparent); }
+.tool-btn.danger { border-color: var(--theme-danger, #e06c75); color: var(--theme-danger, #e06c75); }
+.tool-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+.notice {
+    margin: 0 0 1em;
+    padding: 0.65em 0.85em;
+    font-size: 0.9rem;
+    line-height: 1.5;
+    border-left: 3px solid var(--theme-accent);
+    border-radius: 0 8px 8px 0;
+    background: color-mix(in srgb, var(--theme-accent) 10%, transparent);
+}
+.notice.warn { border-left-color: #d8a657; background: color-mix(in srgb, #d8a657 12%, transparent); }
+.notice a { color: var(--theme-accent); margin-left: 0.25em; }
+.error-text {
+    margin: 0 0 1em;
+    padding: 0.6em 0.8em;
+    border-left: 3px solid var(--theme-danger, #e06c75);
+    border-radius: 0 8px 8px 0;
+    background: color-mix(in srgb, var(--theme-danger, #e06c75) 12%, transparent);
+}
+
+.frozen-tag {
+    font-size: 0.68rem;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    border: 1px solid #7fb4d8;
+    color: #7fb4d8;
+    border-radius: 4px;
+    padding: 0.1em 0.45em;
+    white-space: nowrap;
+}
+.hidden-tag {
+    font-size: 0.68rem;
+    font-weight: 600;
+    border: 1px solid #d8a657;
+    color: #d8a657;
+    border-radius: 4px;
+    padding: 0.1em 0.45em;
+    white-space: nowrap;
+}
+
+.empty { padding: 2em 0; text-align: center; color: color-mix(in srgb, var(--theme-text) 60%, transparent); font-style: italic; }
+.empty .tool-btn { font-style: normal; margin-top: 0.5em; }
+.empty-line { color: color-mix(in srgb, var(--theme-text) 60%, transparent); font-style: italic; font-size: 0.9rem; }
+
+.breadcrumb {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.35em;
+    font-size: 0.88rem;
+    color: color-mix(in srgb, var(--theme-text) 65%, transparent);
+}
+.breadcrumb a { color: var(--theme-accent); text-decoration: none; }
+.breadcrumb a:hover { text-decoration: underline; }
+.breadcrumb [aria-current] { overflow-wrap: anywhere; }

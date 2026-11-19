@@ -105,6 +105,24 @@ export const sharedRoutes = [
         meta: { requiresActiveRealm: true }
     },
     {
+        path: '/dynasties',
+        name: 'Dynasties',
+        component: () => import('@shared/views/dynasties/DynastiesList.vue'),
+        meta: { requiresActiveRealm: true }
+    },
+    {
+        path: '/dynasties/house/:houseId',
+        name: 'DynastyHouse',
+        component: () => import('@shared/views/dynasties/DynastyHouse.vue'),
+        meta: { requiresActiveRealm: true }
+    },
+    {
+        path: '/dynasties/person/:personId',
+        name: 'DynastyPerson',
+        component: () => import('@shared/views/dynasties/DynastyPerson.vue'),
+        meta: { requiresActiveRealm: true }
+    },
+    {
         path: '/rooms/add',
         name: 'AddRoom',
         component: () => import('@shared/views/AddRoom.vue'),
