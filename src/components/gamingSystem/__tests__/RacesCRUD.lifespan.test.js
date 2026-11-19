@@ -9,6 +9,7 @@ vi.mock('@ckeditor/ckeditor5-vue', () => ({ Ckeditor: { template: '<div />' } })
 
 const RACES = [
     { ID: 'h', RaceName: 'Human', RealmID: 'r1', Content: 'x', Tags: [], LifespanPercent: 100 },
+    { ID: 'd', RaceName: 'Dwarf', IsTemplate: true, Content: 'x', Tags: [], LifespanPercent: 400 },
     { ID: 'e', RaceName: 'Elf', RealmID: 'r1', Content: 'x', Tags: [], LifespanPercent: 750 },
 ];
 vi.mock('@shared/stores/races', () => ({
@@ -81,5 +82,25 @@ describe('RacesCRUD lifespan', () => {
         const input = w.find('#raceLifespan');
         expect(input.attributes('disabled')).toBeDefined();
         expect(w.text()).toContain('Always 100%');
+    });
+
+    it('override with a blank field carries the template value', async () => {
+        const w = await setup();
+        await openRace(w, 'Dwarf');
+        await w.find('#raceLifespan').setValue('');
+        await w.find('button.btn-primary').trigger('click');
+        await flushPromises();
+        expect(post).toHaveBeenCalledTimes(1);
+        expect(post.mock.calls[0][1].LifespanPercent).toBe(400);
+        expect(post.mock.calls[0][1].Replaces).toBe('d');
+    });
+
+    it('override with a typed value sends that value', async () => {
+        const w = await setup();
+        await openRace(w, 'Dwarf');
+        await w.find('#raceLifespan').setValue('250');
+        await w.find('button.btn-primary').trigger('click');
+        await flushPromises();
+        expect(post.mock.calls[0][1].LifespanPercent).toBe(250);
     });
 });

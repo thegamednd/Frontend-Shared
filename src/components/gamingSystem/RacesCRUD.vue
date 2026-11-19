@@ -1122,8 +1122,10 @@ const saveRace = async () => {
         Replaces: editingRace.value.ID,
         IsTemplate: false
       };
-      // Cleared field: omit the key (the server copies the template's value when none is sent)
-      if (lifespanPayload.value === undefined) delete overrideData.LifespanPercent;
+      // The override POST does not read the template server-side, so a blank field
+      // keeps the template's LifespanPercent (already carried by the spread above, if
+      // it has one); a typed value wins via baseData. Human never sends a value.
+      if (formIsHuman.value) delete overrideData.LifespanPercent;
 
       await apiClient.post('/races/race', overrideData);
     } else if (editingRace.value) {
