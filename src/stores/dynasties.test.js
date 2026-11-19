@@ -55,6 +55,32 @@ describe('savePerson', () => {
     });
 });
 
+describe('saves whose refetch fails', () => {
+    it('savePerson resolves once the write succeeds, even if the refetch fails', async () => {
+        post.mockResolvedValue({ data: { data: { id: 'p1' } } });
+        get.mockRejectedValue(new Error('Network Error'));
+        const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+        const store = useDynastiesStore();
+        store.house = { house: { id: 'h1' } };
+        await expect(store.savePerson({ name: 'A', houseId: 'h1' })).resolves.toEqual({ id: 'p1' });
+        expect(store.error).toBeNull();
+        expect(store.loading).toBe(false);
+        warn.mockRestore();
+    });
+
+    it('saveMarriage and saveHouse resolve too', async () => {
+        post.mockResolvedValue({ data: { data: { id: 'x1' } } });
+        get.mockRejectedValue(new Error('Network Error'));
+        const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+        const store = useDynastiesStore();
+        store.person = { person: { id: 'p1' } };
+        await expect(store.saveMarriage({ personA: 'p1', personB: 'p2' })).resolves.toEqual({ id: 'x1' });
+        await expect(store.saveHouse({ name: 'Vane' })).resolves.toEqual({ id: 'x1' });
+        expect(store.error).toBeNull();
+        warn.mockRestore();
+    });
+});
+
 describe('limitReached', () => {
     it('reports full and frozen', () => {
         const store = useDynastiesStore();

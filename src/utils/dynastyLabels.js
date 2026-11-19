@@ -40,9 +40,9 @@ export function legitimacyText(value) {
 
 // The short form for cards and lists: "190 SF to 240 SF", or "b. 190 SF".
 export function shortLifespan(person, abbr = 'SF') {
-    const { born, died, bornApprox, diedApprox } = person || {};
-    const b = formatYear(born, { approx: bornApprox, abbr });
-    const d = formatYear(died, { approx: diedApprox, abbr });
+    const { born, died } = person || {};
+    const b = formatYear(born, { abbr });
+    const d = formatYear(died, { abbr });
     if (b && d) return `${b} to ${d}`;
     if (b) return `b. ${b}`;
     if (d) return `d. ${d}`;
@@ -51,9 +51,9 @@ export function shortLifespan(person, abbr = 'SF') {
 
 // The long form for the person panel. currentYear is optional.
 export function lifespanText(person, abbr = 'SF', currentYear = null) {
-    const { born, died, bornApprox, diedApprox } = person || {};
-    const b = formatYear(born, { approx: bornApprox, abbr });
-    const d = formatYear(died, { approx: diedApprox, abbr });
+    const { born, died } = person || {};
+    const b = formatYear(born, { abbr });
+    const d = formatYear(died, { abbr });
     if (b && d) return `${b} to ${d}, aged ${ageAt(born, died)}`;
     if (d) return `died ${d}`;
     if (!b) return 'dates unknown';

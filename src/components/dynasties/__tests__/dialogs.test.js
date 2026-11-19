@@ -87,6 +87,14 @@ describe('HouseEditDialog', () => {
 });
 
 describe('PersonPanel', () => {
+    it('shows the presumed-father note to editors only', () => {
+        const person = { id: 'p1', name: 'Edda', houseId: 'h1', gender: 'female', born: 212, titles: [], fatherPresumed: true };
+        const reader = mount(PersonPanel, { props: { person }, global: { stubs } });
+        expect(reader.text()).not.toContain('True father');
+        const editor = mount(PersonPanel, { props: { person, editable: true }, global: { stubs } });
+        expect(editor.text()).toContain('True father');
+    });
+
     it('shows the lifespan with the realm suffix and the age now', () => {
         const w = mount(PersonPanel, {
             props: { person: { id: 'p1', name: 'Edda', houseId: 'h1', gender: 'female', born: 212, titles: [] }, house: 'Vane' },

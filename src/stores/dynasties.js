@@ -47,10 +47,23 @@ export const useDynastiesStore = defineStore('dynasties', {
                 if (loading) this.loading = false;
             }
         },
+        // Refetch after a successful write. The write already happened, so a
+        // failed refetch is logged and never reported as a failed save (a retry
+        // would create a duplicate).
+        async _refreshQuietly(fn) {
+            try {
+                await fn();
+            } catch (err) {
+                this.error = null;
+                console.warn('Dynasties: refresh after save failed', err);
+            }
+        },
         // Refetch whichever view is open: person, else house.
         async _refreshCurrent() {
-            if (this.person?.person?.id) await this.fetchPerson(this.person.person.id);
-            else if (this.house?.house?.id) await this.fetchHouse(this.house.house.id);
+            await this._refreshQuietly(async () => {
+                if (this.person?.person?.id) await this.fetchPerson(this.person.person.id);
+                else if (this.house?.house?.id) await this.fetchHouse(this.house.house.id);
+            });
         },
         async fetchHouses() {
             return this._run(async () => {
@@ -95,8 +108,10 @@ export const useDynastiesStore = defineStore('dynasties', {
                 const res = house.id
                     ? await apiClient.put(`/dynasties/houses/${enc(house.id)}`, house)
                     : await apiClient.post('/dynasties/houses', house);
-                await this.fetchHouses();
-                if (this.house?.house?.id) await this.fetchHouse(this.house.house.id);
+                await this._refreshQuietly(async () => {
+                    await this.fetchHouses();
+                    if (this.house?.house?.id) await this.fetchHouse(this.house.house.id);
+                });
                 return res.data.data;
             });
         },
@@ -104,7 +119,7 @@ export const useDynastiesStore = defineStore('dynasties', {
             return this._run(async () => {
                 await apiClient.delete(`/dynasties/houses/${enc(id)}`);
                 if (this.house?.house?.id === id) this.house = null;
-                await this.fetchHouses();
+                await this._refreshQuietly(() => this.fetchHouses());
             });
         },
         async setActiveHouses(ids) {

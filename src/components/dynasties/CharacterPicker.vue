@@ -12,12 +12,11 @@
             <input v-model="query" type="text" autocomplete="off" aria-label="Filter characters by name" placeholder="Filter characters by name" />
             <ul v-if="rows.length" class="rows">
                 <li v-for="c in rows" :key="idOf(c)">
-                    <button type="button" :class="{ linked: isLinked(c) }" @click="pick(c)">
+                    <button type="button" @click="pick(c)">
                         <img v-if="thumb(c)" class="thumb" :src="thumb(c)" alt="" loading="lazy" />
                         <span v-else class="thumb blank" aria-hidden="true"></span>
                         <span class="name">{{ nameOf(c) }}</span>
                         <span v-if="bornText(c)" class="born">{{ bornText(c) }}</span>
-                        <span v-if="isLinked(c)" class="linked-note">already in a tree</span>
                     </button>
                 </li>
             </ul>
@@ -38,8 +37,6 @@ import { characterId as idOf, characterImageUrl, characterName as nameOf, charac
 // Picks one of the realm's characters (the gallery) to link to a person.
 const props = defineProps({
     modelValue: { type: String, default: null },
-    // Characters already linked to a person; shown dimmed but still selectable.
-    linkedCharacterIds: { type: [Array, Set], default: () => [] },
 });
 const emit = defineEmits(['update:modelValue', 'selected']);
 
@@ -66,8 +63,6 @@ const rows = computed(() => {
     return found.slice(0, 30);
 });
 
-const linked = computed(() => new Set(props.linkedCharacterIds || []));
-const isLinked = (c) => linked.value.has(idOf(c));
 const thumb = (c) => characterImageUrl(c);
 
 function bornText(c) {
@@ -137,10 +132,7 @@ input:focus-visible,
     border: 1px dashed color-mix(in srgb, var(--theme-text) 25%, transparent);
 }
 .name { flex: 1; min-width: 0; overflow-wrap: anywhere; }
-.born, .linked-note { font-size: 0.8em; color: color-mix(in srgb, var(--theme-text) 60%, transparent); }
-.linked-note { font-style: italic; }
-.rows button.linked { color: color-mix(in srgb, var(--theme-text) 60%, transparent); }
-.rows button.linked .thumb { opacity: 0.5; }
+.born { font-size: 0.8em; color: color-mix(in srgb, var(--theme-text) 60%, transparent); }
 .chosen {
     display: flex;
     align-items: center;

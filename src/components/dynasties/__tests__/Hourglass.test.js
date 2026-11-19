@@ -84,6 +84,15 @@ describe('Hourglass', () => {
         expect(note.find('a').exists()).toBe(false);
     });
 
+    it('never shows "undefined" when the limits have not loaded', () => {
+        for (const reason of ['full', 'generation']) {
+            const w = mountHourglass({ reason }, null);
+            const text = w.find('.add-blocked').text();
+            expect(text).not.toContain('undefined');
+            expect(text.length).toBeGreaterThan(10);
+        }
+    });
+
     it('shows years with the realm date suffix', () => {
         const w = mountHourglass({ reason: null });
         expect(w.text()).toContain('212 AR');

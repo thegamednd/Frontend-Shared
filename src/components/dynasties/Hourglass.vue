@@ -246,11 +246,15 @@ const limits = computed(() => dynastiesStore.status?.limits || {});
 const blockedText = computed(() => {
     switch (props.canAdd?.reason) {
         case 'full':
-            return `This family is at its limit of ${limits.value.hardCap} living members.`;
+            return limits.value.hardCap != null
+                ? `This family is at its limit of ${limits.value.hardCap} living members.`
+                : 'This family is at its limit of living members.';
         case 'frozen':
             return "This tree is frozen. You can browse it, but you can't add anyone.";
         case 'generation':
-            return `Your plan allows ${limits.value.maxGenerations} generations.`;
+            return limits.value.maxGenerations != null
+                ? `Your plan allows ${limits.value.maxGenerations} generations.`
+                : "Your plan doesn't allow another generation.";
         default:
             return '';
     }
@@ -627,16 +631,16 @@ watch(
 .spouse { position: relative; }
 .edit-marriage {
     position: absolute;
-    top: -10px;
-    right: -10px;
-    width: 26px;
-    height: 26px;
+    top: -1.1em;
+    right: -1.1em;
+    width: 2.75em;
+    height: 2.75em;
     padding: 0;
     border: 1px solid var(--theme-accent);
     border-radius: 50%;
     background: var(--theme-bg-surface);
     color: var(--theme-accent);
-    font-size: 12px;
+    font-size: 0.8rem;
     line-height: 1;
     cursor: pointer;
 }

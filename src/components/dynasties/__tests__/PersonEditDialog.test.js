@@ -48,19 +48,21 @@ function mountDialog() {
 }
 
 describe('PersonEditDialog', () => {
-    it('saves born 212 marked approximate as { born: 212, bornApprox: true }', async () => {
+    it('saves born 212 as { born: 212 } with no approx keys', async () => {
         const { w, store } = mountDialog();
         w.vm.open({ defaults: { houseId: 'h1' } });
         await flushPromises();
         await w.find('input[data-field="name"]').setValue('Edda');
         await w.find('input[data-field="born"]').setValue('212');
-        await w.find('input[data-field="bornApprox"]').setValue(true);
+        expect(w.find('input[data-field="bornApprox"]').exists()).toBe(false);
         await w.find('form').trigger('submit');
         await flushPromises();
         expect(store.savePerson).toHaveBeenCalledTimes(1);
         expect(store.savePerson.mock.calls[0][0]).toMatchObject({
-            name: 'Edda', houseId: 'h1', born: 212, bornApprox: true,
+            name: 'Edda', houseId: 'h1', born: 212,
         });
+        expect(store.savePerson.mock.calls[0][0]).not.toHaveProperty('bornApprox');
+        expect(store.savePerson.mock.calls[0][0]).not.toHaveProperty('diedApprox');
     });
 
     it('fills an empty name from the chosen character', async () => {
@@ -105,6 +107,13 @@ describe('PersonEditDialog', () => {
         const err = w.find('.save-error');
         expect(err.text()).toContain('at most 3 generations');
         expect(err.find('a').exists()).toBe(true);
+    });
+
+    it('limits the name to 120 characters', async () => {
+        const { w } = mountDialog();
+        w.vm.open({ defaults: { houseId: 'h1' } });
+        await flushPromises();
+        expect(w.find('input[data-field="name"]').attributes('maxlength')).toBe('120');
     });
 
     it('refuses year 0 before saving', async () => {

@@ -42,6 +42,7 @@
                             v-model="form.name"
                             data-field="name"
                             type="text"
+                            maxlength="120"
                             autocomplete="off"
                             :placeholder="!editing && form.characterId ? 'Leave blank to use the character\'s name' : ''"
                         />
@@ -80,10 +81,6 @@
                                     @blur="f.key === 'born' && (bornTouched = true)"
                                 />
                                 <span class="abbr">{{ abbr }}</span>
-                                <label class="check">
-                                    <input v-model="form[f.approx]" :data-field="f.approx" type="checkbox" />
-                                    approx.
-                                </label>
                             </div>
                             <p v-if="errors[f.key]" class="field-error">{{ errors[f.key] }}</p>
                         </div>
@@ -317,8 +314,8 @@ const parentSlots = [
     { key: 'mother', field: 'motherId', label: 'Mother' },
 ];
 const yearFields = [
-    { key: 'born', approx: 'bornApprox', label: 'Born *' },
-    { key: 'died', approx: 'diedApprox', label: 'Died' },
+    { key: 'born', label: 'Born *' },
+    { key: 'died', label: 'Died' },
 ];
 
 const dialogRef = ref(null);
@@ -355,9 +352,7 @@ function blankForm() {
         houseId: '',
         gender: 'unknown',
         born: '',
-        bornApprox: false,
         died: '',
-        diedApprox: false,
         fatherId: null,
         motherId: null,
         legitimate: 'auto',
@@ -657,9 +652,7 @@ function fill(person, defaults) {
     form.houseId = src.houseId || '';
     form.gender = src.gender || 'unknown';
     form.born = yearText(src.born);
-    form.bornApprox = src.bornApprox === true;
     form.died = yearText(src.died);
-    form.diedApprox = src.diedApprox === true;
     form.fatherId = src.fatherId || null;
     form.motherId = src.motherId || null;
     form.legitimate = src.legitimate === true ? 'yes' : src.legitimate === false ? 'no' : 'auto';
@@ -820,9 +813,7 @@ function buildPayload() {
         houseId: form.houseId || null,
         gender: form.gender,
         born,
-        bornApprox: born !== null && form.bornApprox,
         died,
-        diedApprox: died !== null && form.diedApprox,
         fatherId: form.fatherId || null,
         motherId: form.motherId || null,
         titles: form.titles

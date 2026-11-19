@@ -51,7 +51,7 @@
                 <dt>Marriage</dt>
                 <dd>Will not marry <span class="tag">editors only</span></dd>
             </div>
-            <div v-if="person.fatherPresumed" class="editor-only">
+            <div v-if="editable && person.fatherPresumed" class="editor-only">
                 <dt>True father</dt>
                 <dd>Not the recorded father, but a man outside the family <span class="tag">editors only</span></dd>
             </div>

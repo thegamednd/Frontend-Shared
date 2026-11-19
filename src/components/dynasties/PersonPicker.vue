@@ -18,6 +18,7 @@
                 </button>
             </li>
         </ul>
+        <p v-else-if="searchError" class="hint error" role="alert">{{ searchError }}</p>
         <p v-else-if="searchedFor" class="hint">Nobody in the trees matches "{{ searchedFor }}".</p>
     </div>
 </template>
@@ -43,6 +44,7 @@ const input = ref(null);
 const query = ref('');
 const hits = ref([]);
 const searchedFor = ref('');
+const searchError = ref('');
 let timer = null;
 // Only the newest search may fill the list; slower earlier replies are dropped.
 let seq = 0;
@@ -59,6 +61,7 @@ function onInput() {
         seq++;
         hits.value = [];
         searchedFor.value = '';
+        searchError.value = '';
         return;
     }
     timer = setTimeout(() => runSearch(q), 250);
@@ -67,12 +70,14 @@ function onInput() {
 async function runSearch(q) {
     const mine = ++seq;
     let found = [];
+    let failed = '';
     try {
         found = (await dynastiesStore.search(q)) || [];
-    } catch {
-        found = [];
+    } catch (e) {
+        failed = dynastiesStore.error?.message || e?.message || 'The search failed. Try again.';
     }
     if (mine !== seq) return;
+    searchError.value = failed;
     const skip = new Set(props.excludeIds.filter(Boolean));
     hits.value = found.filter((h) => !skip.has(h.id));
     searchedFor.value = q;
@@ -88,6 +93,7 @@ function pick(p) {
     query.value = '';
     hits.value = [];
     searchedFor.value = '';
+    searchError.value = '';
 }
 </script>
 
@@ -134,5 +140,6 @@ input:focus-visible { outline: 2px solid var(--theme-accent); outline-offset: 2p
 .hits button:focus-visible { background: color-mix(in srgb, var(--theme-accent) 12%, transparent); outline: none; }
 .hit-name { color: var(--theme-accent); }
 .hit-meta { font-size: 0.8rem; color: color-mix(in srgb, var(--theme-text) 60%, transparent); }
+.hint.error { color: var(--theme-danger, #e06c75); }
 .hint { margin: 0; font-size: 0.82rem; color: color-mix(in srgb, var(--theme-text) 60%, transparent); }
 </style>
