@@ -127,6 +127,40 @@
         </div>
       </div>
 
+      <!-- Lifespans -->
+      <div v-if="realmStore.activeRealmId" class="lifespan-card">
+        <h2>
+          <span class="material-symbols-outlined">hourglass_bottom</span>
+          Lifespans
+        </h2>
+        <p class="lifespan-summary">Humans live about {{ humanLifespan }} years. Other races are set as a percentage of that.</p>
+        <div v-if="canManageRaces" class="lifespan-form">
+          <label for="humanLifespan">Human lifespan (years)</label>
+          <div class="lifespan-row">
+            <input
+              id="humanLifespan"
+              v-model="lifespanInput"
+              type="number"
+              inputmode="numeric"
+              min="20"
+              max="500"
+              step="1"
+              class="lifespan-input"
+            />
+            <button
+              type="button"
+              class="btn-save-lifespan"
+              :disabled="!lifespanValid || !lifespanDirty || savingLifespan"
+              @click="saveHumanLifespan"
+            >
+              <span v-if="savingLifespan" class="loading-spinner-small"></span>
+              <template v-else>Save</template>
+            </button>
+          </div>
+          <p v-if="lifespanError" class="lifespan-error">{{ lifespanError }}</p>
+        </div>
+      </div>
+
       <!-- Races CRUD Interface -->
       <div class="crud-container">
         <RacesCRUD
@@ -156,6 +190,7 @@ import { useRacesStore } from '@shared/stores/races';
 import { useNotifications } from '@shared/composables/useNotifications';
 import { useShopStore } from '@shared/stores/shop';
 import RacesCRUD from '@shared/components/gamingSystem/RacesCRUD.vue';
+import { DEFAULT_HUMAN_LIFESPAN, toPercentPayload, validHumanLifespan } from '@shared/utils/raceLifespan';
 import apiClient from '@shared/utils/api';
 import axios from 'axios';
 
@@ -524,6 +559,35 @@ async function saveRacePackages() {
   }
 }
 
+// Human lifespan (realm-level baseline for race lifespans)
+const humanLifespan = computed(() => realmStore.activeRealm?.HumanLifespan ?? DEFAULT_HUMAN_LIFESPAN);
+const lifespanInput = ref(String(realmStore.activeRealm?.HumanLifespan ?? DEFAULT_HUMAN_LIFESPAN));
+const savingLifespan = ref(false);
+const lifespanNumber = computed(() => toPercentPayload(lifespanInput.value));
+const lifespanValid = computed(() => validHumanLifespan(lifespanNumber.value));
+const lifespanDirty = computed(() => lifespanNumber.value !== humanLifespan.value);
+const lifespanError = computed(() =>
+  lifespanValid.value ? '' : 'Enter a whole number of years from 20 to 500.'
+);
+
+async function saveHumanLifespan() {
+  if (!canManageRaces.value || !lifespanValid.value || savingLifespan.value) return;
+  savingLifespan.value = true;
+  try {
+    const result = await realmStore.setAttr(realmStore.activeRealmId, 'HumanLifespan', lifespanNumber.value);
+    if (result === null || result === undefined) {
+      notifyError('Could not save the human lifespan. Try again.');
+    } else {
+      notifySuccess('Human lifespan saved.');
+    }
+  } catch (error) {
+    console.error('Error saving human lifespan:', error);
+    notifyError('Could not save the human lifespan. Try again.');
+  } finally {
+    savingLifespan.value = false;
+  }
+}
+
 onMounted(async () => {
   if (!gamingSystemsStore.isLoaded) {
     await gamingSystemsStore.fetchGamingSystems();
@@ -662,6 +726,77 @@ onMounted(async () => {
 .no-data p {
   margin: 0;
   font-size: 1.1rem;
+}
+
+/* Lifespans */
+.lifespan-card {
+  background: linear-gradient(135deg, var(--theme-bg-surface) 0%, #2a3a5a 100%);
+  border: 1px solid color-mix(in srgb, var(--theme-accent) 20%, transparent);
+  border-radius: 1rem;
+  padding: 1.5rem 2rem;
+  margin-bottom: 2rem;
+}
+
+.lifespan-card h2 {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin: 0 0 0.5rem 0;
+  color: var(--theme-accent);
+  font-size: 1.5rem;
+  font-weight: 600;
+}
+
+.lifespan-summary {
+  margin: 0 0 1rem 0;
+  color: #ccc;
+  font-size: 0.95rem;
+  line-height: 1.6;
+}
+
+.lifespan-form label {
+  display: block;
+  margin-bottom: 0.4rem;
+  color: #ccc;
+  font-size: 0.9rem;
+}
+
+.lifespan-row {
+  display: flex;
+  gap: 0.75rem;
+}
+
+.lifespan-input {
+  width: 8rem;
+  padding: 0.75rem;
+  background: rgba(0, 0, 0, 0.25);
+  color: #fff;
+  border: 1px solid color-mix(in srgb, var(--theme-accent) 30%, transparent);
+  border-radius: 0.5rem;
+  font-size: 1rem;
+}
+
+.btn-save-lifespan {
+  padding: 0.75rem 1.5rem;
+  background: linear-gradient(135deg, var(--theme-accent) 0%, #e6b373 100%);
+  color: var(--theme-bg-surface);
+  border: none;
+  border-radius: 0.5rem;
+  cursor: pointer;
+  font-weight: 700;
+  font-size: 1rem;
+  min-width: 5rem;
+}
+
+.btn-save-lifespan:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.lifespan-error {
+  margin: 0.5rem 0 0 0;
+  color: #ff8a80;
+  font-size: 0.9rem;
 }
 
 /* Race Packages Section */
@@ -1023,6 +1158,16 @@ onMounted(async () => {
 
   .btn-apply-changes {
     width: 100%;
+  }
+
+  .lifespan-card {
+    padding: 1.25rem;
+  }
+
+  .lifespan-input {
+    flex: 1;
+    width: auto;
+    min-width: 0;
   }
 
   .unsaved-changes-notice {
