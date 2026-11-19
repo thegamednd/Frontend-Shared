@@ -54,7 +54,7 @@ describe('DynastiesList', () => {
         await flushPromises();
         expect(activationOpen()).toBe(true);
         expect(addBtn(w).attributes('disabled')).toBeDefined();
-        expect(w.find('.notice a[data-to="/account/manage-realm"]').exists()).toBe(true);
+        expect(w.find('.notice a[href$="/pricing"][target="_blank"]').exists()).toBe(true);
         w.unmount();
     });
 
@@ -74,7 +74,7 @@ describe('DynastiesList', () => {
         await flushPromises();
         expect(w.text()).toContain('Trees: 3 of 3');
         expect(addBtn(w).attributes('disabled')).toBeDefined();
-        expect(w.find('a[data-to="/account/manage-realm"]').exists()).toBe(true);
+        expect(w.find('a[href$="/pricing"][target="_blank"]').exists()).toBe(true);
         expect(activationOpen()).toBe(false);
         w.unmount();
     });

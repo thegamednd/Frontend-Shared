@@ -25,11 +25,11 @@
 
             <p v-if="editor && status?.needsSelection" id="add-house-note" class="notice warn" role="note">
                 Your realm has more active trees than its plan allows. Choose which ones stay active, or upgrade the plan, before you add a house.
-                <router-link :to="UPGRADE_PATH">See upgrade options</router-link>
+                <a :href="upgradeHref" target="_blank" rel="noopener">See upgrade options</a>
             </p>
             <p v-else-if="editor && atLimit" id="add-house-note" class="notice" role="note">
                 Your plan has room for {{ status.maxTrees }} family {{ status.maxTrees === 1 ? 'tree' : 'trees' }}.
-                <router-link :to="UPGRADE_PATH">See upgrade options</router-link>
+                <a :href="upgradeHref" target="_blank" rel="noopener">See upgrade options</a>
             </p>
 
             <div v-if="!store.houses.length" class="empty">
@@ -102,7 +102,9 @@ import { useDynastiesStore } from '@shared/stores/dynasties';
 import { useUserStore } from '@shared/stores/user';
 import { useRealmStore } from '@shared/stores/realm';
 import { shortLifespan } from '@shared/utils/dynastyLabels';
-import { UPGRADE_PATH } from '@shared/utils/dynastyErrors';
+import { upgradeUrl } from '@shared/utils/dynastyErrors';
+
+const upgradeHref = upgradeUrl();
 import LoadingState from '@shared/components/LoadingState.vue';
 import HouseEditDialog from '@shared/components/dynasties/HouseEditDialog.vue';
 import TreeActivationDialog from '@shared/components/dynasties/TreeActivationDialog.vue';

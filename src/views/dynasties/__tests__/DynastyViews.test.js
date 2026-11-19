@@ -21,6 +21,7 @@ vi.mock('@shared/stores/character', () => ({
 import DynastyHouse from '../DynastyHouse.vue';
 import DynastyPerson from '../DynastyPerson.vue';
 import Hourglass from '@shared/components/dynasties/Hourglass.vue';
+import PersonEditDialog from '@shared/components/dynasties/PersonEditDialog.vue';
 import { useDynastiesStore } from '@shared/stores/dynasties';
 
 const limits = { family: 'free', maxTrees: 3, maxGenerations: 3, softCap: 20, hardCap: 2 };
@@ -62,6 +63,55 @@ describe('DynastyPerson', () => {
         const w = mount(DynastyPerson, { global: { stubs } });
         await flushPromises();
         expect(w.findComponent(Hourglass).props('canAdd')).toEqual({ reason: 'full' });
+    });
+});
+
+describe('DynastyPerson adding a parent', () => {
+    it('deletes the new parent and offers the upgrade link when linking hits the generation limit', async () => {
+        params = { personId: 'p1' };
+        const store = useDynastiesStore();
+        seed(store);
+        store.fetchPerson = vi.fn(async () => hourglass);
+        store.savePerson = vi.fn(async () => {
+            store.error = { code: 'GENERATION_LIMIT', message: 'A family tree can hold at most 3 generations', upgrade: true };
+            throw new Error('409');
+        });
+        store.deletePerson = vi.fn(async () => {
+            store.error = null;
+        });
+        const w = mount(DynastyPerson, { global: { stubs } });
+        await flushPromises();
+        w.findComponent(Hourglass).vm.$emit('add', { role: 'mother' });
+        await flushPromises();
+        w.findComponent(PersonEditDialog).vm.$emit('saved', { id: 'new1', name: 'Hild' });
+        await flushPromises();
+        expect(store.savePerson).toHaveBeenCalledWith(expect.objectContaining({ id: 'p1', motherId: 'new1' }));
+        expect(store.deletePerson).toHaveBeenCalledWith('new1');
+        const err = w.find('.action-error');
+        expect(err.text()).toContain('at most 3 generations');
+        expect(err.find('a').attributes('href')).toMatch(/\/pricing$/);
+    });
+
+    it('keeps a plain error without an upgrade link for other link failures', async () => {
+        params = { personId: 'p1' };
+        const store = useDynastiesStore();
+        seed(store);
+        store.fetchPerson = vi.fn(async () => hourglass);
+        store.savePerson = vi.fn(async () => {
+            store.error = { code: 'VALIDATION', message: 'Born after the child' };
+            throw new Error('400');
+        });
+        store.deletePerson = vi.fn(async () => {});
+        const w = mount(DynastyPerson, { global: { stubs } });
+        await flushPromises();
+        w.findComponent(Hourglass).vm.$emit('add', { role: 'father' });
+        await flushPromises();
+        w.findComponent(PersonEditDialog).vm.$emit('saved', { id: 'new2', name: 'Oswin' });
+        await flushPromises();
+        expect(store.deletePerson).toHaveBeenCalledWith('new2');
+        const err = w.find('.action-error');
+        expect(err.text()).toContain('Born after the child');
+        expect(err.find('a').exists()).toBe(false);
     });
 });
 

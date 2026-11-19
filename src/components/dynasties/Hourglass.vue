@@ -18,7 +18,7 @@
 
         <p v-if="editable && blockedText" :id="blockedId" class="add-blocked" role="note">
             {{ blockedText }}
-            <router-link v-if="showUpgrade" :to="UPGRADE_PATH">See upgrade options</router-link>
+            <a v-if="showUpgrade" :href="upgradeHref" target="_blank" rel="noopener">See upgrade options</a>
         </p>
 
         <section class="hg-row" aria-label="Grandparents">
@@ -223,7 +223,9 @@ import PersonCard from './PersonCard.vue';
 import { useDynastiesStore } from '@shared/stores/dynasties';
 import { useRealmStore } from '@shared/stores/realm';
 import { childGroupHeading, marriageCaption } from '@shared/utils/dynastyLabels';
-import { UPGRADE_PATH } from '@shared/utils/dynastyErrors';
+import { upgradeUrl } from '@shared/utils/dynastyErrors';
+
+const upgradeHref = upgradeUrl();
 
 const props = defineProps({
     data: { type: Object, required: true },

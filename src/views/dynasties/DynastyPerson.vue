@@ -22,7 +22,10 @@
                 <router-link v-if="data.person.houseId" class="tool-btn" :to="houseLink">House overview</router-link>
             </div>
 
-            <p v-if="actionError" class="error-text" role="alert">{{ actionError }}</p>
+            <p v-if="actionError" class="error-text action-error" role="alert">
+                {{ actionError }}
+                <a v-if="actionUpgrade" :href="upgradeHref" target="_blank" rel="noopener">See upgrade options</a>
+            </p>
 
             <div class="person-layout" :class="{ switching }" :aria-busy="switching">
                 <Hourglass
@@ -82,6 +85,7 @@ import PersonPanel from '@shared/components/dynasties/PersonPanel.vue';
 import PersonEditDialog from '@shared/components/dynasties/PersonEditDialog.vue';
 import MarriageEditDialog from '@shared/components/dynasties/MarriageEditDialog.vue';
 import DynastyConfirmDialog from '@shared/components/dynasties/DynastyConfirmDialog.vue';
+import { saveFailure, upgradeUrl } from '@shared/utils/dynastyErrors';
 
 const emit = defineEmits(['set-room']);
 const route = useRoute();
@@ -101,6 +105,11 @@ const confirmOpen = ref(false);
 const deleting = ref(false);
 const deleteError = ref('');
 const actionError = ref('');
+// Whether actionError comes with the upgrade link (a generation limit on a free plan).
+const actionUpgrade = ref(false);
+const upgradeHref = upgradeUrl();
+// Any new message (or clearing it) drops the link; the parent-link failure sets it after its message.
+watch(actionError, () => (actionUpgrade.value = false), { flush: 'sync' });
 
 // The parent role awaiting a save, and the record it will be linked to.
 let pendingParent = null;
@@ -269,8 +278,21 @@ async function onPersonSaved(saved) {
         try {
             await store.savePerson({ ...editableFields(pending.record), [field]: saved.id });
         } catch (e) {
+            // The parent was created only to be linked: without the link it is an
+            // orphan using a place in the tree, so it goes again. Read the failure
+            // before deleting, which clears store.error.
+            const failure = saveFailure(store, e, 'The parent could not be linked.');
             const who = saved.name || 'The new parent';
-            actionError.value = `${who} was saved but could not be set as a parent: ${store.error?.message || e?.message}`;
+            let removed = true;
+            try {
+                await store.deletePerson(saved.id);
+            } catch {
+                removed = false;
+            }
+            actionError.value = removed
+                ? `${who} was not added as a parent: ${failure.message}`
+                : `${who} was saved but could not be set as a parent: ${failure.message}`;
+            actionUpgrade.value = failure.upgrade;
         }
     }
     await refresh();

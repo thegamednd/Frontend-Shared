@@ -106,7 +106,7 @@ describe('PersonEditDialog', () => {
         await flushPromises();
         const err = w.find('.save-error');
         expect(err.text()).toContain('at most 3 generations');
-        expect(err.find('a').exists()).toBe(true);
+        expect(err.find('a').attributes('href')).toMatch(/\/pricing$/);
     });
 
     it('limits the name to 120 characters', async () => {

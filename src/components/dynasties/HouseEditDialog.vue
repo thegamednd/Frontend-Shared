@@ -77,7 +77,7 @@
 
                     <p v-if="failure" class="save-error" role="alert">
                         {{ failure.message }}
-                        <router-link v-if="failure.upgrade" :to="UPGRADE_PATH">See upgrade options</router-link>
+                        <a v-if="failure.upgrade" :href="upgradeHref" target="_blank" rel="noopener">See upgrade options</a>
                     </p>
                 </form>
             </div>
@@ -98,7 +98,9 @@ import { computed, nextTick, reactive, ref } from 'vue';
 import { useDynastiesStore } from '@shared/stores/dynasties';
 import { useRealmStore } from '@shared/stores/realm';
 import { toSignedYear } from '@shared/utils/dynastyYears';
-import { saveFailure, UPGRADE_PATH } from '@shared/utils/dynastyErrors';
+import { saveFailure, upgradeUrl } from '@shared/utils/dynastyErrors';
+
+const upgradeHref = upgradeUrl();
 import CharacterPicker from './CharacterPicker.vue';
 
 const emit = defineEmits(['saved']);

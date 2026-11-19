@@ -74,7 +74,10 @@ describe('Hourglass', () => {
         const w = mountHourglass({ reason: 'generation' });
         const note = w.find('.add-blocked');
         expect(note.text()).toContain('3 generations');
-        expect(note.find('a').attributes('data-to')).toBe('/account/manage-realm');
+        const link = note.find('a');
+        expect(link.attributes('href')).toMatch(/\/pricing$/);
+        expect(link.attributes('target')).toBe('_blank');
+        expect(link.attributes('rel')).toBe('noopener');
     });
 
     it('leaves out the upgrade link on a paid family', () => {
