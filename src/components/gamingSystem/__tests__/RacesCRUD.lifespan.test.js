@@ -25,11 +25,11 @@ vi.mock('@shared/stores/races', () => ({
 import RacesCRUD from '../RacesCRUD.vue';
 import { useRealmStore } from '@shared/stores/realm';
 
-async function setup() {
+async function setup(lifespan = 80) {
     const pinia = createPinia(); setActivePinia(pinia);
     const realmStore = useRealmStore();
     realmStore.activeRealmId = 'r1';
-    realmStore.realms = { r1: { RealmID: 'r1', HumanLifespan: 80 } };
+    realmStore.realms = { r1: { RealmID: 'r1', HumanLifespan: lifespan } };
     HTMLDialogElement.prototype.showModal = HTMLDialogElement.prototype.showModal || function () {};
     HTMLDialogElement.prototype.close = HTMLDialogElement.prototype.close || function () {};
     const wrapper = mount(RacesCRUD, {
@@ -102,5 +102,31 @@ describe('RacesCRUD lifespan', () => {
         await w.find('button.btn-primary').trigger('click');
         await flushPromises();
         expect(post.mock.calls[0][1].LifespanPercent).toBe(250);
+    });
+
+    it('blank field on a race with a stored value keeps-current hint and years from the stored value', async () => {
+        const w = await setup(62);
+        await openRace(w, 'Dwarf');
+        await w.find('#raceLifespan').setValue('');
+        const text = w.text();
+        expect(text).toContain('Leave blank to keep the current value.');
+        expect(text).not.toContain('Leave blank for 100%.');
+        expect(text).toContain('About 248 years');
+    });
+
+    it('typed value drives the preview', async () => {
+        const w = await setup(62);
+        await openRace(w, 'Dwarf');
+        await w.find('#raceLifespan').setValue('200');
+        expect(w.text()).toContain('About 124 years');
+    });
+
+    it('new race shows the 100% hint and 62 years', async () => {
+        const w = await setup(62);
+        await w.find('.add-btn').trigger('click');
+        await flushPromises();
+        const text = w.text();
+        expect(text).toContain('Leave blank for 100%.');
+        expect(text).toContain('About 62 years');
     });
 });

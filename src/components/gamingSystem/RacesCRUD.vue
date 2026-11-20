@@ -162,7 +162,7 @@
               />
               <small v-if="formIsHuman" class="form-hint">Always 100%. Humans set the baseline.</small>
               <small v-else-if="lifespanError" class="form-hint lifespan-form-error">{{ lifespanError }}</small>
-              <small v-else class="form-hint">About {{ formYears }} years. Leave blank for 100%.</small>
+              <small v-else class="form-hint">About {{ formYears }} years. {{ lifespanBlankHint }}</small>
             </div>
 
             <div class="form-section">
@@ -780,9 +780,19 @@ const lifespanError = computed(() => {
   if (n === undefined) return String(lifespanInput.value ?? '').trim() === '' ? '' : 'Enter a whole number from 10 to 10000.';
   return validPercent(n) ? '' : 'Enter a whole number from 10 to 10000.';
 });
+// Blank never sends LifespanPercent: updates keep the stored value, overrides carry the
+// template's, new races store nothing (reads as 100). editingRace is the race being
+// edited or the template being overridden.
+const storedLifespanPercent = computed(() => {
+  const n = Number(editingRace.value?.LifespanPercent);
+  return editingRace.value?.LifespanPercent != null && validPercent(n) ? n : null;
+});
+const lifespanBlankHint = computed(() =>
+  storedLifespanPercent.value != null ? 'Leave blank to keep the current value.' : 'Leave blank for 100%.');
 const formYears = computed(() => {
   const n = lifespanPayload.value;
-  return expectedYears(humanLifespan.value, validPercent(n) ? n : 100);
+  const effective = validPercent(n) ? n : (storedLifespanPercent.value ?? 100);
+  return expectedYears(humanLifespan.value, effective);
 });
 
 // Racial traits are structured objects ({ name, description }), edited via the
@@ -2205,6 +2215,10 @@ select.form-input option {
 
 /* Responsive */
 @media (max-width: 768px) {
+  .col-description .lifespan-years {
+    white-space: normal;
+  }
+
   .list-header {
     flex-direction: column;
     align-items: stretch;
