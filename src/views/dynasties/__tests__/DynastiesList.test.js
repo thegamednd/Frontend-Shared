@@ -88,4 +88,18 @@ describe('DynastiesList', () => {
         expect(addBtn(w).attributes('disabled')).toBeUndefined();
         w.unmount();
     });
+
+    it('shows the DM a link to the advance page, and hides it from players', async () => {
+        const houses = [house('h1', 'Vane')];
+        const status = { maxTrees: 3, total: 1, active: 1, needsSelection: false, limits };
+        let w = setup({ houses, status });
+        await flushPromises();
+        expect(w.find('.rl[data-to="DynastyAdvance"]').text()).toContain('Advance the year');
+        w.unmount();
+        role = { isDM: false, isAdmin: false };
+        w = setup({ houses, status });
+        await flushPromises();
+        expect(w.find('.rl[data-to="DynastyAdvance"]').exists()).toBe(false);
+        w.unmount();
+    });
 });
