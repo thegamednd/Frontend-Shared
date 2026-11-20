@@ -12,14 +12,14 @@
             <p v-if="houseName" class="subtitle">{{ houseName }}</p>
         </header>
 
-        <LoadingState v-if="state === 'loading'" message="Loading the history…" />
+        <LoadingState v-if="state === 'loading'" message="Loading…" />
 
         <div v-else-if="state === 'failed'" class="empty">
-            <p>This history could not be loaded.</p>
+            <p>Couldn't load this history.</p>
             <button type="button" class="tool-btn" @click="loadYears">Try again</button>
         </div>
 
-        <p v-else-if="!years.length" class="empty-line">No years have been recorded for this house yet.</p>
+        <p v-else-if="!years.length" class="empty-line">No years are recorded for this house yet.</p>
 
         <template v-else>
             <div class="year-nav">
@@ -28,8 +28,8 @@
                 <button type="button" class="tool-btn" :disabled="adjacent.next === null" @click="show(adjacent.next)">Next</button>
             </div>
 
-            <LoadingState v-if="yearState === 'loading'" message="Loading the year…" />
-            <p v-else-if="yearState === 'failed'" class="error-text" role="alert">This year could not be loaded.</p>
+            <LoadingState v-if="yearState === 'loading'" message="Loading…" />
+            <p v-else-if="yearState === 'failed'" class="error-text" role="alert">Couldn't load this year.</p>
             <p v-else-if="!hasEvents" class="empty-line nothing">Nothing of note happened this year.</p>
             <article v-else class="chronicle">
                 <template v-for="(group, g) in groups" :key="g">
@@ -44,16 +44,12 @@
                 </template>
             </article>
 
-            <section class="year-jump">
-                <h3>Recorded years</h3>
-                <ul class="chips">
-                    <li v-for="y in years" :key="y.year">
-                        <button type="button" class="chip" :class="{ current: y.year === year }" :aria-current="y.year === year ? 'true' : undefined" @click="show(y.year)">
-                            {{ fmt(y.year) }}
-                        </button>
-                    </li>
-                </ul>
-            </section>
+            <div class="year-jump">
+                <label for="year-select">Jump to a year</label>
+                <select id="year-select" class="year-select" :value="year" @change="show(Number($event.target.value))">
+                    <option v-for="y in years" :key="y.year" :value="y.year">{{ fmt(y.year) }}</option>
+                </select>
+            </div>
         </template>
     </div>
 </template>
@@ -78,8 +74,9 @@ const abbr = computed(() => realmStore.activeRealm?.DateSuffix?.Abbr || 'SF');
 const fmt = (y) => formatYear(y, { abbr: abbr.value });
 
 const editor = computed(() => Boolean(userStore.isDM || userStore.isAdmin));
-// Until the realm's players load, isDM reads false for a DM too.
-const rolesKnown = computed(() => (realmStore.getRealmDMs?.length ?? 0) > 0);
+// Until the realm's players load, isDM reads false for a DM too. Once the user or the players
+// are in, a non-editor is a player, even if the realm has no DMs listed.
+const rolesKnown = computed(() => (realmStore.arActivePlayers?.length ?? 0) > 0 || (realmStore.getRealmDMs?.length ?? 0) > 0 || userStore.loaded === true);
 
 const houseId = computed(() => route.params.houseId);
 const houseName = ref('');
@@ -131,6 +128,9 @@ async function show(target) {
 async function loadYears() {
     state.value = 'loading';
     try {
+        // The house name sits in the heading, so a failed load shows the failure state.
+        const house = await store.fetchHouse(houseId.value);
+        houseName.value = house?.house?.name || '';
         const data = await store.fetchHistoryYears(houseId.value);
         years.value = [...(data?.years || [])].sort((a, b) => b.year - a.year);
         state.value = 'ready';
@@ -151,11 +151,6 @@ watch(
         if (isEditor) {
             if (!started) {
                 started = true;
-                // The house name is a nicety; the history itself decides access.
-                store
-                    .fetchHouse(houseId.value)
-                    .then((data) => (houseName.value = data?.house?.name || ''))
-                    .catch(() => {});
                 loadYears();
             }
         } else if (known) {
@@ -213,21 +208,16 @@ onMounted(() => emit('set-room', 'dynasties'));
 .divider { display: flex; align-items: center; gap: 0.6em; margin: 0.9em 0; color: var(--theme-accent); }
 .divider .rule { flex: 1; height: 1px; background: color-mix(in srgb, var(--theme-accent) 45%, transparent); }
 
-.year-jump { margin-top: 2em; }
-.year-jump h3 { margin: 0 0 0.6em; font-size: 1.05rem; }
-.chips { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 0.4em; }
-.chip {
+.year-jump { margin-top: 2em; display: flex; flex-direction: column; gap: 0.4em; max-width: 20em; }
+.year-jump label { font-size: 0.9rem; color: color-mix(in srgb, var(--theme-text) 65%, transparent); }
+.year-select {
     min-height: 2.75em;
-    padding: 0.3em 0.85em;
-    border-radius: 999px;
-    background: transparent;
+    padding: 0.4em 0.7em;
+    border-radius: 8px;
+    background: color-mix(in srgb, var(--theme-bg-surface) 50%, transparent);
     border: 1px solid color-mix(in srgb, var(--theme-text) 25%, transparent);
     color: var(--theme-text);
     font: inherit;
-    font-size: 0.88rem;
-    cursor: pointer;
 }
-.chip:hover { border-color: var(--theme-accent); }
-.chip:focus-visible { outline: 2px solid var(--theme-accent); outline-offset: 2px; }
-.chip.current { background: color-mix(in srgb, var(--theme-accent) 18%, transparent); border-color: var(--theme-accent); color: var(--theme-accent); }
+.year-select:focus-visible { outline: 2px solid var(--theme-accent); outline-offset: 2px; }
 </style>

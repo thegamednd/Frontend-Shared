@@ -69,14 +69,17 @@
 
             <section v-if="elders.length" class="block elders">
                 <h3>Elders</h3>
-                <p class="section-copy">Player characters who stayed on when their generation was dropped.</p>
+                <p class="section-copy">Player characters who are still alive but no longer count toward the family's generations.</p>
                 <ul class="row-list">
                     <li v-for="p in elders" :key="p.id" class="row">
                         <router-link class="row-link" :to="personLink(p.id)">
                             <img v-if="portrait(p)" class="thumb" :src="portrait(p)" alt="" loading="lazy" />
                             <span v-else class="thumb blank" aria-hidden="true"></span>
                             <span class="row-text">
-                                <span class="row-name">{{ p.name }}</span>
+                                <span class="row-name">
+                                    {{ p.name }}
+                                    <span v-if="p.hidden" class="hidden-tag">Hidden from the family</span>
+                                </span>
                                 <span class="row-meta">{{ yearsText(p) }}</span>
                             </span>
                         </router-link>

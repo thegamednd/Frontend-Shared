@@ -9,8 +9,9 @@ vi.mock('@shared/utils/api', () => ({
     default: { get: vi.fn(), post: vi.fn(), put: vi.fn(), delete: vi.fn(), patch: vi.fn() },
 }));
 vi.mock('@shared/stores/realm', () => ({
-    useRealmStore: () => ({ activeRealm: { DateSuffix: { Abbr: 'SF' } }, getRealmDMs: [{ UserID: 'dm-1' }] }),
+    useRealmStore: () => ({ activeRealm: { DateSuffix: { Abbr: 'SF' } }, getRealmDMs: realmDMs }),
 }));
+let realmDMs = [{ UserID: 'dm-1' }];
 let role = { isDM: true, isAdmin: false };
 vi.mock('@shared/stores/user', () => ({ useUserStore: () => role }));
 
@@ -38,6 +39,7 @@ const btn = (w, text) => w.findAll('button').find((b) => b.text() === text);
 beforeEach(() => {
     setActivePinia(createPinia());
     role = { isDM: true, isAdmin: false };
+    realmDMs = [{ UserID: 'dm-1' }];
     router = { push: vi.fn(), replace: vi.fn() };
 });
 
@@ -68,10 +70,34 @@ describe('DynastyHistory', () => {
     it('jumps to a year from the list', async () => {
         const w = setup();
         await flushPromises();
-        await btn(w, '250 SF').trigger('click');
+        await w.find('#year-select').setValue('250');
         await flushPromises();
         expect(w.find('.year-title').text()).toBe('250 SF');
         expect(btn(w, 'Previous').attributes('disabled')).toBeDefined();
+    });
+
+    it('redirects a player once the user has loaded, even with no DMs listed', async () => {
+        role = { isDM: false, isAdmin: false, loaded: true };
+        realmDMs = [];
+        setup();
+        await flushPromises();
+        expect(router.replace).toHaveBeenCalledWith({ name: 'DynastyHouse', params: { houseId: 'h1' } });
+    });
+
+    it('shows a failure when a year cannot be loaded', async () => {
+        const w = setup();
+        store.fetchHistory = vi.fn(async () => { throw new Error('boom'); });
+        await flushPromises();
+        expect(w.text()).toContain("Couldn't load this year.");
+    });
+
+    it('shows a failure when the house cannot be loaded', async () => {
+        store = useDynastiesStore();
+        store.fetchHouse = vi.fn(async () => { throw new Error('boom'); });
+        store.fetchHistoryYears = vi.fn(async () => ({ years: [] }));
+        const w = mount(DynastyHistory, { global: { stubs } });
+        await flushPromises();
+        expect(w.text()).toContain("Couldn't load this history.");
     });
 
     it('sends a player back to the house page', async () => {
