@@ -341,6 +341,8 @@ const letterStatus = computed(() => {
     if (res.letters === 'sent') {
         const n = res.lettersSent ?? 0;
         const skipped = res.lettersSkipped ?? 0;
+        // Nobody to write to: nothing worth saying.
+        if (!n && !skipped) return '';
         return `Letters sent to ${n} ${n === 1 ? 'player' : 'players'}.${skipped > 0 ? ` ${skipped} could not be sent.` : ''}`;
     }
     return '';

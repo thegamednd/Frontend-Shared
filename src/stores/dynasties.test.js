@@ -244,19 +244,36 @@ describe('advance polling for letters', () => {
         vi.useRealTimers();
     });
 
-    it('keeps polling a committed run while letters are queued, and stops on sent', async () => {
+    it('keeps polling a committed run every 10 seconds while letters are queued, and stops on sent', async () => {
         const at = new Date().toISOString();
         get.mockResolvedValueOnce(committed('queued', at)).mockResolvedValueOnce(committed('queued', at)).mockResolvedValue(committed('sent', at));
         const store = useDynastiesStore();
         await store.pollRun('r1');
         expect(store.advance.polling).toBe(true);
+        await vi.advanceTimersByTimeAsync(9999);
+        expect(get).toHaveBeenCalledTimes(1);
+        await vi.advanceTimersByTimeAsync(1);
+        expect(get).toHaveBeenCalledTimes(2);
+        await vi.advanceTimersByTimeAsync(10000);
+        expect(get).toHaveBeenCalledTimes(3);
+        expect(store.advance.polling).toBe(false);
+        await vi.advanceTimersByTimeAsync(20000);
+        expect(get).toHaveBeenCalledTimes(3);
+    });
+
+    it('a committing run is still polled every 2 seconds, then every 10 once only letters are left', async () => {
+        const at = new Date().toISOString();
+        const committing = { data: { data: { id: 'r1', status: 'committing' } } };
+        get.mockResolvedValueOnce(committing).mockResolvedValueOnce(committed('queued', at)).mockResolvedValue(committed('sent', at));
+        const store = useDynastiesStore();
+        await store.pollRun('r1');
         await vi.advanceTimersByTimeAsync(2000);
         expect(get).toHaveBeenCalledTimes(2);
         await vi.advanceTimersByTimeAsync(2000);
+        expect(get).toHaveBeenCalledTimes(2);
+        await vi.advanceTimersByTimeAsync(8000);
         expect(get).toHaveBeenCalledTimes(3);
         expect(store.advance.polling).toBe(false);
-        await vi.advanceTimersByTimeAsync(10000);
-        expect(get).toHaveBeenCalledTimes(3);
     });
 
     it('gives up 10 minutes after committedAt', async () => {

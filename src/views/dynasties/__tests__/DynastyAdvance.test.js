@@ -314,6 +314,19 @@ describe('DynastyAdvance', () => {
         w.unmount();
     });
 
+    it.each([
+        [{ letters: 'sent', lettersSent: 0, lettersSkipped: 0 }],
+        [{ letters: 'sent' }],
+    ])('letters sent to nobody shows no status %j', async (res) => {
+        const w = setup({
+            currentTo: 251,
+            latestRun: readyRun({ status: 'committed', result: { committedAt: new Date().toISOString(), ...res } }),
+        });
+        await flushPromises();
+        expect(w.find('.letter-status').exists()).toBe(false);
+        w.unmount();
+    });
+
     it('committed with no letters shows no status', async () => {
         const w = setup({ currentTo: 251, latestRun: readyRun({ status: 'committed', result: { committedAt: new Date().toISOString() } }) });
         await flushPromises();

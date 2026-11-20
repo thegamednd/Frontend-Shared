@@ -15,6 +15,8 @@ const toError = (err) => {
 const enc = encodeURIComponent;
 
 const POLL_MS = 2000;
+// Letters take longer; a committed run waiting only on its letters is polled less often.
+const LETTERS_POLL_MS = 10000;
 // A committed run's letters are given up on this long after the save.
 const LETTERS_WAIT_MS = 10 * 60 * 1000;
 // Module level so it never lands in reactive state.
@@ -204,8 +206,9 @@ export const useDynastiesStore = defineStore('dynasties', {
             });
         },
         // Fetches the run now and again every 2 seconds while it is running or
-        // committing, or committed with its letters still queued (for up to 10
-        // minutes from committedAt). Stops on any other status, on an error, or stopPolling().
+        // committing, or every 10 seconds while it is committed with its letters
+        // still queued (for up to 10 minutes from committedAt). Stops on any other
+        // status, on an error, or stopPolling().
         async pollRun(id) {
             this.stopPolling();
             const gen = pollGen;
@@ -228,8 +231,10 @@ export const useDynastiesStore = defineStore('dynasties', {
                     status === 'committed' &&
                     r?.result?.letters === 'queued' &&
                     Date.now() - Date.parse(r.result.committedAt || '') < LETTERS_WAIT_MS;
-                if (status === 'running' || status === 'committing' || lettersPending) {
+                if (status === 'running' || status === 'committing') {
                     pollTimer = setTimeout(tick, POLL_MS);
+                } else if (lettersPending) {
+                    pollTimer = setTimeout(tick, LETTERS_POLL_MS);
                 } else {
                     this.stopPolling();
                 }
