@@ -235,3 +235,76 @@ describe('advance actions', () => {
         expect(get).toHaveBeenCalledWith('/dynasties/houses/h1/history/-3');
     });
 });
+
+describe('advance polling for letters', () => {
+    const committed = (letters, committedAt) => ({ data: { data: { id: 'r1', status: 'committed', result: { letters, committedAt } } } });
+    beforeEach(() => vi.useFakeTimers());
+    afterEach(() => {
+        useDynastiesStore().stopPolling();
+        vi.useRealTimers();
+    });
+
+    it('keeps polling a committed run while letters are queued, and stops on sent', async () => {
+        const at = new Date().toISOString();
+        get.mockResolvedValueOnce(committed('queued', at)).mockResolvedValueOnce(committed('queued', at)).mockResolvedValue(committed('sent', at));
+        const store = useDynastiesStore();
+        await store.pollRun('r1');
+        expect(store.advance.polling).toBe(true);
+        await vi.advanceTimersByTimeAsync(2000);
+        expect(get).toHaveBeenCalledTimes(2);
+        await vi.advanceTimersByTimeAsync(2000);
+        expect(get).toHaveBeenCalledTimes(3);
+        expect(store.advance.polling).toBe(false);
+        await vi.advanceTimersByTimeAsync(10000);
+        expect(get).toHaveBeenCalledTimes(3);
+    });
+
+    it('gives up 10 minutes after committedAt', async () => {
+        const at = new Date(Date.now() - 10 * 60 * 1000 - 1).toISOString();
+        get.mockResolvedValue(committed('queued', at));
+        const store = useDynastiesStore();
+        await store.pollRun('r1');
+        expect(store.advance.polling).toBe(false);
+        await vi.advanceTimersByTimeAsync(6000);
+        expect(get).toHaveBeenCalledTimes(1);
+    });
+});
+
+describe('letters', () => {
+    it('fetchLetters stores the players', async () => {
+        get.mockResolvedValue({ data: { data: { players: [{ userId: 'u1', name: 'Ann', on: true }] } } });
+        const store = useDynastiesStore();
+        await store.fetchLetters();
+        expect(get).toHaveBeenCalledWith('/dynasties/letters');
+        expect(store.letters.players).toEqual([{ userId: 'u1', name: 'Ann', on: true }]);
+    });
+
+    it('fetchLetters records an error', async () => {
+        get.mockRejectedValue({ response: { data: { error: { code: 'X', message: 'bad' } } } });
+        const store = useDynastiesStore();
+        await expect(store.fetchLetters()).rejects.toBeTruthy();
+        expect(store.letters.error.message).toBe('bad');
+    });
+
+    it('setLetters is optimistic and keeps the saved value', async () => {
+        let release;
+        put.mockImplementation(() => new Promise((r) => { release = r; }));
+        const store = useDynastiesStore();
+        store.letters.players = [{ userId: 'u/1', name: 'Ann', on: true }];
+        const p = store.setLetters('u/1', false);
+        expect(store.letters.players[0].on).toBe(false);
+        release({ data: { data: { userId: 'u/1', on: false } } });
+        await p;
+        expect(put).toHaveBeenCalledWith('/dynasties/letters/u%2F1', { on: false });
+        expect(store.letters.players[0].on).toBe(false);
+    });
+
+    it('setLetters reverts when the PUT fails', async () => {
+        put.mockRejectedValue({ response: { data: { error: { code: 'X', message: 'bad' } } } });
+        const store = useDynastiesStore();
+        store.letters.players = [{ userId: 'u1', name: 'Ann', on: true }];
+        await expect(store.setLetters('u1', false)).rejects.toBeTruthy();
+        expect(store.letters.players[0].on).toBe(true);
+        expect(store.letters.error.message).toBe('bad');
+    });
+});

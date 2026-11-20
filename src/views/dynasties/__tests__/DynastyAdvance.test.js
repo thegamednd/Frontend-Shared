@@ -57,6 +57,7 @@ function setup(state = {}) {
         store.advance.run = { ...store.advance.run, id, status: 'committing', commitAttempted: true };
         return store.advance.run;
     });
+    store.fetchLetters = vi.fn(async () => { store.letters.players = []; });
     store.discardRun = vi.fn(async () => { store.advance.run = null; });
     store.editRun = vi.fn(async () => store.advance.run);
     store.previewDrop = vi.fn(async () => ({ removed: [{ id: 'x1', name: 'Old Aldric', alive: true }], elders: [] }));
@@ -282,6 +283,56 @@ describe('DynastyAdvance', () => {
         });
         await flushPromises();
         expect(w.text()).toContain('251 SF is recorded');
+        w.unmount();
+    });
+
+    it('shows the Letters panel in every phase', async () => {
+        const w = setup();
+        await flushPromises();
+        expect(w.text()).toContain('Letters');
+        expect(w.text()).toContain('No players in this realm yet.');
+        w.unmount();
+        const w2 = setup({ latestRun: readyRun() });
+        await flushPromises();
+        expect(w2.text()).toContain('No players in this realm yet.');
+        w2.unmount();
+    });
+
+    it.each([
+        [{ letters: 'queued' }, 'Letters are being sent.'],
+        [{ letters: 'sent', lettersSent: 1, lettersSkipped: 0 }, 'Letters sent to 1 player.'],
+        [{ letters: 'sent', lettersSent: 3, lettersSkipped: 0 }, 'Letters sent to 3 players.'],
+        [{ letters: 'sent', lettersSent: 3, lettersSkipped: 2 }, 'Letters sent to 3 players. 2 could not be sent.'],
+        [{ letters: 'failed' }, 'The letters could not be sent.'],
+    ])('committed letter status %j', async (res, text) => {
+        const w = setup({
+            currentTo: 251,
+            latestRun: readyRun({ status: 'committed', result: { committedAt: new Date().toISOString(), ...res } }),
+        });
+        await flushPromises();
+        expect(w.find('.letter-status').text()).toBe(text);
+        w.unmount();
+    });
+
+    it('committed with no letters shows no status', async () => {
+        const w = setup({ currentTo: 251, latestRun: readyRun({ status: 'committed', result: { committedAt: new Date().toISOString() } }) });
+        await flushPromises();
+        expect(w.find('.letter-status').exists()).toBe(false);
+        w.unmount();
+    });
+
+    it('queued for over 10 minutes says the letters may not have gone out', async () => {
+        const at = new Date(Date.now() - 11 * 60 * 1000).toISOString();
+        const w = setup({ currentTo: 251, latestRun: readyRun({ status: 'committed', result: { committedAt: at, letters: 'queued' } }) });
+        await flushPromises();
+        expect(w.find('.letter-status').text()).toBe('Letters may not have gone out.');
+        w.unmount();
+    });
+
+    it('resumes polling a committed run with queued letters', async () => {
+        const w = setup({ currentTo: 251, latestRun: readyRun({ status: 'committed', result: { committedAt: new Date().toISOString(), letters: 'queued' } }) });
+        await flushPromises();
+        expect(store.pollRun).toHaveBeenCalledWith('r1');
         w.unmount();
     });
 
