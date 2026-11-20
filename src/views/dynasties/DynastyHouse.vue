@@ -35,6 +35,10 @@
             </p>
 
             <div v-if="editor" class="toolbar">
+                <router-link class="tool-btn history-link" :to="{ name: 'DynastyHistory', params: { houseId } }">
+                    <span class="material-symbols-outlined" aria-hidden="true">history_edu</span>
+                    <span>History</span>
+                </router-link>
                 <template v-if="!frozen">
                     <button type="button" class="tool-btn" @click="houseDialog.open(house, people)">Edit house</button>
                     <button
@@ -63,11 +67,31 @@
             <p v-else-if="editor && full && !frozen" id="house-full-note" class="notice" role="note">{{ fullText }}</p>
             <p v-if="actionError" class="error-text" role="alert">{{ actionError }}</p>
 
-            <section class="block">
+            <section v-if="elders.length" class="block elders">
+                <h3>Elders</h3>
+                <p class="section-copy">Player characters who are still alive but no longer count toward the family's generations.</p>
+                <ul class="row-list">
+                    <li v-for="p in elders" :key="p.id" class="row">
+                        <router-link class="row-link" :to="personLink(p.id)">
+                            <img v-if="portrait(p)" class="thumb" :src="portrait(p)" alt="" loading="lazy" />
+                            <span v-else class="thumb blank" aria-hidden="true"></span>
+                            <span class="row-text">
+                                <span class="row-name">
+                                    {{ p.name }}
+                                    <span v-if="p.hidden" class="hidden-tag">Hidden from the family</span>
+                                </span>
+                                <span class="row-meta">{{ yearsText(p) }}</span>
+                            </span>
+                        </router-link>
+                    </li>
+                </ul>
+            </section>
+
+            <section v-if="members.length || !elders.length" class="block">
                 <h3>People of the house</h3>
-                <p v-if="!people.length" class="empty-line">No one is recorded in this house yet.</p>
+                <p v-if="!members.length" class="empty-line">No one is recorded in this house yet.</p>
                 <ul v-else class="row-list">
-                    <li v-for="p in people" :key="p.id" class="row">
+                    <li v-for="p in members" :key="p.id" class="row">
                         <router-link class="row-link" :to="personLink(p.id)">
                             <img v-if="portrait(p)" class="thumb" :src="portrait(p)" alt="" loading="lazy" />
                             <span v-else class="thumb blank" aria-hidden="true"></span>
@@ -174,6 +198,12 @@ const houseId = computed(() => route.params.houseId);
 const page = computed(() => store.house);
 const house = computed(() => page.value?.house || null);
 const people = computed(() => page.value?.people || []);
+const elders = computed(() => page.value?.elders || []);
+// Elders get their own row, so they are left out of the general list.
+const members = computed(() => {
+    const ids = new Set(elders.value.map((p) => p.id));
+    return people.value.filter((p) => !ids.has(p.id));
+});
 const marriedIn = computed(() => page.value?.marriedIn || []);
 const bornElsewhere = computed(() => page.value?.bornElsewhere || []);
 

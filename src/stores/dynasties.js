@@ -14,6 +14,12 @@ const toError = (err) => {
 
 const enc = encodeURIComponent;
 
+const POLL_MS = 2000;
+// Module level so it never lands in reactive state.
+let pollTimer = null;
+// Bumped on every pollRun and stopPolling, so a tick from an older loop does nothing.
+let pollGen = 0;
+
 export const useDynastiesStore = defineStore('dynasties', {
     state: () => ({
         houses: [],
@@ -22,6 +28,7 @@ export const useDynastiesStore = defineStore('dynasties', {
         person: null,
         loading: false,
         error: null,
+        advance: { state: null, run: null, polling: false, error: null },
     }),
     getters: {
         limitReached: (state) => (houseId) => {
@@ -168,6 +175,124 @@ export const useDynastiesStore = defineStore('dynasties', {
             return this._run(async () => {
                 await apiClient.delete(`/dynasties/marriages/${enc(id)}`);
                 await this._refreshCurrent();
+            });
+        },
+        // ============ Yearly advance ============
+        async fetchAdvance() {
+            return this._run(async () => {
+                const res = await apiClient.get('/dynasties/advance');
+                this.advance.state = res.data.data;
+                if (res.data.data?.latestRun) this.advance.run = res.data.data.latestRun;
+                return res.data.data;
+            }, { loading: true });
+        },
+        async setCurrentTo(year) {
+            return this._run(async () => {
+                const res = await apiClient.put('/dynasties/advance/year', { year });
+                await this._refreshQuietly(() => this.fetchAdvance());
+                return res.data.data;
+            });
+        },
+        async startAdvance() {
+            return this._run(async () => {
+                const res = await apiClient.post('/dynasties/advance/runs');
+                this.advance.run = res.data.data;
+                return res.data.data;
+            });
+        },
+        // Fetches the run now and again every 2 seconds while it is running or
+        // committing. Stops on any other status, on an error, or stopPolling().
+        async pollRun(id) {
+            this.stopPolling();
+            const gen = pollGen;
+            this.advance.polling = true;
+            this.advance.error = null;
+            const tick = async () => {
+                try {
+                    const res = await apiClient.get(`/dynasties/advance/runs/${enc(id)}`);
+                    if (gen !== pollGen) return;
+                    this.advance.run = res.data.data;
+                } catch (err) {
+                    if (gen !== pollGen) return;
+                    this.advance.error = toError(err);
+                    this.stopPolling();
+                    return;
+                }
+                const status = this.advance.run?.status;
+                if (status === 'running' || status === 'committing') {
+                    pollTimer = setTimeout(tick, POLL_MS);
+                } else {
+                    this.stopPolling();
+                }
+            };
+            await tick();
+            return this.advance.run;
+        },
+        stopPolling() {
+            pollGen++;
+            if (pollTimer) clearTimeout(pollTimer);
+            pollTimer = null;
+            this.advance.polling = false;
+        },
+        async editRun(id, edits) {
+            return this._run(async () => {
+                const res = await apiClient.patch(`/dynasties/advance/runs/${enc(id)}`, { edits });
+                this.advance.run = res.data.data;
+                return res.data.data;
+            });
+        },
+        async addPlayerEvent(id, body) {
+            return this._run(async () => {
+                const res = await apiClient.post(`/dynasties/advance/runs/${enc(id)}/events`, body);
+                this.advance.run = res.data.data;
+                return res.data.data;
+            });
+        },
+        async removePlayerEvent(id, ref) {
+            return this._run(async () => {
+                const res = await apiClient.delete(`/dynasties/advance/runs/${enc(id)}/events/${enc(ref)}`);
+                this.advance.run = res.data.data;
+                return res.data.data;
+            });
+        },
+        async commitRun(id) {
+            return this._run(async () => {
+                const res = await apiClient.post(`/dynasties/advance/runs/${enc(id)}/commit`);
+                this.advance.run = res.data.data;
+                return res.data.data;
+            });
+        },
+        async discardRun(id) {
+            return this._run(async () => {
+                this.stopPolling();
+                await apiClient.delete(`/dynasties/advance/runs/${enc(id)}`);
+                this.advance.run = null;
+            });
+        },
+        async previewDrop(houseId) {
+            return this._run(async () => {
+                const res = await apiClient.get(`/dynasties/houses/${enc(houseId)}/drop-generation`);
+                return res.data.data;
+            });
+        },
+        async dropGeneration(houseId) {
+            return this._run(async () => {
+                const res = await apiClient.post(`/dynasties/houses/${enc(houseId)}/drop-generation`);
+                await this._refreshCurrent();
+                await this._refreshQuietly(() => this.fetchHouses());
+                return res.data.data;
+            });
+        },
+        async fetchHistoryYears(houseId) {
+            return this._run(async () => {
+                const res = await apiClient.get(`/dynasties/houses/${enc(houseId)}/history`);
+                return res.data.data.years;
+            });
+        },
+        async fetchHistory(houseId, year) {
+            return this._run(async () => {
+                const res = await apiClient.get(`/dynasties/houses/${enc(houseId)}/history/${enc(year)}`);
+                return res.data.data;
             });
         },
     },

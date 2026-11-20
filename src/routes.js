@@ -111,9 +111,21 @@ export const sharedRoutes = [
         meta: { requiresActiveRealm: true }
     },
     {
+        path: '/dynasties/advance',
+        name: 'DynastyAdvance',
+        component: () => import('@shared/views/dynasties/DynastyAdvance.vue'),
+        meta: { requiresActiveRealm: true }
+    },
+    {
         path: '/dynasties/house/:houseId',
         name: 'DynastyHouse',
         component: () => import('@shared/views/dynasties/DynastyHouse.vue'),
+        meta: { requiresActiveRealm: true }
+    },
+    {
+        path: '/dynasties/house/:houseId/history',
+        name: 'DynastyHistory',
+        component: () => import('@shared/views/dynasties/DynastyHistory.vue'),
         meta: { requiresActiveRealm: true }
     },
     {

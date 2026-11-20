@@ -9,7 +9,7 @@
                 <span class="spacer"></span>
                 <button type="button" class="btn" :disabled="busy" @click="close">Cancel</button>
                 <button type="button" class="btn btn-danger" :disabled="busy" @click="emit('confirm')">
-                    {{ busy ? 'Deleting…' : confirmLabel }}
+                    {{ busy ? busyLabel : confirmLabel }}
                 </button>
             </div>
         </div>
@@ -23,6 +23,7 @@ const props = defineProps({
     open: { type: Boolean, default: false },
     title: { type: String, required: true },
     confirmLabel: { type: String, default: 'Delete' },
+    busyLabel: { type: String, default: 'Deleting…' },
     busy: { type: Boolean, default: false },
 });
 const emit = defineEmits(['confirm', 'close']);

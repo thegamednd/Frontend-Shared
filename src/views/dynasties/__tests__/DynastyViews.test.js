@@ -220,4 +220,40 @@ describe('DynastyHouse', () => {
         expect(w.findAll('button')).toHaveLength(0);
         expect(w.find('.frozen-tag').exists()).toBe(true);
     });
+
+    it('shows an Elders row once, apart from the general list', async () => {
+        params = { houseId: 'h1' };
+        const store = useDynastiesStore();
+        seed(store);
+        const elder = { id: 'p9', name: 'Old Brannoc', houseId: 'h1', gender: 'male', born: 180, titles: [] };
+        store.fetchHouse = vi.fn(async () => { store.house = { ...page, people: [{ ...person }, elder], elders: [elder] }; });
+        const w = mount(DynastyHouse, { global: { stubs } });
+        await flushPromises();
+        expect(w.find('.elders').text()).toContain('Old Brannoc');
+        expect(w.text().split('Old Brannoc')).toHaveLength(2);
+    });
+
+    it('has no Elders row when there are none', async () => {
+        params = { houseId: 'h1' };
+        const store = useDynastiesStore();
+        seed(store);
+        store.fetchHouse = vi.fn(async () => { store.house = { ...page, elders: [] }; });
+        const w = mount(DynastyHouse, { global: { stubs } });
+        await flushPromises();
+        expect(w.find('.elders').exists()).toBe(false);
+    });
+
+    it('gives a DM the History button and hides it from players', async () => {
+        params = { houseId: 'h1' };
+        const store = useDynastiesStore();
+        seed(store);
+        store.fetchHouse = vi.fn(async () => { store.house = page; });
+        let w = mount(DynastyHouse, { global: { stubs } });
+        await flushPromises();
+        expect(w.find('.history-link').exists()).toBe(true);
+        role = { isDM: false, isAdmin: false };
+        w = mount(DynastyHouse, { global: { stubs } });
+        await flushPromises();
+        expect(w.find('.history-link').exists()).toBe(false);
+    });
 });

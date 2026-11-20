@@ -16,6 +16,10 @@
             <div v-if="editor" class="toolbar">
                 <span v-if="status" class="tree-count" :class="{ full: atLimit }">Trees: {{ status.total }} of {{ status.maxTrees }}</span>
                 <span class="spacer"></span>
+                <router-link class="tool-btn" :to="{ name: 'DynastyAdvance' }">
+                    <span class="material-symbols-outlined" aria-hidden="true">hourglass_bottom</span>
+                    Advance the year
+                </router-link>
                 <button v-if="canChoose" type="button" class="tool-btn" @click="activationOpen = true">Choose active trees</button>
                 <button type="button" class="tool-btn primary" :disabled="addBlocked" :aria-describedby="addBlocked ? 'add-house-note' : null" @click="houseDialog.open()">
                     <span class="material-symbols-outlined" aria-hidden="true">add</span>
