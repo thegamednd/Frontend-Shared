@@ -55,6 +55,7 @@
           <div class="col-name">{{ raceItem.RaceName }}</div>
           <div class="col-description" :title="raceItem.ShortDescription || extractShortDesc(raceItem.Content)">
             {{ raceItem.ShortDescription || extractShortDesc(raceItem.Content) }}
+            <span class="lifespan-years">Lives about {{ yearsFor(raceItem) }} years</span>
           </div>
           <button class="row-expand-btn" @click="toggleRowExpand(raceItem.ID, $event)" :aria-label="expandedRowId === raceItem.ID ? 'Collapse details' : 'Expand details'">
             <span class="material-symbols-outlined">{{ expandedRowId === raceItem.ID ? 'expand_less' : 'expand_more' }}</span>
@@ -62,6 +63,7 @@
           <div v-if="expandedRowId === raceItem.ID" class="row-detail">
             <span class="row-detail-label">Description:</span>
             {{ raceItem.ShortDescription || extractShortDesc(raceItem.Content) }}
+            <div class="lifespan-years">Lives about {{ yearsFor(raceItem) }} years</div>
           </div>
         </div>
       </div>
@@ -139,6 +141,28 @@
                 class="form-input"
               />
               <small class="form-hint">Comma-separated tags for categorization</small>
+            </div>
+
+            <div class="form-group">
+              <label for="raceLifespan">
+                <span class="material-symbols-outlined">hourglass_bottom</span>
+                Lifespan (% of human)
+              </label>
+              <input
+                id="raceLifespan"
+                v-model="lifespanInput"
+                type="number"
+                inputmode="numeric"
+                min="10"
+                max="10000"
+                step="1"
+                placeholder="100"
+                class="form-input"
+                :disabled="formIsHuman"
+              />
+              <small v-if="formIsHuman" class="form-hint">Always 100%. Humans set the baseline.</small>
+              <small v-else-if="lifespanError" class="form-hint lifespan-form-error">{{ lifespanError }}</small>
+              <small v-else class="form-hint">About {{ formYears }} years. {{ lifespanBlankHint }}</small>
             </div>
 
             <div class="form-section">
@@ -629,6 +653,11 @@ import { useUserStore } from '@shared/stores/user';
 import { useCharacterStore } from '@shared/stores/character';
 import { useRacesStore } from '@shared/stores/races';
 import { useAccountStore } from '@shared/stores/account';
+import { useRealmStore } from '@shared/stores/realm';
+import {
+  DEFAULT_HUMAN_LIFESPAN, isHuman, lifespanPercentOf, expectedYears,
+  toPercentPayload, validPercent
+} from '@shared/utils/raceLifespan';
 import DeleteRaceWarning from '@shared/components/dialogs/DeleteRaceWarning.vue';
 import EntryListEditor from '@shared/components/gamingSystem/EntryListEditor.vue';
 import {
@@ -738,6 +767,34 @@ const formData = ref({
 const tagsInput = ref('');
 const languagesInput = ref('');
 
+// Lifespan helpers
+const realmStore = useRealmStore();
+const lifespanInput = ref('');
+const humanLifespan = computed(() => realmStore.activeRealm?.HumanLifespan ?? DEFAULT_HUMAN_LIFESPAN);
+const yearsFor = (raceItem) => expectedYears(humanLifespan.value, lifespanPercentOf(raceItem));
+const formIsHuman = computed(() => isHuman(formData.value.RaceName));
+const lifespanPayload = computed(() => formIsHuman.value ? undefined : toPercentPayload(lifespanInput.value));
+const lifespanError = computed(() => {
+  if (formIsHuman.value) return '';
+  const n = lifespanPayload.value;
+  if (n === undefined) return String(lifespanInput.value ?? '').trim() === '' ? '' : 'Enter a whole number from 10 to 10000.';
+  return validPercent(n) ? '' : 'Enter a whole number from 10 to 10000.';
+});
+// Blank never sends LifespanPercent: updates keep the stored value, overrides carry the
+// template's, new races store nothing (reads as 100). editingRace is the race being
+// edited or the template being overridden.
+const storedLifespanPercent = computed(() => {
+  const n = Number(editingRace.value?.LifespanPercent);
+  return editingRace.value?.LifespanPercent != null && validPercent(n) ? n : null;
+});
+const lifespanBlankHint = computed(() =>
+  storedLifespanPercent.value != null ? 'Leave blank to keep the current value.' : 'Leave blank for 100%.');
+const formYears = computed(() => {
+  const n = lifespanPayload.value;
+  const effective = validPercent(n) ? n : (storedLifespanPercent.value ?? 100);
+  return expectedYears(humanLifespan.value, effective);
+});
+
 // Racial traits are structured objects ({ name, description }), edited via the
 // EntryListEditor. normalizeTraits coerces stored data (objects or legacy
 // strings) into the editor's shape; serializeTraits trims and drops blank rows.
@@ -772,7 +829,7 @@ const deleting = ref(false);
 
 // Computed
 const isFormValid = computed(() => {
-  return formData.value.RaceName.trim().length > 0;
+  return formData.value.RaceName.trim().length > 0 && !lifespanError.value;
 });
 
 const filteredRaces = computed(() => {
@@ -943,6 +1000,7 @@ const addNewRace = async () => {
   };
   tagsInput.value = '';
   languagesInput.value = '';
+  lifespanInput.value = '';
   traitsList.value = [];
   abilityScoreIncreases.value = {
     Strength: 0,
@@ -997,6 +1055,7 @@ const editRace = async (raceItem) => {
 
   // Initialize helper inputs
   tagsInput.value = (raceData.Tags || []).join(', ');
+  lifespanInput.value = raceData.LifespanPercent != null ? String(raceData.LifespanPercent) : '';
   languagesInput.value = (raceData.Languages || []).join(', ');
   traitsList.value = normalizeTraits(raceData.Traits);
   abilityScoreIncreases.value = {
@@ -1053,6 +1112,8 @@ const saveRace = async () => {
       Languages: languages.length > 0 ? languages : undefined,
       Traits: traits.length > 0 ? traits : undefined
     };
+    // Only include LifespanPercent when a value was entered (never 0 or NaN)
+    if (lifespanPayload.value !== undefined) baseData.LifespanPercent = lifespanPayload.value;
 
     if (isCreatingOverride.value) {
       // Creating an override of a template race
@@ -1071,6 +1132,10 @@ const saveRace = async () => {
         Replaces: editingRace.value.ID,
         IsTemplate: false
       };
+      // The override POST does not read the template server-side, so a blank field
+      // keeps the template's LifespanPercent (already carried by the spread above, if
+      // it has one); a typed value wins via baseData. Human never sends a value.
+      if (formIsHuman.value) delete overrideData.LifespanPercent;
 
       await apiClient.post('/races/race', overrideData);
     } else if (editingRace.value) {
@@ -1584,6 +1649,22 @@ defineExpose({
 .col-name {
   font-weight: 600;
   color: var(--theme-accent);
+}
+
+.lifespan-years {
+  margin-left: 0.5rem;
+  color: #999;
+  font-size: 0.85rem;
+  white-space: nowrap;
+}
+
+.row-detail .lifespan-years {
+  display: block;
+  margin: 0.25rem 0 0;
+}
+
+.lifespan-form-error {
+  color: #ff8a80;
 }
 
 .col-description {
@@ -2134,6 +2215,10 @@ select.form-input option {
 
 /* Responsive */
 @media (max-width: 768px) {
+  .col-description .lifespan-years {
+    white-space: normal;
+  }
+
   .list-header {
     flex-direction: column;
     align-items: stretch;

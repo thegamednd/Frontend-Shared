@@ -30,6 +30,7 @@ export const useRealmStore = defineStore('realm', {
                 "Text": { type: "string", required: true, default: "Since Foundation" }
             },
             "Description": { type: "string", required: false, default: "" },
+            "HumanLifespan": { type: "number", required: false, default: 62 },
             "MaxCharacters": { type: "number", required: true, default: 500 },
             "MaxPlayers": { type: "number", required: true, default: 3 },
             "Name": { type: "string", required: true, default: "" }

@@ -14,6 +14,10 @@ export default defineConfig({
             // Installed by the consuming apps, not by shared's devDependencies.
             { find: 'vue-multiselect/dist/vue-multiselect.min.css', replacement: path.resolve(__dirname, './src/test/stubs/vue-multiselect.css') },
             { find: /^vue-multiselect$/, replacement: path.resolve(__dirname, './src/test/stubs/vue-multiselect.js') },
+            // CKEditor is installed by the consuming apps, not by shared's devDependencies.
+            { find: 'ckeditor5/ckeditor5.css', replacement: path.resolve(__dirname, './src/test/stubs/ckeditor5.css') },
+            { find: /^ckeditor5$/, replacement: path.resolve(__dirname, './src/test/stubs/ckeditor5.js') },
+            { find: /^@ckeditor\/ckeditor5-vue$/, replacement: path.resolve(__dirname, './src/test/stubs/ckeditor5-vue.js') },
             // Gaming-system stores that live in the consuming app, not in shared/.
             { find: /^@\/stores\/(classes|races)$/, replacement: path.resolve(__dirname, './src/test/stubs/host-app-stores.js') },
             // AWS Amplify is provided by the consuming apps; several stores/composables
