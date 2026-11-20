@@ -109,7 +109,57 @@ describe('DynastyAdvance', () => {
         const w = setup({ currentTo: 253 });
         await flushPromises();
         expect(w.find('.advance-btn').attributes('disabled')).toBeDefined();
-        expect(w.text()).toContain('The trees are already current to the game year.');
+        // Before the first save: point at the year setting, not at the realm's date.
+        expect(w.find('.limit-note').text()).toBe('The trees are current to the game year. To start from an earlier year, set the year above. Otherwise, wait for the game year to move on.');
+        expect(w.text()).not.toContain("Move the realm's date");
+        w.unmount();
+    });
+
+    it('after the first save, at the game year: the next advance waits for the game year to move on', async () => {
+        const w = setup({ currentTo: 253, canSetYear: false });
+        await flushPromises();
+        expect(w.find('.limit-note').text()).toBe('The trees are current to the game year. You can advance them again once the game year moves on.');
+        w.unmount();
+    });
+
+    it('a preview running for over 10 minutes offers Try again, which starts a new one', async () => {
+        const old = new Date(Date.now() - 11 * 60 * 1000).toISOString();
+        const w = setup({ latestRun: { id: 'r1', status: 'running', year: 251, events: [], startedAt: old } });
+        await flushPromises();
+        expect(w.find('.stuck').text()).toContain('has probably stopped');
+        await w.find('.stuck button').trigger('click');
+        await flushPromises();
+        expect(store.startAdvance).toHaveBeenCalled();
+        w.unmount();
+    });
+
+    it('a save stuck for over 10 minutes offers Try again, which saves again; a fresh one does not', async () => {
+        const fresh = setup({ latestRun: readyRun({ status: 'committing', commitAttempted: true, startedAt: new Date(Date.now() - 60 * 60 * 1000).toISOString(), committingSince: new Date().toISOString() }) });
+        await flushPromises();
+        expect(fresh.find('.stuck').exists()).toBe(false);
+        fresh.unmount();
+        setActivePinia(createPinia());
+        const old = new Date(Date.now() - 11 * 60 * 1000).toISOString();
+        const w = setup({ latestRun: readyRun({ status: 'committing', commitAttempted: true, startedAt: old, committingSince: old }) });
+        await flushPromises();
+        expect(w.find('.stuck').text()).toContain('Nothing gets saved twice');
+        await w.find('.stuck button').trigger('click');
+        await flushPromises();
+        expect(store.commitRun).toHaveBeenCalledWith('r1');
+        w.unmount();
+    });
+
+    it('a failed save with everything but the year written can be discarded', async () => {
+        const w = setup({ latestRun: readyRun({ commitAttempted: true, treesWritten: true, error: 'moved' }) });
+        await flushPromises();
+        expect(w.text()).toContain('the "current to" year didn\'t move');
+        await btn(w, 'Discard').trigger('click');
+        await flushPromises();
+        expect(w.find('.confirm-dialog').text()).toContain("The trees keep this year's changes.");
+        const confirm = w.findAll('.confirm-dialog button').find((b) => b.text() === 'Discard preview');
+        await confirm.trigger('click');
+        await flushPromises();
+        expect(store.discardRun).toHaveBeenCalledWith('r1');
         w.unmount();
     });
 
@@ -148,7 +198,8 @@ describe('DynastyAdvance', () => {
         expect(w.find('.no-race').text()).toContain('Mira Vane');
         expect(btn(w, 'Player characters')).toBeDefined();
         expect(btn(w, 'Discard')).toBeDefined();
-        await btn(w, 'Commit 251 SF').trigger('click');
+        expect(w.text()).not.toMatch(/commit/i);
+        await btn(w, 'Save 251 SF').trigger('click');
         await flushPromises();
         expect(store.commitRun).toHaveBeenCalledWith('r1');
         expect(store.pollRun).toHaveBeenCalledWith('r1');
@@ -177,14 +228,15 @@ describe('DynastyAdvance', () => {
         w.unmount();
     });
 
-    it('after a commit attempt: offers only Commit again', async () => {
+    it('after a save attempt: offers only Save again', async () => {
         const w = setup({ latestRun: readyRun({ commitAttempted: true, error: 'Write failed' }) });
         await flushPromises();
         expect(btn(w, 'Discard')).toBeUndefined();
         expect(btn(w, 'Player characters')).toBeUndefined();
         expect(btn(w, 'Leave out')).toBeUndefined();
         expect(w.text()).toContain('Write failed');
-        await btn(w, 'Commit again').trigger('click');
+        expect(w.text()).not.toMatch(/commit/i);
+        await btn(w, 'Save again').trigger('click');
         await flushPromises();
         expect(store.commitRun).toHaveBeenCalledWith('r1');
         w.unmount();
@@ -240,9 +292,9 @@ describe('DynastyAdvance', () => {
             store.error = { code: 'STALE_PREVIEW', message: 'stale' };
             throw new Error('409');
         });
-        await btn(w, 'Commit 251 SF').trigger('click');
+        await btn(w, 'Save 251 SF').trigger('click');
         await flushPromises();
-        expect(w.text()).toContain('The trees changed after this preview was made');
+        expect(w.text()).toContain("The trees changed after this preview was made, so it can't be saved.");
         await btn(w, 'Run a fresh preview').trigger('click');
         await flushPromises();
         expect(store.startAdvance).toHaveBeenCalled();

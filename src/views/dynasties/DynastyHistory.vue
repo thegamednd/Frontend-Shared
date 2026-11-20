@@ -47,7 +47,7 @@
             <div class="year-jump">
                 <label for="year-select">Jump to a year</label>
                 <select id="year-select" class="year-select" :value="year" @change="show(Number($event.target.value))">
-                    <option v-for="y in years" :key="y.year" :value="y.year">{{ fmt(y.year) }}</option>
+                    <option v-for="y in years" :key="y" :value="y">{{ fmt(y) }}</option>
                 </select>
             </div>
         </template>
@@ -88,10 +88,10 @@ const lines = ref([]);
 
 // Newest first, so Previous steps back in time and Next steps forward.
 const adjacent = computed(() => {
-    const i = years.value.findIndex((y) => y.year === year.value);
+    const i = years.value.indexOf(year.value);
     return {
-        previous: i >= 0 && years.value[i + 1] ? years.value[i + 1].year : null,
-        next: i > 0 ? years.value[i - 1].year : null,
+        previous: i >= 0 && i + 1 < years.value.length ? years.value[i + 1] : null,
+        next: i > 0 ? years.value[i - 1] : null,
     };
 });
 
@@ -131,10 +131,11 @@ async function loadYears() {
         // The house name sits in the heading, so a failed load shows the failure state.
         const house = await store.fetchHouse(houseId.value);
         houseName.value = house?.house?.name || '';
-        const data = await store.fetchHistoryYears(houseId.value);
-        years.value = [...(data?.years || [])].sort((a, b) => b.year - a.year);
+        // The store returns the years as plain numbers.
+        const list = await store.fetchHistoryYears(houseId.value);
+        years.value = (Array.isArray(list) ? list : []).filter((y) => Number.isFinite(y)).sort((a, b) => b - a);
         state.value = 'ready';
-        if (years.value.length) await show(years.value[0].year);
+        if (years.value.length) await show(years.value[0]);
     } catch (e) {
         if (store.error?.code === 'FORBIDDEN' || e?.response?.status === 403) {
             router.replace({ name: 'DynastyHouse', params: { houseId: houseId.value } });

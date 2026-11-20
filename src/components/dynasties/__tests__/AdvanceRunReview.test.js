@@ -87,10 +87,27 @@ describe('AdvanceRunReview', () => {
             },
         });
         expect(w.text()).toContain('At the hard cap: no marriages or pregnancies this year.');
-        expect(w.text()).toContain('Committing removes its oldest generation');
+        expect(w.text()).toContain('Saving removes its oldest generation');
         expect(w.find('.prune-living').text()).toContain('Old Brannoc');
         expect(w.find('.prune-elders').text()).toContain('Corin');
         expect(w.text()).toContain('1 person who has already died');
+    });
+
+    it('marks a pregnancy whose marriage is left out, and a prune nothing sets off any more, as won\'t happen', () => {
+        const marked = { ...run, skipped: ['dm:1'], prunesOff: ['h1'] };
+        const w = mountReview({
+            run: marked,
+            house: groupEvents(marked)[0],
+            prune: { removed: [{ id: 'x1', name: 'Old Brannoc', alive: true }], elders: [] },
+        });
+        const preg = w.findAll('li.event').find((li) => li.text().includes('is expecting'));
+        expect(preg.classes()).toContain('skipped');
+        expect(preg.text()).toContain("Won't happen");
+        expect(preg.text()).toContain('Its marriage is left out.');
+        expect(w.find('.prune-off').text()).toContain("Won't happen");
+        expect(w.find('.prune').exists()).toBe(false);
+        expect(w.text()).not.toContain('Old Brannoc');
+        expect(w.text()).not.toMatch(/commit/i);
     });
 
     it('shows the soft cap notice when over it', () => {

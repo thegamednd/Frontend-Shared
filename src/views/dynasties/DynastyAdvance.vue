@@ -66,11 +66,18 @@
             </section>
 
             <!-- Rolling or saving in the background. -->
-            <div v-else-if="phase === 'running' || phase === 'committing'" class="progress" role="status">
-                <span class="sand" aria-hidden="true"></span>
-                <p v-if="phase === 'running'">Rolling {{ fmt(run.year) }} for every active tree. This can take a minute.</p>
-                <p v-else>Saving {{ fmt(run.year) }} to the trees.</p>
-            </div>
+            <template v-else-if="phase === 'running' || phase === 'committing'">
+                <div class="progress" role="status">
+                    <span class="sand" aria-hidden="true"></span>
+                    <p v-if="phase === 'running'">Rolling {{ fmt(run.year) }} for every active tree. This can take a minute.</p>
+                    <p v-else>Saving {{ fmt(run.year) }} to the trees.</p>
+                </div>
+                <div v-if="stuck" class="notice warn stuck" role="alert">
+                    <p v-if="phase === 'running'">This preview is taking much longer than it should and has probably stopped.</p>
+                    <p v-else>This save is taking much longer than it should and has probably stopped. Try again to finish it. Nothing gets saved twice.</p>
+                    <button type="button" class="tool-btn primary" :disabled="busy" @click="retryStuck">Try again</button>
+                </div>
+            </template>
 
             <!-- Free tier: a roll would start a generation past the limit. -->
             <section v-else-if="phase === 'blocked'" class="blocked">
@@ -99,8 +106,12 @@
 
             <!-- Ready: the review. -->
             <template v-else-if="phase === 'ready'">
-                <div v-if="run.commitAttempted" class="notice warn" role="note">
-                    <p>The commit stopped partway. Commit again to finish it. Nothing gets saved twice.</p>
+                <div v-if="run.commitAttempted && run.treesWritten" class="notice warn" role="note">
+                    <p>Everything for {{ fmt(run.year) }} is in the trees, but the "current to" year didn't move. Discard this run to clear it. The trees keep the year's changes.</p>
+                    <p v-if="run.error" class="detail">{{ run.error }}</p>
+                </div>
+                <div v-else-if="run.commitAttempted" class="notice warn" role="note">
+                    <p>The save stopped partway. Save again to finish it. Nothing gets saved twice.</p>
                     <p v-if="run.error" class="detail">{{ run.error }}</p>
                 </div>
 
@@ -135,13 +146,13 @@
 
                 <div class="decision">
                     <p class="decision-note">
-                        <template v-if="run.commitAttempted">Commit again to finish saving {{ fmt(run.year) }}.</template>
-                        <template v-else>Commit saves every event above and moves the trees to {{ fmt(run.year) }}. Discard throws the preview away.</template>
+                        <template v-if="run.commitAttempted">Save again to finish {{ fmt(run.year) }}.</template>
+                        <template v-else>Saving records every event above and moves the trees on to {{ fmt(run.year) }}. Discard throws the preview away.</template>
                     </p>
                     <div class="decision-buttons">
-                        <button v-if="!run.commitAttempted" type="button" class="tool-btn danger" :disabled="busy" @click="discardOpen = true">Discard</button>
+                        <button v-if="!run.commitAttempted || run.treesWritten" type="button" class="tool-btn danger" :disabled="busy" @click="discardOpen = true">Discard</button>
                         <button type="button" class="tool-btn primary commit-btn" :disabled="busy" @click="commit">
-                            {{ run.commitAttempted ? 'Commit again' : `Commit ${fmt(run.year)}` }}
+                            {{ run.commitAttempted ? 'Save again' : `Save ${fmt(run.year)}` }}
                         </button>
                     </div>
                 </div>
@@ -165,7 +176,8 @@
             @confirm="discard"
             @close="discardOpen = false"
         >
-            <p class="confirm-text">Nothing in it is saved. The next advance rolls the year from scratch.</p>
+            <p v-if="run?.treesWritten" class="confirm-text">Discarding removes only the run. The trees keep this year's changes.</p>
+            <p v-else class="confirm-text">Nothing in it is saved. The next advance rolls the year from scratch.</p>
         </DynastyConfirmDialog>
         <TreeActivationDialog
             v-if="store.status"
@@ -231,16 +243,36 @@ const pollError = computed(() => !!store.advance.error);
 const phase = computed(() => run.value?.status || 'idle');
 const editable = computed(() => phase.value === 'ready' && !run.value?.commitAttempted);
 
-// The server treats an unset "current to" as the game year, and advances into currentTo + 1.
+// The server pins an unset "current to" to the game year when it first reads
+// it, and advances into currentTo + 1.
 const currentTo = computed(() => state.value?.currentTo ?? state.value?.gameYear ?? null);
 const nextYear = computed(() => (currentTo.value == null ? null : currentTo.value + 1));
 const limitReason = computed(() => {
     if (state.value?.gameYear == null) return "The realm has no game year set, so the trees can't advance yet.";
     if (currentTo.value >= state.value.gameYear) {
-        return "The trees are already current to the game year. Move the realm's date on to advance them.";
+        // Before the first save the DM may still start the trees from an earlier year.
+        return state.value.canSetYear
+            ? 'The trees are current to the game year. To start from an earlier year, set the year above. Otherwise, wait for the game year to move on.'
+            : 'The trees are current to the game year. You can advance them again once the game year moves on.';
     }
     return '';
 });
+
+// A run still running or saving this long after it started has lost its
+// background worker; the server lets it be started again after 10 minutes.
+const STUCK_MS = 10 * 60 * 1000;
+const clock = ref(Date.now());
+let clockTimer = null;
+const stuck = computed(() => {
+    const r = run.value;
+    if (!r || (r.status !== 'running' && r.status !== 'committing')) return false;
+    const since = Date.parse((r.status === 'committing' && r.committingSince) || r.startedAt || '');
+    return Number.isFinite(since) && clock.value - since >= STUCK_MS;
+});
+async function retryStuck() {
+    if (run.value?.status === 'committing') await commit();
+    else await advance();
+}
 const canAdvance = computed(() => !limitReason.value);
 
 const showYearLine = computed(() => phase.value === 'idle' || phase.value === 'committed');
@@ -289,7 +321,7 @@ const problems = computed(() => {
     return out;
 });
 
-const STALE_TEXT = "The trees changed after this preview was made, so it can't be committed. Run a fresh preview to roll the year again.";
+const STALE_TEXT = "The trees changed after this preview was made, so it can't be saved. Run a fresh preview to roll the year again.";
 
 async function load() {
     loadFailed.value = false;
@@ -429,8 +461,14 @@ watch(
     { immediate: true }
 );
 
-onMounted(() => emit('set-room', 'dynasties'));
-onBeforeUnmount(() => store.stopPolling());
+onMounted(() => {
+    emit('set-room', 'dynasties');
+    clockTimer = setInterval(() => { clock.value = Date.now(); }, 30 * 1000);
+});
+onBeforeUnmount(() => {
+    store.stopPolling();
+    if (clockTimer) clearInterval(clockTimer);
+});
 </script>
 
 <style scoped src="./dynastyView.css"></style>
@@ -498,6 +536,8 @@ onBeforeUnmount(() => store.stopPolling());
     padding: 1em 0;
 }
 .progress p { margin: 0; line-height: 1.5; }
+.stuck { display: flex; flex-direction: column; align-items: flex-start; gap: 0.6em; }
+.stuck p { margin: 0; }
 .sand {
     flex: none;
     width: 4px;

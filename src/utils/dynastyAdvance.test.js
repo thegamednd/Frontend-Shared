@@ -41,6 +41,11 @@ describe('eventLine', () => {
         expect(eventLine(run.events[6], run)).toBe('A daughter is born to Alys and Bram');
         expect(eventLine(run.events[1], run)).toBe('Cora, a child of Bram, comes forward');
     });
+    it('says "her" or "his" father for a child left with him, by the child\'s gender', () => {
+        const left = (gender) => ({ kind: 'natural', ref: 'n2', fatherId: 'p2', houseId: 'h1', gender, disclosure: 'left' });
+        expect(eventLine(left('female'), run)).toBe('Bram fathers a natural daughter by a woman outside the family (left with her father)');
+        expect(eventLine(left('male'), run)).toBe('Bram fathers a natural son by a woman outside the family (left with his father)');
+    });
 });
 
 describe('advanceErrorMessage', () => {
@@ -52,6 +57,12 @@ describe('advanceErrorMessage', () => {
         const msg = advanceErrorMessage({ code, message: 'server text' });
         expect(msg).not.toBe('server text');
         expect(msg).not.toMatch(/—/);
+    });
+    it('never says "commit", and never tells the DM to raise the cap', () => {
+        for (const code of codes) expect(advanceErrorMessage({ code })).not.toMatch(/commit/i);
+        expect(advanceErrorMessage({ code: 'RUN_NOT_READY' })).toBe('The save has started. You can only try saving again.');
+        expect(advanceErrorMessage({ code: 'TREE_FULL' })).not.toMatch(/raise|cap/i);
+        expect(advanceErrorMessage({ code: 'TREE_FULL' })).toMatch(/dies|upgrade/);
     });
     it('reads a raw axios error too', () => {
         expect(advanceErrorMessage({ response: { data: { error: { code: 'RUN_BUSY' } } } })).toMatch(/in progress/);

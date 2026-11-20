@@ -11,8 +11,12 @@
             <span class="cap-count">{{ capState.living }} living, soft cap {{ capState.softCap }}.</span>
         </p>
 
-        <div v-if="prune" class="notice warn prune" role="note">
-            <p>This tree is at its generation limit. Committing removes its oldest generation.</p>
+        <p v-if="prune && pruneOff" class="notice prune-off" role="note">
+            <span class="tag muted">Won't happen</span>
+            This tree was at its generation limit, but the child behind it is left out, so saving keeps its oldest generation.
+        </p>
+        <div v-else-if="prune" class="notice warn prune" role="note">
+            <p>This tree is at its generation limit. Saving removes its oldest generation.</p>
             <template v-if="livingRemoved.length">
                 <p class="list-label">Living people removed</p>
                 <ul class="names prune-living">
@@ -35,12 +39,14 @@
         <div v-for="g in house.groups" :key="g.id" class="event-group">
             <h4>{{ g.label }}</h4>
             <ul class="events">
-                <li v-for="ev in g.events" :key="ev.ref" class="event" :class="{ dropped: ev.dropped }">
+                <li v-for="ev in g.events" :key="ev.ref" class="event" :class="{ dropped: ev.dropped, skipped: isSkipped(ev) }">
                     <div class="event-head">
                         <p class="event-line">
                             {{ eventLine(ev, run) }}
                             <span v-if="ev.byDm" class="tag">Added by you</span>
                             <span v-if="ev.dropped" class="tag muted">Left out</span>
+                            <span v-else-if="isSkipped(ev)" class="tag muted">Won't happen</span>
+                            <span v-if="isSkipped(ev)" class="skip-why">Its marriage is left out.</span>
                         </p>
                         <template v-if="editable">
                             <button v-if="ev.byDm" type="button" class="tool-btn small" :disabled="busy" @click="emit('remove', ev.ref)">Remove</button>
@@ -95,6 +101,11 @@ const overSoftCap = computed(() => {
     const c = props.capState;
     return !!c && c.softCap != null && c.living > c.softCap;
 });
+// What the commit will skip although the review lists it, as the server
+// works it out (run.skipped: a pregnancy whose marriage is left out;
+// run.prunesOff: a prune no kept child sets off any more).
+const pruneOff = computed(() => (props.run?.prunesOff || []).includes(props.house.houseId));
+const isSkipped = (ev) => !ev.dropped && (props.run?.skipped || []).includes(ev.ref);
 const livingRemoved = computed(() => (props.prune?.removed || []).filter((p) => p.alive));
 const deadRemoved = computed(() => (props.prune?.removed || []).filter((p) => !p.alive));
 
@@ -177,6 +188,10 @@ function toggle(ev) {
 }
 .event.dropped { border-style: dashed; background: transparent; }
 .event.dropped .event-line { text-decoration: line-through; opacity: 0.6; }
+.event.skipped { border-style: dashed; }
+.skip-why { display: block; font-size: 0.82rem; opacity: 0.75; }
+.prune-off { opacity: 0.85; }
+.prune-off .tag { margin: 0 0.35em 0 0; }
 .event-head { display: flex; align-items: flex-start; gap: 0.6em; }
 .event-line { flex: 1; min-width: 0; margin: 0.45em 0; line-height: 1.45; overflow-wrap: anywhere; }
 .tool-btn.small { flex: none; min-height: 2.75em; padding: 0.3em 0.75em; font-size: 0.85rem; }

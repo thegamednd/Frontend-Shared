@@ -13,10 +13,12 @@ const GROUPS = [
     { id: 'comesForward', label: 'Come forward', kinds: ['comesForward'] },
 ];
 
+// What became of a married-in man's natural child. `left` names the child, so
+// it follows the child's gender.
 const DISCLOSURE = {
-    left: 'left with his father',
-    support: 'the mother demands support',
-    secret: 'kept secret, the family will not know',
+    left: (event) => `left with ${event.gender === 'female' ? 'her' : 'his'} father`,
+    support: () => 'the mother demands support',
+    secret: () => 'kept secret, the family will not know',
 };
 
 const MARRIAGE_PREFIX = 'm:';
@@ -111,7 +113,7 @@ export function eventLine(event, run, { abbr } = {}) {
             const mother = event.motherFamily
                 ? `a woman of the ${event.motherFamily} family`
                 : 'a woman outside the family';
-            const note = DISCLOSURE[event.disclosure];
+            const note = DISCLOSURE[event.disclosure]?.(event);
             return `${name(event.fatherId)} fathers a natural ${child} by ${mother}${note ? ` (${note})` : ''}`;
         }
         case 'comesForward': {
@@ -133,9 +135,9 @@ const MESSAGES = {
     RUN_BUSY: 'Another advance is already in progress. Give it a moment and try again.',
     TREE_SELECTION_REQUIRED: 'Choose which family trees are active before advancing the year.',
     STALE_PREVIEW: 'The trees changed after this preview was made. Discard it and preview again.',
-    RUN_NOT_READY: 'This preview is not ready for that yet.',
+    RUN_NOT_READY: 'The save has started. You can only try saving again.',
     YEAR_LOCKED: 'The year cannot be changed once an advance has been made.',
-    TREE_FULL: 'This family tree is full. Remove someone or raise the cap before adding more.',
+    TREE_FULL: 'This family tree is full. It has room again when someone in it dies, or you can upgrade your plan for a bigger tree.',
     GENERATION_LIMIT: 'This tree is at its generation limit. Upgrade to keep more generations.',
 };
 

@@ -30,7 +30,8 @@ let store;
 function setup() {
     store = useDynastiesStore();
     store.fetchHouse = vi.fn(async () => ({ house: { id: 'h1', name: 'Vane' } }));
-    store.fetchHistoryYears = vi.fn(async () => ({ years: [{ year: 250 }, { year: 252 }, { year: 251 }] }));
+    // The store hands back res.data.data.years: plain numbers, in any order.
+    store.fetchHistoryYears = vi.fn(async () => [250, 252, 251]);
     store.fetchHistory = vi.fn(async (_h, y) => byYear[y]);
     return mount(DynastyHistory, { global: { stubs } });
 }
@@ -103,7 +104,7 @@ describe('DynastyHistory', () => {
     it('shows a failure when the house cannot be loaded', async () => {
         store = useDynastiesStore();
         store.fetchHouse = vi.fn(async () => { throw new Error('boom'); });
-        store.fetchHistoryYears = vi.fn(async () => ({ years: [] }));
+        store.fetchHistoryYears = vi.fn(async () => []);
         const w = mount(DynastyHistory, { global: { stubs } });
         await flushPromises();
         expect(w.text()).toContain("Couldn't load this history.");
