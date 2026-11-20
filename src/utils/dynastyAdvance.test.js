@@ -41,6 +41,14 @@ describe('eventLine', () => {
         expect(eventLine(run.events[6], run)).toBe('A daughter is born to Alys and Bram');
         expect(eventLine(run.events[1], run)).toBe('Cora, a child of Bram, comes forward');
     });
+    it('writes a revealed line like the backend and groups it with those who come forward', () => {
+        const ev = { kind: 'revealed', ref: 'rv:p3', personId: 'p3' };
+        expect(eventLine(ev, run)).toBe('Word has got out of Cora, natural daughter of Bram');
+        const noFather = { ...run, people: { ...run.people, p3: { ...run.people.p3, fatherId: undefined } } };
+        expect(eventLine(ev, noFather)).toBe('Word has got out of Cora');
+        const out = groupEvents({ ...run, events: [ev] });
+        expect(out[0].groups.map((g) => g.id)).toEqual(['comesForward']);
+    });
     it('says "her" or "his" father for a child left with him, by the child\'s gender', () => {
         const left = (gender) => ({ kind: 'natural', ref: 'n2', fatherId: 'p2', houseId: 'h1', gender, disclosure: 'left' });
         expect(eventLine(left('female'), run)).toBe('Bram fathers a natural daughter by a woman outside the family (left with her father)');

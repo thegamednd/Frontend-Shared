@@ -10,7 +10,7 @@ const GROUPS = [
     { id: 'marriage', label: 'Marriages', kinds: ['marriage'] },
     { id: 'pregnancy', label: 'Pregnancies', kinds: ['pregnancy'] },
     { id: 'barren', label: 'Can no longer bear children', kinds: ['barren'] },
-    { id: 'comesForward', label: 'Come forward', kinds: ['comesForward'] },
+    { id: 'comesForward', label: 'Come forward', kinds: ['comesForward', 'revealed'] },
 ];
 
 // What became of a married-in man's natural child. `left` names the child, so
@@ -120,6 +120,13 @@ export function eventLine(event, run, { abbr } = {}) {
             const fatherId = run?.people?.[event.personId]?.fatherId;
             const father = fatherId ? `, a child of ${name(fatherId)},` : '';
             return `${name(event.personId)}${father} comes forward`;
+        }
+        case 'revealed': {
+            const child = run?.people?.[event.personId];
+            const father = child?.fatherId ? name(child.fatherId) : '';
+            const kid = child?.gender === 'male' ? 'son' : 'daughter';
+            const of = father ? `, natural ${kid} of ${father}` : '';
+            return `Word has got out of ${name(event.personId)}${of}`;
         }
         case 'motherDied':
             return `${name(event.personId)} dies in childbirth`;
