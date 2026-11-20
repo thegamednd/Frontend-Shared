@@ -147,6 +147,39 @@ describe('advance polling', () => {
         expect(store.advance.polling).toBe(false);
     });
 
+    it('two pollRun calls while a fetch is in flight leave one loop', async () => {
+        let release;
+        get.mockImplementationOnce(() => new Promise((r) => { release = r; }));
+        get.mockResolvedValue(runOf('running'));
+        const store = useDynastiesStore();
+        const first = store.pollRun('r1');
+        const second = store.pollRun('r1');
+        await second;
+        release(runOf('running'));
+        await first;
+        get.mockClear();
+        await vi.advanceTimersByTimeAsync(2000);
+        expect(get).toHaveBeenCalledTimes(1);
+        await vi.advanceTimersByTimeAsync(2000);
+        expect(get).toHaveBeenCalledTimes(2);
+        store.stopPolling();
+        await vi.advanceTimersByTimeAsync(6000);
+        expect(get).toHaveBeenCalledTimes(2);
+    });
+
+    it('a response arriving after stopPolling writes nothing', async () => {
+        let release;
+        get.mockImplementationOnce(() => new Promise((r) => { release = r; }));
+        const store = useDynastiesStore();
+        const p = store.pollRun('r1');
+        store.stopPolling();
+        release(runOf('running'));
+        await p;
+        expect(store.advance.run).toBeNull();
+        await vi.advanceTimersByTimeAsync(6000);
+        expect(get).toHaveBeenCalledTimes(1);
+    });
+
     it('stops and records the error when a poll fails', async () => {
         get.mockRejectedValue({ response: { data: { error: { code: 'X', message: 'bad' } } } });
         const store = useDynastiesStore();

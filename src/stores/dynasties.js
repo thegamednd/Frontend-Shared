@@ -17,6 +17,8 @@ const enc = encodeURIComponent;
 const POLL_MS = 2000;
 // Module level so it never lands in reactive state.
 let pollTimer = null;
+// Bumped on every pollRun and stopPolling, so a tick from an older loop does nothing.
+let pollGen = 0;
 
 export const useDynastiesStore = defineStore('dynasties', {
     state: () => ({
@@ -202,18 +204,20 @@ export const useDynastiesStore = defineStore('dynasties', {
         // committing. Stops on any other status, on an error, or stopPolling().
         async pollRun(id) {
             this.stopPolling();
+            const gen = pollGen;
             this.advance.polling = true;
             this.advance.error = null;
             const tick = async () => {
                 try {
                     const res = await apiClient.get(`/dynasties/advance/runs/${enc(id)}`);
+                    if (gen !== pollGen) return;
                     this.advance.run = res.data.data;
                 } catch (err) {
+                    if (gen !== pollGen) return;
                     this.advance.error = toError(err);
                     this.stopPolling();
                     return;
                 }
-                if (!this.advance.polling) return;
                 const status = this.advance.run?.status;
                 if (status === 'running' || status === 'committing') {
                     pollTimer = setTimeout(tick, POLL_MS);
@@ -225,6 +229,7 @@ export const useDynastiesStore = defineStore('dynasties', {
             return this.advance.run;
         },
         stopPolling() {
+            pollGen++;
             if (pollTimer) clearTimeout(pollTimer);
             pollTimer = null;
             this.advance.polling = false;
