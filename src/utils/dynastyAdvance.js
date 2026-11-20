@@ -136,6 +136,8 @@ const MESSAGES = {
     TREE_SELECTION_REQUIRED: 'Choose which family trees are active before advancing the year.',
     STALE_PREVIEW: 'The trees changed after this preview was made. Discard it and preview again.',
     RUN_NOT_READY: 'The save has started. You can only try saving again.',
+    // A run already saved, failed or blocked: nothing left to save.
+    RUN_STATE: "There's nothing to save in this advance any more. Refresh to see where it stands.",
     YEAR_LOCKED: 'The year cannot be changed once an advance has been made.',
     TREE_FULL: 'This family tree is full. It has room again when someone in it dies, or you can upgrade your plan for a bigger tree.',
     GENERATION_LIMIT: 'This tree is at its generation limit. Upgrade to keep more generations.',

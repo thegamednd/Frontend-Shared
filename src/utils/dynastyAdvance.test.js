@@ -51,7 +51,7 @@ describe('eventLine', () => {
 describe('advanceErrorMessage', () => {
     const codes = [
         'YEAR_AT_LIMIT', 'RUN_BUSY', 'TREE_SELECTION_REQUIRED', 'STALE_PREVIEW',
-        'RUN_NOT_READY', 'YEAR_LOCKED', 'TREE_FULL', 'GENERATION_LIMIT',
+        'RUN_NOT_READY', 'RUN_STATE', 'YEAR_LOCKED', 'TREE_FULL', 'GENERATION_LIMIT',
     ];
     it.each(codes)('maps %s', (code) => {
         const msg = advanceErrorMessage({ code, message: 'server text' });

@@ -106,7 +106,7 @@
 
             <!-- Ready: the review. -->
             <template v-else-if="phase === 'ready'">
-                <div v-if="run.commitAttempted && run.treesWritten" class="notice warn" role="note">
+                <div v-if="yearMovedAway" class="notice warn" role="note">
                     <p>Everything for {{ fmt(run.year) }} is in the trees, but the "current to" year didn't move. Discard this run to clear it. The trees keep the year's changes.</p>
                     <p v-if="run.error" class="detail">{{ run.error }}</p>
                 </div>
@@ -150,7 +150,7 @@
                         <template v-else>Saving records every event above and moves the trees on to {{ fmt(run.year) }}. Discard throws the preview away.</template>
                     </p>
                     <div class="decision-buttons">
-                        <button v-if="!run.commitAttempted || run.treesWritten" type="button" class="tool-btn danger" :disabled="busy" @click="discardOpen = true">Discard</button>
+                        <button v-if="!run.commitAttempted || yearMovedAway" type="button" class="tool-btn danger" :disabled="busy" @click="discardOpen = true">Discard</button>
                         <button type="button" class="tool-btn primary commit-btn" :disabled="busy" @click="commit">
                             {{ run.commitAttempted ? 'Save again' : `Save ${fmt(run.year)}` }}
                         </button>
@@ -176,7 +176,7 @@
             @confirm="discard"
             @close="discardOpen = false"
         >
-            <p v-if="run?.treesWritten" class="confirm-text">Discarding removes only the run. The trees keep this year's changes.</p>
+            <p v-if="yearMovedAway" class="confirm-text">Discarding removes only the run. The trees keep this year's changes.</p>
             <p v-else class="confirm-text">Nothing in it is saved. The next advance rolls the year from scratch.</p>
         </DynastyConfirmDialog>
         <TreeActivationDialog
@@ -242,6 +242,9 @@ const run = computed(() => store.advance.run);
 const pollError = computed(() => !!store.advance.error);
 const phase = computed(() => run.value?.status || 'idle');
 const editable = computed(() => phase.value === 'ready' && !run.value?.commitAttempted);
+// A failed save with everything written whose year someone else had already moved: the server lets it be
+// discarded. Any other failed save can only be saved again.
+const yearMovedAway = computed(() => !!(run.value?.commitAttempted && run.value?.treesWritten && run.value?.yearMoved));
 
 // The server pins an unset "current to" to the game year when it first reads
 // it, and advances into currentTo + 1.
@@ -362,7 +365,7 @@ function showError(e) {
         return;
     }
     if (code === 'STALE_PREVIEW') actionError.value = { text: STALE_TEXT, fresh: true };
-    else if (code === 'RUN_BUSY' || code === 'RUN_NOT_READY') actionError.value = { text: advanceErrorMessage(err), refresh: true };
+    else if (code === 'RUN_BUSY' || code === 'RUN_NOT_READY' || code === 'RUN_STATE') actionError.value = { text: advanceErrorMessage(err), refresh: true };
     else actionError.value = { text: advanceErrorMessage(err) };
 }
 

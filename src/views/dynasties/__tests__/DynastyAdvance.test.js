@@ -149,8 +149,32 @@ describe('DynastyAdvance', () => {
         w.unmount();
     });
 
-    it('a failed save with everything but the year written can be discarded', async () => {
-        const w = setup({ latestRun: readyRun({ commitAttempted: true, treesWritten: true, error: 'moved' }) });
+    it('a failed save whose year step failed some other way can only be saved again', async () => {
+        const w = setup({ latestRun: readyRun({ commitAttempted: true, treesWritten: true, error: 'throttled' }) });
+        await flushPromises();
+        expect(btn(w, 'Discard')).toBeUndefined();
+        expect(w.text()).not.toContain("the trees keep");
+        expect(w.text()).toContain('The save stopped partway.');
+        w.unmount();
+    });
+
+    it('a save refused because the run is no longer ready says there is nothing to save', async () => {
+        const w = setup({ latestRun: readyRun() });
+        await flushPromises();
+        store.commitRun = vi.fn(async () => {
+            store.error = { code: 'RUN_STATE', message: 'Only a finished preview can be saved' };
+            throw new Error('409');
+        });
+        await btn(w, 'Save 251 SF').trigger('click');
+        await flushPromises();
+        expect(w.text()).toContain("There's nothing to save in this advance any more.");
+        expect(w.text()).not.toContain('The save has started');
+        expect(btn(w, 'Refresh')).toBeDefined();
+        w.unmount();
+    });
+
+    it('a failed save whose year was moved by someone else can be discarded', async () => {
+        const w = setup({ latestRun: readyRun({ commitAttempted: true, treesWritten: true, yearMoved: true, error: 'moved' }) });
         await flushPromises();
         expect(w.text()).toContain('the "current to" year didn\'t move');
         await btn(w, 'Discard').trigger('click');
