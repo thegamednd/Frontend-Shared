@@ -74,9 +74,9 @@ const abbr = computed(() => realmStore.activeRealm?.DateSuffix?.Abbr || 'SF');
 const fmt = (y) => formatYear(y, { abbr: abbr.value });
 
 const editor = computed(() => Boolean(userStore.isDM || userStore.isAdmin));
-// Until the realm's players load, isDM reads false for a DM too. Once the user or the players
-// are in, a non-editor is a player, even if the realm has no DMs listed.
-const rolesKnown = computed(() => (realmStore.arActivePlayers?.length ?? 0) > 0 || (realmStore.getRealmDMs?.length ?? 0) > 0 || userStore.loaded === true);
+// Until the realm's players load, isDM reads false for a DM too. Roles are known only once the
+// realm has players, so a DM is never bounced early. A realm with none leaves the server's 403 to redirect.
+const rolesKnown = computed(() => (realmStore.arActivePlayers?.length ?? 0) > 0);
 
 const houseId = computed(() => route.params.houseId);
 const houseName = ref('');

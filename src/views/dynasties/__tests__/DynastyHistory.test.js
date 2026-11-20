@@ -9,9 +9,9 @@ vi.mock('@shared/utils/api', () => ({
     default: { get: vi.fn(), post: vi.fn(), put: vi.fn(), delete: vi.fn(), patch: vi.fn() },
 }));
 vi.mock('@shared/stores/realm', () => ({
-    useRealmStore: () => ({ activeRealm: { DateSuffix: { Abbr: 'SF' } }, getRealmDMs: realmDMs }),
+    useRealmStore: () => ({ activeRealm: { DateSuffix: { Abbr: 'SF' } }, arActivePlayers: realmPlayers }),
 }));
-let realmDMs = [{ UserID: 'dm-1' }];
+let realmPlayers = [{ UserID: 'dm-1', Role: 'DM' }];
 let role = { isDM: true, isAdmin: false };
 vi.mock('@shared/stores/user', () => ({ useUserStore: () => role }));
 
@@ -39,7 +39,7 @@ const btn = (w, text) => w.findAll('button').find((b) => b.text() === text);
 beforeEach(() => {
     setActivePinia(createPinia());
     role = { isDM: true, isAdmin: false };
-    realmDMs = [{ UserID: 'dm-1' }];
+    realmPlayers = [{ UserID: 'dm-1', Role: 'DM' }];
     router = { push: vi.fn(), replace: vi.fn() };
 });
 
@@ -76,12 +76,21 @@ describe('DynastyHistory', () => {
         expect(btn(w, 'Previous').attributes('disabled')).toBeDefined();
     });
 
-    it('redirects a player once the user has loaded, even with no DMs listed', async () => {
+    it('redirects a player once the realm players are known', async () => {
         role = { isDM: false, isAdmin: false, loaded: true };
-        realmDMs = [];
+        realmPlayers = [{ UserID: 'dm-1', Role: 'DM' }, { UserID: 'u2', Role: 'Player' }];
         setup();
         await flushPromises();
         expect(router.replace).toHaveBeenCalledWith({ name: 'DynastyHouse', params: { houseId: 'h1' } });
+    });
+
+    it('does not bounce a DM while the realm players are still loading', async () => {
+        role = { isDM: false, isAdmin: false, loaded: true };
+        realmPlayers = [];
+        setup();
+        await flushPromises();
+        expect(router.replace).not.toHaveBeenCalled();
+        expect(store.fetchHistoryYears).not.toHaveBeenCalled();
     });
 
     it('shows a failure when a year cannot be loaded', async () => {
