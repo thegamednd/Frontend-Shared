@@ -1,7 +1,8 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { setActivePinia, createPinia } from 'pinia';
 
-const { get, post, put, del } = vi.hoisted(() => ({
+const { get, post, put, del, patch } = vi.hoisted(() => ({
+    patch: vi.fn(),
     get: vi.fn(),
     post: vi.fn(),
     put: vi.fn(),
@@ -9,7 +10,7 @@ const { get, post, put, del } = vi.hoisted(() => ({
 }));
 
 vi.mock('@shared/utils/api', () => ({
-    default: { get, post, put, delete: del },
+    default: { get, post, put, patch, delete: del },
 }));
 
 import { useDynastiesStore } from './dynasties';
@@ -91,5 +92,113 @@ describe('limitReached', () => {
         ];
         expect(store.limitReached('a')).toEqual({ full: true, frozen: false });
         expect(store.limitReached('b')).toEqual({ full: false, frozen: true });
+    });
+});
+
+describe('advance polling', () => {
+    const runOf = (status) => ({ data: { data: { id: 'r1', status } } });
+    beforeEach(() => vi.useFakeTimers());
+    afterEach(() => {
+        useDynastiesStore().stopPolling();
+        vi.useRealTimers();
+    });
+
+    it('repeats every 2s while running, then stops on ready', async () => {
+        get.mockResolvedValueOnce(runOf('running')).mockResolvedValueOnce(runOf('running')).mockResolvedValue(runOf('ready'));
+        const store = useDynastiesStore();
+        await store.pollRun('r1');
+        expect(store.advance.polling).toBe(true);
+        await vi.advanceTimersByTimeAsync(1999);
+        expect(get).toHaveBeenCalledTimes(1);
+        await vi.advanceTimersByTimeAsync(1);
+        expect(get).toHaveBeenCalledTimes(2);
+        await vi.advanceTimersByTimeAsync(2000);
+        expect(get).toHaveBeenCalledTimes(3);
+        expect(store.advance.polling).toBe(false);
+        await vi.advanceTimersByTimeAsync(10000);
+        expect(get).toHaveBeenCalledTimes(3);
+        expect(store.advance.run.status).toBe('ready');
+    });
+
+    it.each(['ready', 'blocked', 'failed', 'committed'])('stops at once on %s', async (status) => {
+        get.mockResolvedValue(runOf(status));
+        const store = useDynastiesStore();
+        await store.pollRun('r1');
+        expect(store.advance.polling).toBe(false);
+        await vi.advanceTimersByTimeAsync(6000);
+        expect(get).toHaveBeenCalledTimes(1);
+    });
+
+    it('keeps polling while committing', async () => {
+        get.mockResolvedValue(runOf('committing'));
+        const store = useDynastiesStore();
+        await store.pollRun('r1');
+        await vi.advanceTimersByTimeAsync(4000);
+        expect(get).toHaveBeenCalledTimes(3);
+    });
+
+    it('stopPolling cancels the next fetch', async () => {
+        get.mockResolvedValue(runOf('running'));
+        const store = useDynastiesStore();
+        await store.pollRun('r1');
+        store.stopPolling();
+        await vi.advanceTimersByTimeAsync(6000);
+        expect(get).toHaveBeenCalledTimes(1);
+        expect(store.advance.polling).toBe(false);
+    });
+
+    it('stops and records the error when a poll fails', async () => {
+        get.mockRejectedValue({ response: { data: { error: { code: 'X', message: 'bad' } } } });
+        const store = useDynastiesStore();
+        await store.pollRun('r1');
+        expect(store.advance.error.message).toBe('bad');
+        expect(store.advance.polling).toBe(false);
+    });
+});
+
+describe('advance actions', () => {
+    it('hits the right routes', async () => {
+        const run = { id: 'r1', status: 'ready' };
+        const ok = { data: { data: run } };
+        post.mockResolvedValue(ok);
+        patch.mockResolvedValue(ok);
+        del.mockResolvedValue(ok);
+        const store = useDynastiesStore();
+        await store.startAdvance();
+        expect(post).toHaveBeenCalledWith('/dynasties/advance/runs');
+        await store.editRun('r1', [{ ref: 'a', dropped: true }]);
+        expect(patch).toHaveBeenCalledWith('/dynasties/advance/runs/r1', { edits: [{ ref: 'a', dropped: true }] });
+        await store.addPlayerEvent('r1', { kind: 'pregnancy' });
+        expect(post).toHaveBeenCalledWith('/dynasties/advance/runs/r1/events', { kind: 'pregnancy' });
+        await store.removePlayerEvent('r1', 'dm:1');
+        await store.removePlayerEvent('r1', 'a:b');
+        expect(del).toHaveBeenCalledWith('/dynasties/advance/runs/r1/events/a%3Ab');
+        await store.commitRun('r1');
+        expect(post).toHaveBeenCalledWith('/dynasties/advance/runs/r1/commit');
+        await store.discardRun('r1');
+        expect(del).toHaveBeenCalledWith('/dynasties/advance/runs/r1');
+        expect(store.advance.run).toBeNull();
+    });
+
+    it('setCurrentTo puts the year then refetches state', async () => {
+        put.mockResolvedValue({ data: { data: {} } });
+        get.mockResolvedValue({ data: { data: { currentTo: 5, canSetYear: true } } });
+        const store = useDynastiesStore();
+        await store.setCurrentTo(5);
+        expect(put).toHaveBeenCalledWith('/dynasties/advance/year', { year: 5 });
+        expect(store.advance.state.currentTo).toBe(5);
+    });
+
+    it('drop and history routes', async () => {
+        get.mockResolvedValue({ data: { data: { years: [1], removed: [], elders: [] } } });
+        post.mockResolvedValue({ data: { data: { removed: [], elders: [] } } });
+        const store = useDynastiesStore();
+        await store.previewDrop('h1');
+        expect(get).toHaveBeenCalledWith('/dynasties/houses/h1/drop-generation');
+        await store.dropGeneration('h1');
+        expect(post).toHaveBeenCalledWith('/dynasties/houses/h1/drop-generation');
+        expect(await store.fetchHistoryYears('h1')).toEqual([1]);
+        await store.fetchHistory('h1', -3);
+        expect(get).toHaveBeenCalledWith('/dynasties/houses/h1/history/-3');
     });
 });
