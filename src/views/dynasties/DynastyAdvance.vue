@@ -33,6 +33,8 @@
                 />
             </section>
 
+            <LettersPanel />
+
             <div v-if="actionError" class="error-text" role="alert">
                 <p>{{ actionError.text }}</p>
                 <button v-if="actionError.fresh" type="button" class="tool-btn primary" :disabled="busy" @click="advance">Run a fresh preview</button>
@@ -47,6 +49,7 @@
             <section v-if="phase === 'committed'" class="summary">
                 <h3>{{ fmt(run.year) }} is recorded</h3>
                 <p>The trees are now current to {{ fmt(run.year) }}.</p>
+                <p v-if="letterStatus" class="letter-status">{{ letterStatus }}</p>
                 <ul v-if="problems.length" class="problems">
                     <li v-for="(p, i) in problems" :key="i">{{ p }}</li>
                 </ul>
@@ -209,6 +212,7 @@ import AdvanceRunReview from '@shared/components/dynasties/AdvanceRunReview.vue'
 import PlayerCharactersDialog from '@shared/components/dynasties/PlayerCharactersDialog.vue';
 import GenerationLimitDialog from '@shared/components/dynasties/GenerationLimitDialog.vue';
 import DynastyConfirmDialog from '@shared/components/dynasties/DynastyConfirmDialog.vue';
+import LettersPanel from '@shared/components/dynasties/LettersPanel.vue';
 import TreeActivationDialog from '@shared/components/dynasties/TreeActivationDialog.vue';
 
 const emit = defineEmits(['set-room']);
@@ -324,6 +328,26 @@ const problems = computed(() => {
     return out;
 });
 
+// What became of the letters for a saved year. Queued this long after the save means the worker is lost.
+const LETTERS_WAIT_MS = 10 * 60 * 1000;
+const letterStatus = computed(() => {
+    const res = run.value?.result;
+    if (!res?.letters) return '';
+    if (res.letters === 'queued') {
+        const at = Date.parse(res.committedAt || '');
+        return Number.isFinite(at) && clock.value - at > LETTERS_WAIT_MS ? 'Letters may not have gone out.' : 'Letters are being sent.';
+    }
+    if (res.letters === 'failed') return 'The letters could not be sent.';
+    if (res.letters === 'sent') {
+        const n = res.lettersSent ?? 0;
+        const skipped = res.lettersSkipped ?? 0;
+        // Nobody to write to: nothing worth saying.
+        if (!n && !skipped) return '';
+        return `Letters sent to ${n} ${n === 1 ? 'player' : 'players'}.${skipped > 0 ? ` ${skipped} could not be sent.` : ''}`;
+    }
+    return '';
+});
+
 const STALE_TEXT = "The trees changed after this preview was made, so it can't be saved. Run a fresh preview to roll the year again.";
 
 async function load() {
@@ -346,7 +370,7 @@ async function load() {
 // Picks polling back up for a run still at work in the background.
 function resume() {
     const r = run.value;
-    if (r && (r.status === 'running' || r.status === 'committing')) store.pollRun(r.id);
+    if (r && (r.status === 'running' || r.status === 'committing' || (r.status === 'committed' && r.result?.letters === 'queued'))) store.pollRun(r.id);
 }
 
 // Once a commit lands, the "current to" year has moved: reread it.
@@ -515,6 +539,7 @@ onBeforeUnmount(() => {
 .summary { margin-bottom: 1.5em; }
 .summary h3 { margin: 0 0 0.3em; font-family: var(--theme-font-display, inherit); font-size: 1.2rem; }
 .summary p { margin: 0; }
+.letter-status { margin-top: 0.3em; font-size: 0.9rem; color: color-mix(in srgb, var(--theme-text) 70%, transparent); }
 .problems { margin: 0.75em 0 0; padding-left: 1.2em; color: var(--theme-danger, #e06c75); font-size: 0.9rem; }
 
 .start { display: flex; flex-direction: column; align-items: stretch; gap: 0.6em; }

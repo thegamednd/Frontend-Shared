@@ -15,6 +15,10 @@ const toError = (err) => {
 const enc = encodeURIComponent;
 
 const POLL_MS = 2000;
+// Letters take longer; a committed run waiting only on its letters is polled less often.
+const LETTERS_POLL_MS = 10000;
+// A committed run's letters are given up on this long after the save.
+const LETTERS_WAIT_MS = 10 * 60 * 1000;
 // Module level so it never lands in reactive state.
 let pollTimer = null;
 // Bumped on every pollRun and stopPolling, so a tick from an older loop does nothing.
@@ -29,6 +33,7 @@ export const useDynastiesStore = defineStore('dynasties', {
         loading: false,
         error: null,
         advance: { state: null, run: null, polling: false, error: null },
+        letters: { players: null, error: null },
     }),
     getters: {
         limitReached: (state) => (houseId) => {
@@ -201,7 +206,9 @@ export const useDynastiesStore = defineStore('dynasties', {
             });
         },
         // Fetches the run now and again every 2 seconds while it is running or
-        // committing. Stops on any other status, on an error, or stopPolling().
+        // committing, or every 10 seconds while it is committed with its letters
+        // still queued (for up to 10 minutes from committedAt). Stops on any other
+        // status, on an error, or stopPolling().
         async pollRun(id) {
             this.stopPolling();
             const gen = pollGen;
@@ -219,8 +226,15 @@ export const useDynastiesStore = defineStore('dynasties', {
                     return;
                 }
                 const status = this.advance.run?.status;
+                const r = this.advance.run;
+                const lettersPending =
+                    status === 'committed' &&
+                    r?.result?.letters === 'queued' &&
+                    Date.now() - Date.parse(r.result.committedAt || '') < LETTERS_WAIT_MS;
                 if (status === 'running' || status === 'committing') {
                     pollTimer = setTimeout(tick, POLL_MS);
+                } else if (lettersPending) {
+                    pollTimer = setTimeout(tick, LETTERS_POLL_MS);
                 } else {
                     this.stopPolling();
                 }
@@ -233,6 +247,30 @@ export const useDynastiesStore = defineStore('dynasties', {
             if (pollTimer) clearTimeout(pollTimer);
             pollTimer = null;
             this.advance.polling = false;
+        },
+        async fetchLetters() {
+            this.letters.error = null;
+            try {
+                const res = await apiClient.get('/dynasties/letters');
+                this.letters.players = res.data.data.players || [];
+            } catch (err) {
+                this.letters.error = toError(err);
+                throw err;
+            }
+        },
+        // Optimistic: flips the switch at once and puts it back if the save fails.
+        async setLetters(userId, on) {
+            const row = this.letters.players?.find((p) => p.userId === userId);
+            const before = row?.on;
+            this.letters.error = null;
+            if (row) row.on = on;
+            try {
+                await apiClient.put(`/dynasties/letters/${enc(userId)}`, { on });
+            } catch (err) {
+                if (row) row.on = before;
+                this.letters.error = toError(err);
+                throw err;
+            }
         },
         async editRun(id, edits) {
             return this._run(async () => {
