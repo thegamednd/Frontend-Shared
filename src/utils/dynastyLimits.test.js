@@ -22,6 +22,8 @@ describe('dynastyLimitsFor', () => {
         expect(dynastyLimitsFor('Keep-Upgrade', 13).familyCap).toBe(300);
     });
     it('players as a string', () => expect(dynastyLimitsFor('guild', '9').maxTrees).toBe(18));
+    it('players 0 gives 0 trees', () => expect(dynastyLimitsFor('guild', 0).maxTrees).toBe(0));
+    it('negative players falls back to 6', () => expect(dynastyLimitsFor('guild', -3).maxTrees).toBe(12));
     it('missing players', () => {
         expect(dynastyLimitsFor('guild', null).maxTrees).toBe(12);
         expect(dynastyLimitsFor('guild', 'abc').maxTrees).toBe(12);

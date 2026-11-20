@@ -16,6 +16,7 @@ export function dynastyLimitsFor(plan, players) {
     const family = planFamily(plan);
     if (family === 'free') return { family, maxTrees: 3, maxGenerations: 3, familyCap: 20 };
     const n = Number(players);
-    const count = Number.isFinite(n) && n > 0 ? n : DEFAULT_PLAYERS;
+    // Backend uses `players ?? 6`: 0 stays 0 (zero trees). Negative or non-numeric values are invalid, so they fall back to 6.
+    const count = players != null && players !== '' && Number.isFinite(n) && n >= 0 ? n : DEFAULT_PLAYERS;
     return { family, maxTrees: 2 * count, maxGenerations: PAID_MAX_GENERATIONS, familyCap: FAMILY_CAPS[family] };
 }
