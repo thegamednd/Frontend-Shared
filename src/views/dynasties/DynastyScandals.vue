@@ -121,7 +121,8 @@
             @confirm="confirmDelete"
             @close="deleteTarget = null"
         >
-            <p class="confirm-text">If this scandal is still true in the family tree, the next rescan can find it and bring it back. To keep it quiet for good, use Disable instead.</p>
+            <p v-if="deleteTarget?.source === 'report'" class="confirm-text">This came from a session report, so it can come back the next time that report is edited or rescanned. To hide it for good, use Disable instead.</p>
+            <p v-else class="confirm-text">If this is still true in the family tree, a later rescan can find it and bring it back. To hide it for good, use Disable instead.</p>
         </DynastyConfirmDialog>
     </div>
 </template>

@@ -138,11 +138,26 @@ describe('DynastyScandals', () => {
         const dialog = document.querySelector('.confirm-dialog');
         expect(dialog.open).toBe(true);
         expect(dialog.textContent).toContain('Disable');
+        expect(dialog.textContent).toContain('still true in the family tree');
+        expect(dialog.textContent).not.toContain('session report');
         const confirm = [...dialog.querySelectorAll('button')].find((b) => b.textContent.trim() === 'Delete scandal');
         confirm.click();
         await flushPromises();
         expect(store.deleteScandal).toHaveBeenCalledWith('tree:ageGap:p1:p2');
         expect(w.find('.scandal').exists()).toBe(false);
+        w.unmount();
+    });
+
+    it('delete of a report scandal says it can come back from its report', async () => {
+        const w = setup({ scandals: [scandal({ id: 'report:rep1:1', source: 'report', kind: 'report', reportId: 'rep1' })] });
+        await flushPromises();
+        await btn(w, 'Delete').trigger('click');
+        await flushPromises();
+        const dialog = document.querySelector('.confirm-dialog');
+        expect(dialog.textContent).toContain('next time that report is edited or rescanned');
+        expect(dialog.textContent).toContain('use Disable instead');
+        expect(dialog.textContent).not.toContain('family tree');
+        expect(dialog.textContent).not.toContain('\u2014');
         w.unmount();
     });
 
