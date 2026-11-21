@@ -111,14 +111,21 @@ export const useAIStore = defineStore('ai', {
                 // Transform messages into question/answer pairs
                 const messages = conv.messages || [];
                 const pairs = [];
-                for (let i = 0; i < messages.length; i += 2) {
-                    const userMsg = messages[i];
-                    const assistantMsg = messages[i + 1];
-                    if (userMsg?.role === 'user') {
-                        pairs.push({
-                            question: userMsg.content,
-                            answer: assistantMsg?.content?.replace(/\n/g, '<br />') || '',
-                        });
+                const format = (text) => text?.replace(/\n/g, '<br />') || '';
+                // A user message opens an entry and the assistant message right
+                // after it fills the answer. Any further assistant message (such
+                // as a stored gossip bubble) becomes its own answer-only entry.
+                for (const msg of messages) {
+                    const last = pairs[pairs.length - 1];
+                    if (msg?.role === 'user') {
+                        pairs.push({ question: msg.content, answer: '' });
+                    } else if (msg?.role === 'assistant') {
+                        if (last && last.question && !last.answer && !last.hasAnswer) {
+                            last.answer = format(msg.content);
+                            last.hasAnswer = true;
+                        } else {
+                            pairs.push({ answer: format(msg.content), hasAnswer: true });
+                        }
                     }
                 }
                 this.activeConversation = pairs;

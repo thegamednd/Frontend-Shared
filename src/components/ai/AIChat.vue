@@ -92,7 +92,8 @@
             <div class="message-content">
               <span class="message-label">{{ aiName }}</span>
               <div class="message-bubble">
-                <div v-html="sanitizeAIHtml(entry.answer)"></div>
+                <p v-if="entry.gossip" class="gossip-text">{{ entry.answer }}</p>
+                <div v-else v-html="sanitizeAIHtml(entry.answer)"></div>
 
                 <!-- Inline "Proposal created" card (DM-only, AI tool use) -->
                 <div
@@ -215,7 +216,7 @@ import { MODEL_TIERS, tierMultiplierLabel } from '@shared/utils/aiModelTiers';
 const aiStore = useAIStore();
 const realmStore = useRealmStore();
 const accountStore = useAccountStore();
-const { connectionId, isConnected, isStreaming, connect, disconnect, onToken, onToolUse, onComplete, onError, onNeedMoreCredits, onDeepProgress, startStreaming } = useAIStream();
+const { connectionId, isConnected, isStreaming, connect, disconnect, onToken, onToolUse, onComplete, onError, onNeedMoreCredits, onDeepProgress, onGossip, startStreaming } = useAIStream();
 
 const question = ref('');
 const conversation = ref([]);
@@ -351,6 +352,16 @@ onMounted(async () => {
       lastEntry.deepCappedByBalance = message.cappedByBalance;
       lastEntry.deepConversationId = message.conversationId || aiStore.activeConversationId;
     }
+    scrollToBottom();
+  });
+
+  onGossip(({ text, conversationId }) => {
+    // Gossip trails the answer. Drop it if it belongs to another chat or a new
+    // question is already in flight. Plain text only; the template never uses
+    // v-html for it.
+    if (!text || conversationId !== aiStore.activeConversationId) return;
+    if (isStreaming.value || aiStore.isLoading || streamingText.value) return;
+    conversation.value.push({ answer: text, gossip: true });
     scrollToBottom();
   });
 
@@ -964,6 +975,11 @@ watch(conversation, () => {
   padding: 12px 16px;
   color: var(--theme-text-primary);
   line-height: 1.5;
+}
+
+.ai-message .message-bubble .gossip-text {
+  margin: 0;
+  overflow-wrap: anywhere;
 }
 
 .ai-message .message-bubble :deep(a) {

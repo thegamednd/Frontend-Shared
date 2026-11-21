@@ -22,6 +22,7 @@ export default defineConfig({
             { find: /^@\/stores\/(classes|races)$/, replacement: path.resolve(__dirname, './src/test/stubs/host-app-stores.js') },
             // AWS Amplify is provided by the consuming apps; several stores/composables
             // import it unconditionally at module scope (see the stub files for detail).
+            { find: /^aws-amplify\/auth$/, replacement: path.resolve(__dirname, './src/test/stubs/aws-amplify-auth.js') },
             { find: /^@aws-amplify\/auth$/, replacement: path.resolve(__dirname, './src/test/stubs/aws-amplify-auth.js') },
             { find: /^aws-amplify\/utils$/, replacement: path.resolve(__dirname, './src/test/stubs/aws-amplify-utils.js') },
             { find: '@shared', replacement: path.resolve(__dirname, './src') },
