@@ -25,3 +25,16 @@ export function saveFailure(store, err, fallback) {
         upgrade: e?.code === 'GENERATION_LIMIT' && !!e?.upgrade,
     };
 }
+
+const SCANDAL_MESSAGES = {
+    NOT_FOUND: 'That scandal is no longer there. Someone may have deleted it.',
+    FORBIDDEN: 'Only the DM can change scandals.',
+};
+
+// The text for a failed scandal call. Validation keeps the server's own
+// message, which names the field at fault.
+export function scandalErrorMessage(store, err, fallback) {
+    const e = store?.error;
+    if (e?.code && SCANDAL_MESSAGES[e.code]) return SCANDAL_MESSAGES[e.code];
+    return e?.message || err?.message || fallback;
+}

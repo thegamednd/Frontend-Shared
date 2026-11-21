@@ -117,6 +117,12 @@ export const sharedRoutes = [
         meta: { requiresActiveRealm: true }
     },
     {
+        path: '/dynasties/scandals',
+        name: 'DynastyScandals',
+        component: () => import('@shared/views/dynasties/DynastyScandals.vue'),
+        meta: { requiresActiveRealm: true }
+    },
+    {
         path: '/dynasties/house/:houseId',
         name: 'DynastyHouse',
         component: () => import('@shared/views/dynasties/DynastyHouse.vue'),

@@ -321,6 +321,40 @@ export const useDynastiesStore = defineStore('dynasties', {
                 return res.data.data;
             });
         },
+        // ============ Scandals (DM only) ============
+        async getScandalSettings() {
+            return this._run(async () => {
+                const res = await apiClient.get('/dynasties/scandals/settings');
+                return res.data.data;
+            });
+        },
+        async setScandalSettings(on) {
+            return this._run(async () => {
+                const res = await apiClient.put('/dynasties/scandals/settings', { on });
+                return res.data.data;
+            });
+        },
+        // status: active | disabled | all. A blank search is left out.
+        async listScandals({ status = 'all', q = '' } = {}) {
+            return this._run(async () => {
+                const params = { status };
+                if (q && q.trim()) params.q = q.trim();
+                const res = await apiClient.get('/dynasties/scandals', { params });
+                return res.data.data.scandals || [];
+            });
+        },
+        async updateScandal(id, patch) {
+            return this._run(async () => {
+                const res = await apiClient.put(`/dynasties/scandals/${enc(id)}`, patch);
+                return res.data.data;
+            });
+        },
+        async deleteScandal(id) {
+            return this._run(async () => {
+                const res = await apiClient.delete(`/dynasties/scandals/${enc(id)}`);
+                return res.data.data;
+            });
+        },
         async fetchHistoryYears(houseId) {
             return this._run(async () => {
                 const res = await apiClient.get(`/dynasties/houses/${enc(houseId)}/history`);

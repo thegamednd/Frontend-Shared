@@ -20,6 +20,10 @@
                     <span class="material-symbols-outlined" aria-hidden="true">hourglass_bottom</span>
                     Advance the year
                 </router-link>
+                <router-link class="tool-btn" :to="{ name: 'DynastyScandals' }">
+                    <span class="material-symbols-outlined" aria-hidden="true">campaign</span>
+                    Scandals
+                </router-link>
                 <button v-if="canChoose" type="button" class="tool-btn" @click="activationOpen = true">Choose active trees</button>
                 <button type="button" class="tool-btn primary" :disabled="addBlocked" :aria-describedby="addBlocked ? 'add-house-note' : null" @click="houseDialog.open()">
                     <span class="material-symbols-outlined" aria-hidden="true">add</span>
