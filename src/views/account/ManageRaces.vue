@@ -176,6 +176,9 @@
           <p>Unable to load races. Missing realm information.</p>
         </div>
       </div>
+
+      <!-- Lorekeeper scandals switch (DM only; the card hides itself from players) -->
+      <ScandalsToggleCard />
     </div>
   </div>
 </template>
@@ -190,6 +193,7 @@ import { useRacesStore } from '@shared/stores/races';
 import { useNotifications } from '@shared/composables/useNotifications';
 import { useShopStore } from '@shared/stores/shop';
 import RacesCRUD from '@shared/components/gamingSystem/RacesCRUD.vue';
+import ScandalsToggleCard from '@shared/components/dynasties/ScandalsToggleCard.vue';
 import { DEFAULT_HUMAN_LIFESPAN, toPercentPayload, validHumanLifespan } from '@shared/utils/raceLifespan';
 import apiClient from '@shared/utils/api';
 import axios from 'axios';

@@ -102,4 +102,23 @@ describe('DynastiesList', () => {
         expect(w.find('.rl[data-to="DynastyAdvance"]').exists()).toBe(false);
         w.unmount();
     });
+
+    it('DM sees scandals link', async () => {
+        const houses = [house('h1', 'Vane')];
+        const status = { maxTrees: 3, total: 1, active: 1, needsSelection: false, limits };
+        const w = setup({ houses, status });
+        await flushPromises();
+        expect(w.find('.rl[data-to="DynastyScandals"]').text()).toContain('Scandals');
+        w.unmount();
+    });
+
+    it('player does not see the scandals link', async () => {
+        role = { isDM: false, isAdmin: false };
+        const houses = [house('h1', 'Vane')];
+        const status = { maxTrees: 3, total: 1, active: 1, needsSelection: false, limits };
+        const w = setup({ houses, status });
+        await flushPromises();
+        expect(w.find('.rl[data-to="DynastyScandals"]').exists()).toBe(false);
+        w.unmount();
+    });
 });

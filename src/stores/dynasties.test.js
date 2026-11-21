@@ -325,3 +325,42 @@ describe('letters', () => {
         expect(store.letters.error.message).toBe('bad');
     });
 });
+
+describe('scandals', () => {
+    it('reads and sets the switch', async () => {
+        get.mockResolvedValue({ data: { data: { on: false } } });
+        put.mockResolvedValue({ data: { data: { on: true } } });
+        const store = useDynastiesStore();
+        expect(await store.getScandalSettings()).toEqual({ on: false });
+        expect(get).toHaveBeenCalledWith('/dynasties/scandals/settings');
+        expect(await store.setScandalSettings(true)).toEqual({ on: true });
+        expect(put).toHaveBeenCalledWith('/dynasties/scandals/settings', { on: true });
+    });
+
+    it('lists with status and search, leaving out an empty search', async () => {
+        get.mockResolvedValue({ data: { data: { scandals: [{ id: 'a' }] } } });
+        const store = useDynastiesStore();
+        expect(await store.listScandals({ status: 'active', q: 'vane' })).toEqual([{ id: 'a' }]);
+        expect(get).toHaveBeenCalledWith('/dynasties/scandals', { params: { status: 'active', q: 'vane' } });
+        await store.listScandals({ status: 'all', q: '  ' });
+        expect(get).toHaveBeenLastCalledWith('/dynasties/scandals', { params: { status: 'all' } });
+    });
+
+    it('edits and deletes by encoded id', async () => {
+        put.mockResolvedValue({ data: { data: { id: 'tree:ageGap:p1:p2', vague: 'x' } } });
+        del.mockResolvedValue({ data: { data: { id: 'tree:ageGap:p1:p2' } } });
+        const store = useDynastiesStore();
+        const rec = await store.updateScandal('tree:ageGap:p1:p2', { vague: 'x' });
+        expect(rec.vague).toBe('x');
+        expect(put).toHaveBeenCalledWith('/dynasties/scandals/tree%3AageGap%3Ap1%3Ap2', { vague: 'x' });
+        await store.deleteScandal('tree:ageGap:p1:p2');
+        expect(del).toHaveBeenCalledWith('/dynasties/scandals/tree%3AageGap%3Ap1%3Ap2');
+    });
+
+    it('records the refusal', async () => {
+        put.mockRejectedValue({ response: { data: { error: { code: 'FORBIDDEN', message: 'no' } } } });
+        const store = useDynastiesStore();
+        await expect(store.updateScandal('a', { disabled: true })).rejects.toBeTruthy();
+        expect(store.error.code).toBe('FORBIDDEN');
+    });
+});

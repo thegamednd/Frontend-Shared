@@ -22,6 +22,7 @@ export function useAIStream() {
   let errorCallback = null;
   let needMoreCreditsCallback = null;
   let deepProgressCallback = null;
+  let gossipCallback = null;
 
   function onToken(fn) { tokenCallback = fn; }
   function onToolUse(fn) { toolUseCallback = fn; }
@@ -29,6 +30,7 @@ export function useAIStream() {
   function onError(fn) { errorCallback = fn; }
   function onNeedMoreCredits(fn) { needMoreCreditsCallback = fn; }
   function onDeepProgress(fn) { deepProgressCallback = fn; }
+  function onGossip(fn) { gossipCallback = fn; }
 
   async function getAuthToken() {
     try {
@@ -95,6 +97,11 @@ export function useAIStream() {
 
             case 'ai_deep_progress':
               if (deepProgressCallback) deepProgressCallback(message);
+              break;
+
+            case 'ai_gossip':
+              // Arrives after ai_complete, so it never changes isStreaming.
+              if (gossipCallback) gossipCallback({ text: message.text, conversationId: message.conversationId });
               break;
           }
         } catch (err) {
@@ -169,6 +176,7 @@ export function useAIStream() {
     onError,
     onNeedMoreCredits,
     onDeepProgress,
+    onGossip,
     startStreaming,
     stopStreaming,
   };
